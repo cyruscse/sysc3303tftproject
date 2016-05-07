@@ -24,14 +24,16 @@ public class FileOperation
         return data;
     }
 
-    public void writeNextDataPacket(byte[] data) throws FileNotFoundException, SecurityException {
+    public void writeNextDataPacket(byte[] data) throws FileNotFoundException, IOException {
         outStream = new FileOutputStream(file);
 
         outStream.write(data, readWriteOffset, data.length);
+
+        readWriteOffset += 512;
     }
 
     public FileOperation(String absolutePath) {
-        readOffset = 0;
+        readWriteOffset = 0;
         file = new File(absolutePath);
     }
 }
