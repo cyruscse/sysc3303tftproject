@@ -11,9 +11,10 @@ import grouptwo.FileOperation;
 
 public class TFTPClient {
 
-   private String fileName, requestType;
+   private String fileName, strRequestType;
    private Boolean clientTransferring, safeExit, attemptExit, clientReady, verbosity;
    private Thread tftpTransfer;
+   private TFTPClientTransfer.Request requestType;
 
    public TFTPClient() {
       clientTransferring = false;
@@ -23,30 +24,34 @@ public class TFTPClient {
       verbosity = false;
 
       fileName = new String();
-      requestType = new String();
    }
 
    public void commandLine() {
       Scanner sc = new Scanner(System.in);
       String scIn = new String();
 
-      while ( safeExit == false ) {
-         if ( attemptExit == true && clientTransferring == false ) {
+      while ( safeExit == false ) 
+      {
+         if ( attemptExit == true && clientTransferring == false ) 
+         {
             System.exit(1);
          }
 
-         if ( clientTransferring == false && fileName.isEmpty() == false && requestType.isEmpty() == false ) {
+         //need to check req type as well
+         if ( clientTransferring == false && fileName.isEmpty() == false ) 
+         {
              clientReady = true;
          }
 
-         if ( clientTransferring == true && tftpTransfer.getState() == Thread.State.TERMINATED ) {
+         if ( clientTransferring == true && tftpTransfer.getState() == Thread.State.TERMINATED ) 
+         {
              System.out.println("File transfer complete");
              clientTransferring = false;
          }
 
          System.out.println("TFTP Client");
          System.out.println("1: File to read/write on server (current: " + fileName + ")");
-         System.out.println("2: Read Request or Write Request (current: " + requestType + ")");
+         System.out.println("2: Read Request or Write Request (current: " + TFTPClientTransfer.requestToString(requestType) + ")");
          if ( clientReady == true )
          {
             System.out.println("3: Start transfer");
@@ -56,60 +61,90 @@ public class TFTPClient {
 
          scIn = sc.nextLine();
 
-         if ( scIn.equalsIgnoreCase("1") == true ) {
+         if ( scIn.equalsIgnoreCase("1") == true ) 
+         {
              System.out.print("Enter filename: ");
              fileName = sc.nextLine();
          }
-         else if ( scIn.equalsIgnoreCase("2") == true ) {
+
+         else if ( scIn.equalsIgnoreCase("2") == true ) 
+         {
              System.out.print("Enter request type (read or write): ");
-             requestType = sc.nextLine();
+             strRequestType = sc.nextLine();
+
+             if ( strRequestType.equalsIgnoreCase("write") == true ) 
+             {
+                 requestType = TFTPClientTransfer.Request.WRITE;
+             }
+             else if ( strRequestType.equalsIgnoreCase("read") == true ) 
+             {
+                 requestType = TFTPClientTransfer.Request.READ;
+             }
+             else 
+             {
+                 System.out.println("Invalid request type");
+             }
          }
-         else if ( scIn.equalsIgnoreCase("3") == true && clientReady == true ) {
-             tftpTransfer = new TFTPClientTransfer("clientTransfer", fileName, requestType, TFTPClientTransfer.Mode.NORMAL, verbosity);
+
+         else if ( scIn.equalsIgnoreCase("3") == true && clientReady == true ) 
+         {
+             tftpTransfer = new TFTPClientTransfer("clientTransfer", fileName, requestType, TFTPClientTransfer.Mode.TEST, verbosity);
              tftpTransfer.start();
              clientTransferring = true;
          }
-         else if ( scIn.equalsIgnoreCase("v") == true && clientTransferring == false ) {
+
+        // else if ( scIn.equalsIgnoreCase("m") == true && clientTransferring == false ) {
+
+        // }
+
+         else if ( scIn.equalsIgnoreCase("v") == true && clientTransferring == false ) 
+         {
              verbosity = !verbosity;
          }
-         else if ( scIn.equalsIgnoreCase("q") == true ) {
+
+         else if ( scIn.equalsIgnoreCase("q") == true ) 
+         {
              attemptExit = true;
          }
-         else if ( scIn.equalsIgnoreCase("") == false ) {
+
+         else if ( scIn.equalsIgnoreCase("") == false ) 
+         {
              System.out.println("Invalid option");
          }
       }
    }
 
-   public static void main(String args[]) {
+   public static void main(String args[]) 
+   {
       TFTPClient c = new TFTPClient();
       c.commandLine();
    }
 }
 
-class TFTPClientTransfer extends Thread {
+class TFTPClientTransfer extends Thread 
+{
    // we can run in normal (send directly to server) or test
    // (send to simulator) mode
-   public static enum Mode { NORMAL, TEST};
+   public static enum Mode { NORMAL, TEST };
+   public static enum Request { READ, WRITE };
 
    private DatagramPacket sendPacket, receivePacket;
    private DatagramSocket sendReceiveSocket;
    private FileOperation  fileOp;
    private Mode run;
-   private String fileName, fileMode, requestType;
-   private Boolean transferring, verbose;
+   private Request requestType;
+   private String fileName, fileMode;
+   private Boolean verbose;
 
-
-   public TFTPClientTransfer(String threadName, String transferFile, String transferType, Mode runMode, Boolean verMode)
+   public TFTPClientTransfer(String threadName, String transferFile, Request transferType, Mode runMode, Boolean verMode)
    {
       super(threadName);
 
       fileMode = "octet";
       fileName = new String(transferFile);
-      requestType = new String(transferType);
+      requestType = transferType;
       run = runMode;
       verbose = verMode;
-      transferring = true;
 
       try {
          // Construct a datagram socket and bind it to any available
@@ -122,14 +157,37 @@ class TFTPClientTransfer extends Thread {
       }
    }
 
-   private int constructReqPacketData(byte[] msg) {
+   public static String requestToString(Request req) 
+   {
+      if ( req == Request.READ ) {
+         return "read";
+      }
+      else if ( req == Request.WRITE ) {
+         return "write";
+      }
+      return "";
+   }
+
+   public static String modeToString(Mode req) 
+   {
+      if ( req == Mode.NORMAL ) {
+         return "normal";
+      }
+      else if ( req == Mode.TEST ) {
+         return "test";
+      }
+      return "";
+   }
+
+   private int constructReqPacketData(byte[] msg) 
+   {
       byte[] fn, // filename as an array of bytes
              md; // mode as an array of bytes
       int    len;
 
       msg[0] = 0;
 
-      if ( requestType == "read" ) {
+      if ( requestType == Request.READ ) {
           msg[1] = 1;
       }
       else {
@@ -161,99 +219,157 @@ class TFTPClientTransfer extends Thread {
       return len;
    }
 
-   private void sendAndReceive() {
-      byte[] msg = new byte[100];
-      int j, len, sendPort;
+   private int constructNextWritePacket(byte[] msg, int blockNumber, FileOperation writeFile) throws FileNotFoundException 
+   {     
+      msg[0] = 0;
+      msg[1] = 3;
+      msg[2] = (byte) (blockNumber / 128);
+      msg[3] = (byte) (blockNumber % 128);
+
+      return writeFile.readNextDataPacket(msg, 4) + 4;
+   }
+
+    private void sendAndReceive() 
+    {
+        byte[] msg = new byte[100];
+        int j, len, sendPort;
             
-      if (run==Mode.NORMAL) 
-         sendPort = 69;
-      else
-         sendPort = 23;
+        if (run==Mode.NORMAL) 
+        {
+            sendPort = 69;
+        }
+        else
+        {
+            sendPort = 23;
+        }
       
-      while ( transferring ) {
-
-        System.out.println("Client: creating packet");
-         
-        // Prepare a DatagramPacket and send it via sendReceiveSocket
-        // to sendPort on the destination host.
-
+        System.out.println("Client: sending request packet");
+       
         len = constructReqPacketData(msg);
-        try {
-           sendPacket = new DatagramPacket(msg, len,
-                               InetAddress.getLocalHost(), sendPort);
-        } catch (UnknownHostException e) {
-           e.printStackTrace();
-           System.exit(1);
-        }
 
-        System.out.println("Client: sending packet");
-        System.out.println("To host: " + sendPacket.getAddress());
-        System.out.println("Destination host port: " + sendPacket.getPort());
-        System.out.println("Length: " + sendPacket.getLength());
-        System.out.println("Containing: ");
-        
-        if ( verbose ) {
-           for (j = 0; j < sendPacket.getLength(); j++) {
-               System.out.println("byte " + j + " " + msg[j]);
-           }
+        try {
+            sendPacket = new DatagramPacket(msg, len,
+                             InetAddress.getLocalHost(), sendPort);
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+            System.exit(1);
         }
-        
+      
+        if ( verbose ) 
+        {
+            System.out.println("To host: " + sendPacket.getAddress());
+            System.out.println("Destination host port: " + sendPacket.getPort());
+            System.out.println("Length: " + sendPacket.getLength());
+            System.out.println("Containing: ");
+            for (j = 0; j < sendPacket.getLength(); j++) 
+            {
+                System.out.println("byte " + j + " " + msg[j]);
+            }
+        }
+      
         // Form a String from the byte array, and print the string.
         String sending = new String(msg,0,sendPacket.getLength());
         System.out.println(sending);
 
         // Send the datagram packet to the server via the send/receive socket.
-
         try {
-           sendReceiveSocket.send(sendPacket);
+            sendReceiveSocket.send(sendPacket);
         } catch (IOException e) {
-           e.printStackTrace();
-           System.exit(1);
+            e.printStackTrace();
+            System.exit(1);
         }
 
-        System.out.println("Client: Packet sent.");
-
-        // Construct a DatagramPacket for receiving packets up
-        // to 100 bytes long (the length of the byte array).
-
-        msg = new byte[100];
+        msg = new byte[4];
         receivePacket = new DatagramPacket(msg, msg.length);
 
-        System.out.println("Client: Waiting for packet.");
+        System.out.println("Client: Waiting for request acknowledgement");
+      
         try {
-           // Block until a datagram is received via sendReceiveSocket.
-           sendReceiveSocket.receive(receivePacket);
+              sendReceiveSocket.receive(receivePacket);
         } catch(IOException e) {
-           e.printStackTrace();
-           System.exit(1);
+              e.printStackTrace();
+              System.exit(1);
         }
 
         // Process the received datagram.
-        System.out.println("Client: Packet received:");
-        System.out.println("From host: " + receivePacket.getAddress());
-        System.out.println("Host port: " + receivePacket.getPort());
-        System.out.println("Length: " + receivePacket.getLength());
-        System.out.println("Containing: ");
-        
-        if ( verbose ) {
-           for (j = 0; j < receivePacket.getLength(); j++) {
-               System.out.println("byte " + j + " " + msg[j]);
-           }
+        if ( verbose ) 
+        {
+            System.out.println("From host: " + receivePacket.getAddress());
+            System.out.println("Host port: " + receivePacket.getPort());
+            System.out.println("Length: " + receivePacket.getLength());
+            System.out.println("Containing: ");
+            for (j = 0; j < receivePacket.getLength(); j++) 
+            {
+                System.out.println("byte " + j + " " + msg[j]);
+            }
+        }
+
+        if ( requestType == Request.WRITE ) 
+        {
+            fileOp = new FileOperation(fileName, true);
+            int k;
+
+            for (j = 0; j < fileOp.getNumTFTPBlocks(); j++ ) 
+            {
+                msg = new byte[516];
+
+                try {
+                    len = constructNextWritePacket(msg, j, fileOp);
+                } catch (FileNotFoundException e) {
+                    System.out.println("File not found!");
+                    System.exit(1); //TODO - can't exit here, need to get a new filename
+                }
+                
+                System.out.println("Client: Sending TFTP packet " + (j + 1) + "/" + fileOp.getNumTFTPBlocks());
+
+                if ( verbose ) 
+                {
+                    for (k = 0; k < len; k++) 
+                    {
+                        System.out.println("byte " + k + " " + msg[k]);
+                    }
+                }
+
+                try {
+                    sendPacket = new DatagramPacket(msg, len,
+                                     InetAddress.getLocalHost(), sendPort);
+                } catch (UnknownHostException e) {
+                    e.printStackTrace();
+                    System.exit(1);
+                }
+
+                // Send the datagram packet to the server via the send/receive socket.
+                try {
+                    sendReceiveSocket.send(sendPacket);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    System.exit(1);
+                }
+
+                msg = new byte[4];
+                receivePacket = new DatagramPacket(msg, msg.length);
+
+                System.out.println("Client: Waiting for request acknowledgement");
+              
+                try {
+                      sendReceiveSocket.receive(receivePacket);
+                } catch(IOException e) {
+                      e.printStackTrace();
+                      System.exit(1);
+                }
+            }
         }
         
         System.out.println();
-        transferring = false;
 
-      } // end of loop
+        // We're finished, so close the socket.
+        sendReceiveSocket.close();
+    }
 
-      // We're finished, so close the socket.
-      sendReceiveSocket.close();
-   }
-
-   public void run()
-   {
-      this.sendAndReceive();
-   }
+    public void run()
+    {
+        this.sendAndReceive();
+    }
 }
 
 
