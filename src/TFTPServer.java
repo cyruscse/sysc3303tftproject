@@ -2,7 +2,8 @@
 // This class is the server side of a simple TFTP server based on
 // UDP/IP. The server receives a read or write packet from a client and
 // sends back the appropriate response without any actual file transfer.
-// One socket (69) is used to receive (it stays open) and another for each response. 
+// One socket (69) is used to receive (it stays open) and another for each response.
+package grouptwo;
 
 import java.io.*;
 import java.net.*;

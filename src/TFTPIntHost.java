@@ -5,6 +5,7 @@
 // client.
 // One socket (23) is used to receive from the client, and another to send/receive
 // from the server.  A new socket is used for each communication back to the client.   
+package grouptwo;
 
 import java.io.*;
 import java.net.*;
