@@ -1,3 +1,7 @@
+// FileOperation.java
+// This class provides file IO for the client and server classes
+// It can split a file into chunks to be used for data packets
+// It also stitches the chunks back into a file to write to disk
 package grouptwo;
 
 import java.io.*;
@@ -15,9 +19,14 @@ public class FileOperation
         return file.getAbsolutePath();
     }
 
+    //Gets number of TFTP data packets needed to transfer file
     public int getNumTFTPBlocks() 
-    {
-        return (int) Math.ceil(file.length()/ numBytes);
+    {   
+        if ( file.length() == 0 )
+        {
+            return 1;
+        }
+        return (int) Math.ceil(file.length() / numBytes);
     }
 
     public int size()
@@ -25,15 +34,17 @@ public class FileOperation
         return (int) file.length();
     }  
 
+    //Read FileInputStream in chunks then write each chunk into the provided byte array
     public int readNextDataPacket(byte[] data, int dataOffset) throws FileNotFoundException 
     {
         int amountRead = 0;
 
         try {
-            //Skip to next set of data
+            //Skip to next set of data (up to what was read on last method call)
             inStream.skip(readWriteOffset);
 
-            //Read returns -1 when EOF is reached
+            //Read numBytes from where we skipped to, then adjust the amount to skip
+            //on next method call
             if (-1 != inStream.read(data, dataOffset, numBytes) )
             {
                 readWriteOffset += numBytes;
@@ -41,6 +52,8 @@ public class FileOperation
             }
             else
             {
+                //If read didn't return -1 we read less than numBytes, so
+                //we have to find out how much we read
                 for (amountRead = 4; amountRead < data.length; amountRead++)
                 {
                     if ( data[amountRead] == 0 )
@@ -57,6 +70,7 @@ public class FileOperation
         return amountRead;
     }
 
+    //Write each chunk of data into the FileOutputStream in order to recreate file
     public void writeNextDataPacket(byte[] data, int dataOffset) throws FileNotFoundException 
     {
         try {
@@ -69,30 +83,23 @@ public class FileOperation
         readWriteOffset += numBytes;
     }
 
-    public FileOperation(String absolutePath, Boolean writeRequest, int bytesRW) 
+    public FileOperation(String absolutePath, Boolean localRead, int bytesRW) throws FileNotFoundException
     {
         readWriteOffset = 0;
         numBytes = bytesRW;
         file = new File(absolutePath);
 
-        //Read requests write to local machine, write requests read from local machine
-        if ( writeRequest == false ) 
+        //Client: Read Request writes to local machine
+        //Server: Write Request writes to local machine
+        if ( localRead == false ) 
         {
-            try {
-                outStream = new FileOutputStream(file);
-            } catch (FileNotFoundException e) {
-                System.out.println("File does not exist!");
-                System.exit(1); //todo - can't do this...
-            }
+            outStream = new FileOutputStream(file);
         }
+        //Client: Write Request reads from local machine
+        //Server: Read Request reads from local machine
         else
         {
-            try {
-                inStream = new FileInputStream(file);
-            } catch (FileNotFoundException e) {
-                System.out.println("File path does not exist!");
-                System.exit(1); //todo - can't do this...
-            }
+            inStream = new FileInputStream(file);
         }
     }
 }

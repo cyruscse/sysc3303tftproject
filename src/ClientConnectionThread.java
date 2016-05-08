@@ -83,25 +83,7 @@ public class ClientConnectionThread implements Runnable{
          } else { // it was invalid, just quit
            // throw new Exception("Not yet implemented");
          }
-
-         // Construct a datagram packet that is to be sent to a specified port
-         // on a specified host.
-         // The arguments are:
-         //  data - the packet data (a byte array). This is the response.
-         //  receivePacket.getLength() - the length of the packet data.
-         //     This is the length of the msg we just created.
-         //  receivePacket.getAddress() - the Internet address of the
-         //     destination host. Since we want to send a packet back to the
-         //     client, we extract the address of the machine where the
-         //     client is running from the datagram that was sent to us by
-         //     the client.
-         //  receivePacket.getPort() - the destination port number on the
-         //     destination host where the client is running. The client
-         //     sends and receives datagrams through the same socket/port,
-         //     so we extract the port that the client used to send us the
-         //     datagram, and use that as the destination port for the TFTP
-         //     packet.
-
+         
          sendPacket = new DatagramPacket(response, response.length,
                                receivePacket.getAddress(), receivePacket.getPort());
 
