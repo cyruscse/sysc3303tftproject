@@ -8,6 +8,7 @@ public class FileOperation
     private long readWriteOffset;
     private FileInputStream inStream;
     private FileOutputStream outStream;
+    private int numBytes;
 
     public String getFilePath() 
     {
@@ -16,26 +17,27 @@ public class FileOperation
 
     public int getNumTFTPBlocks() 
     {
-        //does this work if file is exactly (multiple of) 512 bytes?
-        return (int) Math.ceil(file.length()/ 512);
+        return (int) Math.ceil(file.length()/ numBytes);
     }
 
     public int size()
     {
         return (int) file.length();
     }  
-    //get rid of hardcoded 512, pass into constructor
+
     public int readNextDataPacket(byte[] data, int dataOffset) throws FileNotFoundException 
     {
         int amountRead = 0;
 
         try {
+            //Skip to next set of data
             inStream.skip(readWriteOffset);
 
-            if (-1 != inStream.read(data, dataOffset, 512) )
+            //Read returns -1 when EOF is reached
+            if (-1 != inStream.read(data, dataOffset, numBytes) )
             {
-                readWriteOffset += 512;
-                amountRead = 512;
+                readWriteOffset += numBytes;
+                amountRead = numBytes;
             }
             else
             {
@@ -55,21 +57,22 @@ public class FileOperation
         return amountRead;
     }
 
- /*   public void writeNextDataPacket(byte[] data) throws FileNotFoundException 
+    public void writeNextDataPacket(byte[] data, int dataOffset) throws FileNotFoundException 
     {
         try {
-            outStream.write(data, readWriteOffset, data.length);
+            outStream.write(data, dataOffset, data.length);
         } catch (IOException e) {
             e.printStackTrace();
             System.exit(1);
         }
 
-        readWriteOffset += 512;
+        readWriteOffset += numBytes;
     }
-*/
-    public FileOperation(String absolutePath, Boolean writeRequest) 
+
+    public FileOperation(String absolutePath, Boolean writeRequest, int bytesRW) 
     {
         readWriteOffset = 0;
+        numBytes = bytesRW;
         file = new File(absolutePath);
 
         //Read requests write to local machine, write requests read from local machine
@@ -87,7 +90,7 @@ public class FileOperation
             try {
                 inStream = new FileInputStream(file);
             } catch (FileNotFoundException e) {
-                System.out.println("File does not exist!");
+                System.out.println("File path does not exist!");
                 System.exit(1); //todo - can't do this...
             }
         }
