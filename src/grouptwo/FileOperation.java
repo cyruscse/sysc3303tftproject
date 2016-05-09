@@ -92,13 +92,13 @@ public class FileOperation
         //Server: Write Request writes to local machine
         if ( localRead == false ) 
         {
-            outStream = new FileOutputStream(file);
+            outStream = new FileOutputStream(absolutePath);
         }
         //Client: Write Request reads from local machine
         //Server: Read Request reads from local machine
         else
         {
-            inStream = new FileInputStream(file);
+            inStream = new FileInputStream(absolutePath);
         }
     }
 }

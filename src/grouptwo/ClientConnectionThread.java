@@ -62,7 +62,7 @@ public class ClientConnectionThread implements Runnable {
 		{
 
 			try {
-				fileOp = new FileOperation(localName, true, 512);
+				fileOp = new FileOperation(localName, true, 512); // change me
 			} catch (FileNotFoundException e) {
 				System.out.println("Local file " + localName + " does not exist!");
 				e.printStackTrace();
@@ -79,6 +79,7 @@ public class ClientConnectionThread implements Runnable {
 				return;
 			}
 			byte[] msg;
+			System.out.println("block in file:" + fileOp.getNumTFTPBlocks());
 			for (j = 0; j < fileOp.getNumTFTPBlocks(); j++) {
 				msg = new byte[516];
 
@@ -91,11 +92,11 @@ public class ClientConnectionThread implements Runnable {
 
 				System.out.println("Server: Sending TFTP packet " + (j + 1) + "/" + fileOp.getNumTFTPBlocks());
 				
-				if (verbosity == Verbosity.ALL) {
+				//if (verbosity == Verbosity.ALL) {
 					for (k = 0; k < len; k++) {
 						System.out.println("byte " + k + " " + msg[k]);
 					}
-				}
+				//}
 
 				sendPacket = new DatagramPacket(msg, len, address, port);
 				System.out.println("Server: sending packet.");
@@ -127,13 +128,18 @@ public class ClientConnectionThread implements Runnable {
 				// check if received is an ack
 				byte[] rcvd = receivePacket.getData();
 				System.out.println("ack " + rcvd[0] + " " + rcvd[1] + " " + rcvd[2] + " " + rcvd[3] + " " + (byte) j/256 + " " + (byte) j % 256);
-				if (rcvd[0] == 0 && rcvd[1] == 4 && rcvd[2] == (byte) (j / 256) && rcvd[3] == (byte) (j % 256)) {
-					System.out.println("ACK invalid!");
-					return;
+				
+				if (rcvd[0] == 0 && rcvd[1] == 4 && rcvd[2] == (byte)(j / 256) && rcvd[3] ==  (byte)(j % 256)) {
+					System.out.println("ACK valid!");
+					
 
 				}
-				System.out.println("ACK is valid!");
-				System.out.println("next block!");
+				else{
+					System.out.println("ACK is invalid!");
+					return;
+				}
+				
+				System.out.println("done Block" + j);
 			}
 			/*
 			 * TODO Here is where we set up the file stream OUT of the file on

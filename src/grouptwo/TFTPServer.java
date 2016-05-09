@@ -69,7 +69,7 @@ public class TFTPServer {
 		System.out.println("TFTP Server");
 		System.out.println("v: Set verbosity (current: " + verbosityToString(verbosity) + ")");
 		System.out.println("q: Quit (finishes current transfer before quitting)");
-
+		System.out.println("r: run ");
 		scIn = sc.nextLine();
 
 		if ( scIn.equalsIgnoreCase("v") ) 
@@ -99,7 +99,9 @@ public class TFTPServer {
 		{
 			abort = true;
 		}
-
+		else if ( scIn.equalsIgnoreCase("r") ){
+			// run
+		}
 	}
 
 	public void receiveAndSendTFTP() throws Exception
