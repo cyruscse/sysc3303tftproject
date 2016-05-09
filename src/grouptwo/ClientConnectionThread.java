@@ -98,7 +98,11 @@ public class ClientConnectionThread implements Runnable {
 				}
 
 				sendPacket = new DatagramPacket(msg, len, address, port);
-
+				System.out.println("Server: sending packet.");
+				System.out.println("to host: " + sendPacket.getAddress());
+				System.out.println("to port: " + sendPacket.getPort());
+		
+				System.out.println("Length: " + sendPacket.getLength());
 				// Send the datagram packet to the server via sendReceiveSocket
 				// socket.
 				try {
@@ -127,6 +131,8 @@ public class ClientConnectionThread implements Runnable {
 					return;
 
 				}
+				System.out.println("ACK is valid!");
+				System.out.println("next block!");
 			}
 			/*
 			 * TODO Here is where we set up the file stream OUT of the file on
