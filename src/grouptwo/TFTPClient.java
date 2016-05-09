@@ -384,38 +384,38 @@ class TFTPClientTransfer extends Thread
             return;
         }
 
-        msg = new byte[4];
-        receivePacket = new DatagramPacket(msg, msg.length);
-
-        System.out.println("Client: Waiting for request acknowledgement");
-      
-        try {
-              sendReceiveSocket.receive(receivePacket);
-        } catch(IOException e) {
-              e.printStackTrace();
-              return;
-        }
-
-        //After request packet, communicate over server(/host)-supplied port to allow
-        //other clients to use the request port
-        sendPort = receivePacket.getPort();
-
-        // Process the received datagram.
-        if ( verbose != Verbosity.NONE ) 
-        {
-            printPacketDetails(receivePacket);
-            if ( verbose == Verbosity.ALL )
-            {
-                System.out.println("Containing: ");
-                for (j = 0; j < receivePacket.getLength(); j++) 
-                {
-                    System.out.println("byte " + j + " " + msg[j]);
-                }
-            }
-        }
-
         if ( requestType == Request.WRITE ) 
         {
+            msg = new byte[4];
+            receivePacket = new DatagramPacket(msg, msg.length);
+
+            System.out.println("Client: Waiting for request acknowledgement");
+          
+            try {
+                  sendReceiveSocket.receive(receivePacket);
+            } catch(IOException e) {
+                  e.printStackTrace();
+                  return;
+            }
+
+            // Process the received datagram.
+            if ( verbose != Verbosity.NONE ) 
+            {
+                printPacketDetails(receivePacket);
+                if ( verbose == Verbosity.ALL )
+                {
+                    System.out.println("Containing: ");
+                    for (j = 0; j < receivePacket.getLength(); j++) 
+                    {
+                        System.out.println("byte " + j + " " + msg[j]);
+                    }
+                }
+            }
+
+            //After receiving from server, communicate over server(/host)-supplied port to allow
+            //other clients to use the request port
+            sendPort = receivePacket.getPort();
+
             try {
                 fileOp = new FileOperation(localName, true, 512);
             } catch (FileNotFoundException e) {
@@ -488,6 +488,7 @@ class TFTPClientTransfer extends Thread
             while ( readingFile )
             {
                 msg = new byte[516];
+                System.out.println("len " + msg.length);
                 receivePacket = new DatagramPacket(msg, msg.length);
 
                 System.out.println("Client: Waiting for next data packet");
@@ -498,6 +499,10 @@ class TFTPClientTransfer extends Thread
                       e.printStackTrace();
                       return;
                 }
+
+                //After receiving from server, communicate over server(/host)-supplied port to allow
+                //other clients to use the request port
+                sendPort = receivePacket.getPort();
 
                 if ( verbose != Verbosity.NONE ) 
                 {

@@ -45,7 +45,7 @@ public class FileOperation
 
             //Read numBytes from where we skipped to, then adjust the amount to skip
             //on next method call
-            if (-1 != inStream.read(data, dataOffset, numBytes) )
+            if (-1 != (amountRead = inStream.read(data, dataOffset, numBytes)) )
             {
                 readWriteOffset += numBytes;
                 amountRead = numBytes;
@@ -66,7 +66,6 @@ public class FileOperation
             e.printStackTrace();
             System.exit(1);
         }
-
         return amountRead;
     }
 
@@ -74,7 +73,7 @@ public class FileOperation
     public void writeNextDataPacket(byte[] data, int dataOffset) throws FileNotFoundException 
     {
         try {
-            outStream.write(data, dataOffset, data.length);
+            outStream.write(data, dataOffset, numBytes);
         } catch (IOException e) {
             e.printStackTrace();
             System.exit(1);
