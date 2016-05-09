@@ -74,20 +74,6 @@ public class TFTPIntHost {
          // Form a String from the byte array, and print the string.
          String received = new String(data,0,len);
          System.out.println(received);
-         
-         // Now pass it on to the server (to port 69)
-         // Construct a datagram packet that is to be sent to a specified port
-         // on a specified host.
-         // The arguments are:
-         //  msg - the message contained in the packet (the byte array)
-         //  the length we care about - k+1
-         //  InetAddress.getLocalHost() - the Internet address of the
-         //     destination host.
-         //     In this example, we want the destination to be the same as
-         //     the source (i.e., we want to run the client and server on the
-         //     same computer). InetAddress.getLocalHost() returns the Internet
-         //     address of the local host.
-         //  69 - the destination port number on the destination host.
 
          sendPacket = new DatagramPacket(data, len,
                                         receivePacket.getAddress(), 69);
@@ -137,24 +123,6 @@ public class TFTPIntHost {
             System.out.println("byte " + j + " " + data[j]);
          }
 
-         // Construct a datagram packet that is to be sent to a specified port
-         // on a specified host.
-         // The arguments are:
-         //  data - the packet data (a byte array). This is the response.
-         //  receivePacket.getLength() - the length of the packet data.
-         //     This is the length of the msg we just created.
-         //  receivePacket.getAddress() - the Internet address of the
-         //     destination host. Since we want to send a packet back to the
-         //     client, we extract the address of the machine where the
-         //     client is running from the datagram that was sent to us by
-         //     the client.
-         //  receivePacket.getPort() - the destination port number on the
-         //     destination host where the client is running. The client
-         //     sends and receives datagrams through the same socket/port,
-         //     so we extract the port that the client used to send us the
-         //     datagram, and use that as the destination port for the TFTP
-         //     packet.
-
          sendPacket = new DatagramPacket(data, receivePacket.getLength(),
                                receivePacket.getAddress(), clientPort);
 
@@ -171,9 +139,6 @@ public class TFTPIntHost {
          // Send the datagram packet to the client via a new socket.
 
          try {
-            // Construct a new datagram socket and bind it to any port
-            // on the local host machine. This socket will be used to
-            // send UDP Datagram packets.
             sendSocket = new DatagramSocket();
          } catch (SocketException se) {
             se.printStackTrace();

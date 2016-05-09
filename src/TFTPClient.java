@@ -394,6 +394,10 @@ class TFTPClientTransfer extends Thread
               return;
         }
 
+        //After request packet, communicate over server(/host)-supplied port to allow
+        //other clients to use the request port
+        sendPort = receivePacket.getPort();
+
         // Process the received datagram.
         if ( verbose != Verbosity.NONE ) 
         {
