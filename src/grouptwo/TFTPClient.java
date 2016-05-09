@@ -20,6 +20,7 @@ public class TFTPClient
     private TFTPClientTransfer.Request requestType;
     private TFTPClientTransfer.Verbosity verbosity;
     private TFTPClientTransfer.Mode mode;
+    private boolean TESTING = false;
 
     public TFTPClient() 
     {
@@ -39,6 +40,10 @@ public class TFTPClient
     {
         Scanner sc = new Scanner(System.in);
         String scIn = new String();
+        
+        if (TESTING == true){
+        	Testvalues();
+        }
 
         while ( safeExit == false ) 
         {
@@ -164,6 +169,16 @@ public class TFTPClient
             }
        }
     }
+    
+    public void Testvalues() {
+		remoteFile = "C:\\Users\\majeedmirza\\Desktop\\a.txt";
+		localFile = "C:\\Users\\majeedmirza\\Desktop\\t.txt";
+		//requestType = TFTPClientTransfer.Request.WRITE;
+		requestType = TFTPClientTransfer.Request.READ;
+		//mode = TFTPClientTransfer.Mode.TEST;
+		mode = TFTPClientTransfer.Mode.NORMAL;
+		verbosity = TFTPClientTransfer.Verbosity.ALL;
+	}
 
     public static void main(String args[]) 
     {
