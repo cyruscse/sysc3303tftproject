@@ -126,7 +126,8 @@ public class ClientConnectionThread implements Runnable {
 				}
 				// check if received is an ack
 				byte[] rcvd = receivePacket.getData();
-				if (rcvd[0] == 0 && rcvd[1] == 4 && rcvd[2] == (byte) (j / 128) && rcvd[3] == (byte) (j % 128)) {
+				System.out.println("ack " + rcvd[0] + " " + rcvd[1] + " " + rcvd[2] + " " + rcvd[3] + " " + (byte) j/256 + " " + (byte) j % 256);
+				if (rcvd[0] == 0 && rcvd[1] == 4 && rcvd[2] == (byte) (j / 256) && rcvd[3] == (byte) (j % 256)) {
 					System.out.println("ACK invalid!");
 					return;
 

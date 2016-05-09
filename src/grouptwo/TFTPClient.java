@@ -20,7 +20,7 @@ public class TFTPClient
     private TFTPClientTransfer.Request requestType;
     private TFTPClientTransfer.Verbosity verbosity;
     private TFTPClientTransfer.Mode mode;
-    private boolean TESTING = false;
+    private boolean TESTING = true;
 
     public TFTPClient() 
     {
@@ -171,8 +171,8 @@ public class TFTPClient
     }
     
     public void Testvalues() {
-		remoteFile = "C:\\Users\\majeedmirza\\Desktop\\a.txt";
-		localFile = "C:\\Users\\majeedmirza\\Desktop\\t.txt";
+		remoteFile = "/var/log/daily.out";
+		localFile = "/Users/cyrus/Documents/test.txt";
 		//requestType = TFTPClientTransfer.Request.WRITE;
 		requestType = TFTPClientTransfer.Request.READ;
 		//mode = TFTPClientTransfer.Mode.TEST;
@@ -562,6 +562,13 @@ class TFTPClientTransfer extends Thread
                             System.out.println("byte " + j + " " + msg[j]);
                         }
                     }
+                }
+
+                try {
+                      sendReceiveSocket.send(sendPacket);
+                } catch(IOException e) {
+                      e.printStackTrace();
+                      return;
                 }
 
                 k++;
