@@ -2,10 +2,10 @@
 ###### To build:
      Open cmd or terminal, change directory to project root
      
-     javac -d . src/FileOperation.java
-     javac -d . src/TFTPClient.java
-     javac -d . src/TFTPIntHost.java
-     javac -d . src/ClientConnectionThread.java src/TFTPServer.java
+     javac -d build/ src/grouptwo/FileOperation.java
+     javac -d build/ src/grouptwo/TFTPClient.java
+     javac -d build/ src/grouptwo/TFTPIntHost.java
+     javac -d build/ src/grouptwo/ClientConnectionThread.java src/grouptwo/TFTPServer.java
      
 ###### To launch:
      From project root,

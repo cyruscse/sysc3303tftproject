@@ -295,8 +295,15 @@ class TFTPClientTransfer extends Thread
     {
         msg[0] = 0;
         msg[1] = 4;
-        msg[2] = (byte) (blockNumber / 128);
-        msg[3] = (byte) (blockNumber % 128);
+        
+        //Right shift int blockNumber by 4 and AND with 0x0F (gets rid of last 4 bits)
+        //Convert to byte by / 256 then % 256, this gets the most significant byte
+        msg[2] = (byte) (((blockNumber >> 4) & 0x0F ) / 256);
+        msg[2] = (byte) (((blockNumber >> 4) & 0x0F ) % 256); 
+        //AND int blockNumber by 0x0F (gets rid of first 4 bits)
+        //Convert to byte by / 256 then % 256, this gets the least significant byte   
+        msg[3] = (byte) (((blockNumber & 0x0F) / 256);
+        msg[3] = msg[3] + (byte) ((blockNumber & 0x0F) % 256);
     }
 
     // Constructs data packet for TFTP writes
@@ -306,8 +313,15 @@ class TFTPClientTransfer extends Thread
     {     
        msg[0] = 0;
        msg[1] = 3;
-       msg[2] = (byte) (blockNumber / 128);
-       msg[3] = (byte) (blockNumber % 128);
+
+       //Right shift int blockNumber by 4 and AND with 0x0F (gets rid of last 4 bits)
+       //Convert to byte by / 256 then % 256, this gets the most significant byte
+       msg[2] = (byte) (((blockNumber >> 4) & 0x0F ) / 256);
+       msg[2] = (byte) (((blockNumber >> 4) & 0x0F ) % 256);   
+       //AND int blockNumber by 0x0F (gets rid of first 4 bits)
+       //Convert to byte by / 256 then % 256, this gets the least significant byte  
+       msg[3] = (byte) (((blockNumber & 0x0F) / 256);
+       msg[3] = msg[3] + (byte) ((blockNumber & 0x0F) % 256);
 
        return writeFile.readNextDataPacket(msg, 4) + 4;
     }
