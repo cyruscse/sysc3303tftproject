@@ -4,6 +4,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 
@@ -30,12 +31,16 @@ public class ClientConnectionThread implements Runnable {
 	private FileOperation fileOp;
 	private TFTPServer parent;
 	private String localName;
-
+	private int port;
+	private InetAddress address;
+	
+	
 	public ClientConnectionThread(DatagramPacket receivePckt, TFTPServer parent, TFTPServer.Request requestResponse,
 			String filename) {
 		this.receivePacket = receivePckt;
 		this.parent = parent;
-
+		this.port = receivePckt.getPort();
+		this.address = receivePckt.getAddress();
 		if (requestResponse == TFTPServer.Request.READ)
 			this.requestType = Request.READ;
 		else if (requestResponse == TFTPServer.Request.WRITE)
@@ -60,6 +65,7 @@ public class ClientConnectionThread implements Runnable {
 				fileOp = new FileOperation(localName, true, 512);
 			} catch (FileNotFoundException e) {
 				System.out.println("Local file " + localName + " does not exist!");
+				e.printStackTrace();
 				return;
 			}
 			try {
@@ -68,7 +74,8 @@ public class ClientConnectionThread implements Runnable {
 				// send UDP Datagram packets.
 				sendReceiveSocket = new DatagramSocket();
 			} catch (SocketException se) {
-				System.out.println("Local file " + localName + " does not exist!");
+				System.out.println("cant create socket");
+				se.printStackTrace();
 				return;
 			}
 			byte[] msg;
@@ -83,13 +90,14 @@ public class ClientConnectionThread implements Runnable {
 				}
 
 				System.out.println("Server: Sending TFTP packet " + (j + 1) + "/" + fileOp.getNumTFTPBlocks());
+				
 				if (verbosity == Verbosity.ALL) {
 					for (k = 0; k < len; k++) {
 						System.out.println("byte " + k + " " + msg[k]);
 					}
 				}
 
-				sendPacket = new DatagramPacket(msg, len);
+				sendPacket = new DatagramPacket(msg, len, address, port);
 
 				// Send the datagram packet to the server via sendReceiveSocket
 				// socket.
