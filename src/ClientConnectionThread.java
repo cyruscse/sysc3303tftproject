@@ -6,123 +6,127 @@ import java.net.DatagramSocket;
 import java.net.SocketException;
 
 public class ClientConnectionThread implements Runnable{
+	// types of requests we can receive
+	public static enum Request { READ, WRITE };
+	private Request requestType;
+
+	//"some" verbosity prints packet details omitting data contents,
+	//"all" verbosity prints everything (including the 512 data bytes)
+	public static enum Verbosity { NONE, SOME, ALL };
+	private Verbosity verbosity;
+
 	DatagramPacket receivePacket;
 	DatagramPacket sendPacket;
-	private DatagramSocket sendSocket;
-	// types of requests we can receive
-	public static enum Request { READ, WRITE, ERROR};
-	// responses for valid requests
-	public static final byte[] readResp = {0, 3, 0, 1};
-	public static final byte[] writeResp = {0, 4, 0, 0};
+	DatagramSocket sendReceiveSocket;
+
+    private FileOperation  fileOp;
 	private TFTPServer parent;
-	public ClientConnectionThread(DatagramPacket receivePckt, TFTPServer parent) {
+	private String filename;
+
+	public ClientConnectionThread(DatagramPacket receivePckt, TFTPServer parent, TFTPServer.Request requestResponse, String filename) {
 		this.receivePacket = receivePckt;
 		this.parent = parent;
+
+		if ( requestResponse == TFTPServer.Request.READ ) this.requestType = Request.READ;
+		else if ( requestResponse == TFTPServer.Request.WRITE ) this.requestType = Request.WRITE;
+
+		this.filename = filename;
 	}
 
 	@Override
 	public void run() {
+
 		byte[] data,
-        response = new byte[4];
-		String filename, mode;
-		 int len, j=0, k=0;
-		Request req; // READ, WRITE or ERROR
-		 System.out.println("SERVER: new thread created");
-		 System.out.println("Server: Packet received:");
-         System.out.println("From host: " + receivePacket.getAddress());
-         System.out.println("Host port: " + receivePacket.getPort());
-         len = receivePacket.getLength();
-         System.out.println("Length: " + len);
-         System.out.println("Containing: " );
-         data = receivePacket.getData();
-         // print the bytes
-         for (j=0;j<len;j++) {
-            System.out.println("byte " + j + " " + data[j]);
-         }
+		response = new byte[4];
+		int len, j=0, k=0;
+		
+		System.out.println("Server: new thread created");
 
-         // Form a String from the byte array.
-         String received = new String(data,0,len);
-         System.out.println(received);
-
-         // If it's a read, send back DATA (03) block 1
-         // If it's a write, send back ACK (04) block 0
-         // Otherwise, ignore it
-         if (data[0]!=0) req = Request.ERROR; // bad
-         else if (data[1]==1) req = Request.READ; // could be read
-         else if (data[1]==2) req = Request.WRITE; // could be write
-         else req = Request.ERROR; // bad
-
-         if (req!=Request.ERROR) { // check for filename
-             // search for next all 0 byte
-             for(j=2;j<len;j++) {
-                 if (data[j] == 0) break;
+		// Create a response.
+		if (requestType==Request.READ)  // for Read it's 03 then block number
+		{
+			
+			try {
+                fileOp = new FileOperation(localName, true, 512);
+            } catch (FileNotFoundException e) {
+                System.out.println("Local file " + localName + " does not exist!");
+                return;
             }
-            if (j==len) req=Request.ERROR; // didn't find a 0 byte
-            if (j==2) req=Request.ERROR; // filename is 0 bytes long
-            // otherwise, extract filename
-            filename = new String(data,2,j-2);
-         }
- 
-         if(req!=Request.ERROR) { // check for mode
-             // search for next all 0 byte
-             for(k=j+1;k<len;k++) { 
-                 if (data[k] == 0) break;
+			
+			/*TODO	Here is where we set up the file stream OUT of the file on the server to be read
+			 * 		read by the client:
+			 * 			1) Have to setup a loop through all blocks of the file
+			 * 			2) For each block in the file we have to (in order) :	
+			 * 				-set up the message (with 512 bytes being a data block from the file)
+			 * 				-create the datagram
+			 * 				-send the datagram
+			 * 				-receive the response
+			 * 				-verify the response is an ACK
+			 * 				-loop again (now on the next block)
+			 * 		
+			 * 		Look at Cyrus' Client code for an idea on how this is done the other way.
+			 */
+			
+		}
+		else if (requestType==Request.WRITE) // for Write it's 0400
+		{
+			
+			try {
+                fileOp = new FileOperation(localName, false, 512);
+            } catch (FileNotFoundException e) {
+                System.out.println("Couldn't write to " + localName);
+                return;
             }
-            if (k==len) req=Request.ERROR; // didn't find a 0 byte
-            if (k==j+1) req=Request.ERROR; // mode is 0 bytes long
-            mode = new String(data,j,k-j-1);
-         }
-         
-         if(k!=len-1) req=Request.ERROR; // other stuff at end of packet        
-         
-         // Create a response.
-         if (req==Request.READ) { // for Read it's 0301
-            response = readResp;
-         } else if (req==Request.WRITE) { // for Write it's 0400
-            response = writeResp;
-         } else { // it was invalid, just quit
-           // throw new Exception("Not yet implemented");
-         }
-         
-         sendPacket = new DatagramPacket(response, response.length,
-                               receivePacket.getAddress(), receivePacket.getPort());
+			
+			/*TODO	Here is where we set up the file stream INTO the file on the server which is
+			 * 		a write by the client. Generally the same as above to-do comment block but 
+			 * 		with different roles.
+			 */
+			
+		} else { // it was invalid, just quit
+			// throw new Exception("Not yet implemented");
+		}
 
-         System.out.println("Server: Sending packet:");
-         System.out.println("To host: " + sendPacket.getAddress());
-         System.out.println("Destination host port: " + sendPacket.getPort());
-         len = sendPacket.getLength();
-         System.out.println("Length: " + len);
-         System.out.println("Containing: ");
-         for (j=0;j<len;j++) {
-            System.out.println("byte " + j + " " + response[j]);
-         }
+		/*sendPacket = new DatagramPacket(response, response.length,
+				receivePacket.getAddress(), receivePacket.getPort());
 
-         // Send the datagram packet to the client via a new socket.
+		System.out.println("Server: Sending packet:");
+		System.out.println("To host: " + sendPacket.getAddress());
+		System.out.println("Destination host port: " + sendPacket.getPort());
+		len = sendPacket.getLength();
+		System.out.println("Length: " + len);
+		System.out.println("Containing: ");
+		for (j=0;j<len;j++) {
+			System.out.println("byte " + j + " " + response[j]);
+		}
 
-         try {
-            // Construct a new datagram socket and bind it to any port
-            // on the local host machine. This socket will be used to
-            // send UDP Datagram packets.
-            sendSocket = new DatagramSocket();
-         } catch (SocketException se) {
-            se.printStackTrace();
-            System.exit(1);
-         }
+		// Send the datagram packet to the client via a new socket.
 
-         try {
-            sendSocket.send(sendPacket);
-         } catch (IOException e) {
-            e.printStackTrace();
-            System.exit(1);
-         }
+		try {
+			// Construct a new datagram socket and bind it to any port
+			// on the local host machine. This socket will be used to
+			// send UDP Datagram packets.
+			sendReceiveSocket = new DatagramSocket();
+		} catch (SocketException se) {
+			se.printStackTrace();
+			System.exit(1);
+		}
 
-         System.out.println("Server: packet sent using port " + sendSocket.getLocalPort());
-         System.out.println();
+		try {
+			sendReceiveSocket.send(sendPacket);
+		} catch (IOException e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
 
-         // We're finished with this socket, so close it.
-         sendSocket.close();
-         parent.threadDone();
-         // done the thread will die automatically
+		System.out.println("Server: packet sent using port " + sendReceiveSocket.getLocalPort());
+		System.out.println(); */
+
+
+		// We're finished with this socket, so close it.
+		sendReceiveSocket.close();
+		parent.threadDone();
+		// done the thread will die automatically
 	}
 
 }
