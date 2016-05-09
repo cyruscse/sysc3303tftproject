@@ -160,7 +160,7 @@ public class TFTPServer {
 			else if (data[1]==2) req = Request.WRITE; // could be write
 			else req = Request.ERROR; // bad
 
-			if (req!=Request.ERROR) { // check for filename
+			if (req !=Request.ERROR) { // check for filename
 				// search for next all 0 byte
 				for(j=2;j<len;j++) {
 					if (data[j] == 0) break;
@@ -169,6 +169,7 @@ public class TFTPServer {
 				if (j==2) req=Request.ERROR; // filename is 0 bytes long
 				// otherwise, extract filename
 				filename = new String(data,2,j-2);
+				
 			}
 
 			if(req!=Request.ERROR) { // check for mode
@@ -178,9 +179,9 @@ public class TFTPServer {
 				}
 				if (k==len) req=Request.ERROR; // didn't find a 0 byte
 				if (k==j+1) req=Request.ERROR; // mode is 0 bytes long
-				mode = new String(data,j,k-j-1);
-
-				if ( !mode.equalsIgnoreCase("octet") || !mode.equalsIgnoreCase("netascii")) 
+				mode = new String(data,j,k-j);
+				
+				if ( mode.equalsIgnoreCase("octet") || mode.equalsIgnoreCase("netascii")) 
 				{
 					req=Request.ERROR; // mode was not passed correctly
 				}
