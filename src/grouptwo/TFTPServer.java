@@ -36,7 +36,7 @@ public class TFTPServer {
 		runningClientCount = 0;
 		acceptConnections = true;
 		verbosity = Verbosity.NONE;
-		cliThread = new TFTPServerCommandLine(verbosity, this);
+		cliThread = new TFTPServerCommandLine(this);
 	}
 
 	/**
@@ -67,7 +67,6 @@ public class TFTPServer {
 		while (runningClientCount > 0 || acceptConnections)
 		{
 			runningClientCount = clients.size();
-			System.out.println("runningClientCount " + runningClientCount);
 
 			if (acceptConnections)
 			{
@@ -122,14 +121,12 @@ class TFTPServerCommandLine extends Thread {
 	private TFTPServer.Verbosity verbosity;
 	
 	private TFTPServer parentServer;
-
-	// UDP datagram packets and sockets used to receive
 	private Boolean cliRunning;
 
-	public TFTPServerCommandLine(TFTPServer.Verbosity serverVerbosity, TFTPServer parent)
+	public TFTPServerCommandLine(TFTPServer parent)
 	{
 		parentServer = parent;
-		verbosity = serverVerbosity;
+		verbosity = TFTPServer.Verbosity.NONE;
 		cliRunning = true;
 	}
 
