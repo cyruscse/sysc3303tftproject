@@ -32,7 +32,7 @@ public class FileOperation
     public int size()
     {
         return (int) file.length();
-    }  
+    }
 
     //Read FileInputStream in chunks then write each chunk into the provided byte array
     public int readNextDataPacket(byte[] data, int dataOffset) throws FileNotFoundException 
@@ -48,7 +48,7 @@ public class FileOperation
             if (-1 != (amountRead = inStream.read(data, dataOffset, numBytes)) )
             {
                 readWriteOffset += numBytes;
-                amountRead = numBytes;
+                amountRead = numBytes + 4;
             }
             else
             {
@@ -56,7 +56,7 @@ public class FileOperation
                 //we have to find out how much we read
                 for (amountRead = 4; amountRead < data.length; amountRead++)
                 {
-                    if ( data[amountRead] == 0 )
+                    if ( data[amountRead] == (byte) 0 )
                     {
                         return (amountRead + 1);
                     }
@@ -80,6 +80,16 @@ public class FileOperation
         }
 
         readWriteOffset += numBytes;
+    }
+
+    public void finalizeFileWrite()
+    {
+        try {
+            outStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
     }
 
     public FileOperation(String absolutePath, Boolean localRead, int bytesRW) throws FileNotFoundException

@@ -215,6 +215,6 @@ public class ClientConnectionThread implements Runnable {
 		msg[2] = (byte) (blockNumber / 256);
 		msg[3] = (byte) (blockNumber % 256);
 
-		return writeFile.readNextDataPacket(msg, 4) + 4;
+		return writeFile.readNextDataPacket(msg, 4);
 	}
 }

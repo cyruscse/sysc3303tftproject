@@ -326,19 +326,36 @@ class TFTPClientTransfer extends Thread
        msg[2] = (byte) (blockNumber / 256);
        msg[3] = (byte) (blockNumber % 256);   
 
-       return writeFile.readNextDataPacket(msg, 4) + 4;
+       return writeFile.readNextDataPacket(msg, 4);
     }
 
     // Processes next read packet for TFTP reads
     // Uses the FileOperation class to stitch together the data packets
-    private void processNextReadPacket(byte[] msg, FileOperation readFile) throws Exception
+    private Boolean processNextReadPacket(byte[] msg, int len, FileOperation readFile) throws Exception
     {
-        if ( msg[0] != 0 || msg[1] != 3 )
+        if (msg[0] != 0 || msg[1] != 3)
         {
             throw new Exception("Invalid data packet");
         }
 
         readFile.writeNextDataPacket(msg, 4);
+
+        System.out.println("len is " + len);
+
+        if (len < 516)
+        {
+            if (verbose != Verbosity.NONE)
+            {
+                System.out.println("Received final read packet from server");
+                readFile.finalizeFileWrite();
+            }
+
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     }
 
     private void printPacketDetails(DatagramPacket packet) 
@@ -498,12 +515,13 @@ class TFTPClientTransfer extends Thread
             }
 
             Boolean readingFile = true;
+            Boolean willExit = false;
             k = 0;
 
             while ( readingFile )
             {
                 msg = new byte[516];
-                System.out.println("len " + msg.length);
+
                 receivePacket = new DatagramPacket(msg, msg.length);
 
                 System.out.println("Client: Waiting for next data packet");
@@ -519,6 +537,8 @@ class TFTPClientTransfer extends Thread
                 //other clients to use the request port
                 sendPort = receivePacket.getPort();
 
+                len = receivePacket.getLength();
+
                 if ( verbose != Verbosity.NONE ) 
                 {
                     printPacketDetails(receivePacket);
@@ -533,7 +553,7 @@ class TFTPClientTransfer extends Thread
                 }
 
                 try {
-                    processNextReadPacket(msg, fileOp);
+                    willExit = processNextReadPacket(msg, len, fileOp);
                 } catch (Exception e) {
                     e.printStackTrace();
                     return;
@@ -565,10 +585,16 @@ class TFTPClientTransfer extends Thread
                 }
 
                 try {
+                      System.out.println("sending ACK!");
                       sendReceiveSocket.send(sendPacket);
                 } catch(IOException e) {
                       e.printStackTrace();
                       return;
+                }
+
+                if (willExit)
+                {
+                    readingFile = false;
                 }
 
                 k++;
