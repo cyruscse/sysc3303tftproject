@@ -9,52 +9,118 @@ package grouptwo;
 import java.io.*;
 import java.net.*;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class TFTPServer {
-
-	// types of requests we can receive
-	public static enum Request { READ, WRITE, ERROR };
-
-	//"some" verbosity prints packet details omitting data contents,
-	//"all" verbosity prints everything (including the 512 data bytes)
 	public static enum Verbosity { NONE, SOME, ALL };
-	private Verbosity verbosity;
-
-	// UDP datagram packets and sockets used to receive
-	private DatagramPacket receivePacket;
+	public static enum Request { READ, WRITE, ERROR };
 	private DatagramSocket receiveSocket;
-	private Boolean abort;
-	private ArrayList<Thread> threads = new ArrayList<>(); // incase we need it later
-	private int runningThreadCount = 0; 
+	private DatagramPacket receivePacket;
+	private List<Thread> clients;
+	TFTPServerCommandLine cliThread;
+	private Integer runningClientCount;
+	private volatile Verbosity verbosity;
+	private Boolean acceptConnections;
+	private byte [] data;
 
 	public TFTPServer()
 	{
 		try {
-			// Construct a datagram socket and bind it to port 69
-			// on the local host machine. This socket will be used to
-			// receive UDP Datagram packets.
 			receiveSocket = new DatagramSocket(69);
-		} catch (SocketException se) {
-			se.printStackTrace();
+		} catch (SocketException e) {
+			e.printStackTrace();
 			System.exit(1);
 		}
-
+		clients = new ArrayList<Thread>();
+		runningClientCount = 0;
+		acceptConnections = true;
 		verbosity = Verbosity.NONE;
-		abort = false;
+		cliThread = new TFTPServerCommandLine(verbosity, this);
 	}
 
-	public static String verbosityToString(Verbosity ver)
+	public void threadDone(Thread t)
 	{
-		if ( ver == Verbosity.NONE )
+		clients.remove(t);
+		runningClientCount = clients.size();
+	}
+
+	public void initiateExit()
+	{
+		acceptConnections = false;
+		receiveSocket.close();
+	}
+
+	private void receiveClients()
+	{ 
+		cliThread.start();
+
+		while (runningClientCount > 0 || acceptConnections)
+		{
+			runningClientCount = clients.size();
+			System.out.println("runningClientCount " + runningClientCount);
+
+			if (acceptConnections)
+			{
+				data = new byte[100];
+				receivePacket = new DatagramPacket(data, data.length);
+
+				System.out.println("Server: Waiting for packet.");
+				
+				try {
+					receiveSocket.receive(receivePacket);
+				} catch (SocketException e) {
+					System.out.println("No longer accepting new clients");
+				} catch (IOException e) {
+					e.printStackTrace();
+					System.exit(1);
+				}
+
+				if (!receiveSocket.isClosed())
+				{
+					System.out.println("verbosity " + (verbosity == Verbosity.ALL));
+					Thread client = new Thread(new ClientConnectionThread(receivePacket, this, verbosity));
+					client.start();
+					clients.add(client);
+				}
+			}
+		}
+	}
+
+	public static void main(String[] args) 
+	{
+		TFTPServer s = new TFTPServer();
+		s.receiveClients();
+	}
+}
+
+class TFTPServerCommandLine extends Thread {
+	//"some" verbosity prints packet details omitting data contents,
+	//"all" verbosity prints everything (including the 512 data bytes)
+	private TFTPServer.Verbosity verbosity;
+	private TFTPServer parentServer;
+
+	// UDP datagram packets and sockets used to receive
+	private Boolean cliRunning;
+
+	public TFTPServerCommandLine(TFTPServer.Verbosity serverVerbosity, TFTPServer parent)
+	{
+		parentServer = parent;
+		verbosity = serverVerbosity;
+		cliRunning = true;
+	}
+
+	public static String verbosityToString(TFTPServer.Verbosity ver)
+	{
+		if ( ver == TFTPServer.Verbosity.NONE )
 		{
 			return "normal";
 		}
-		else if ( ver == Verbosity.SOME )
+		else if ( ver == TFTPServer.Verbosity.SOME )
 		{
 			return "basic packet details";
 		}
-		else if ( ver == Verbosity.ALL )
+		else if ( ver == TFTPServer.Verbosity.ALL )
 		{
 			return "full packet details (including data contents)";
 		}
@@ -66,149 +132,47 @@ public class TFTPServer {
 		Scanner sc = new Scanner(System.in);
 		String scIn = new String();
 
-		System.out.println("TFTP Server");
-		System.out.println("v: Set verbosity (current: " + verbosityToString(verbosity) + ")");
-		System.out.println("q: Quit (finishes current transfer before quitting)");
-		System.out.println("r: run ");
-		scIn = sc.nextLine();
-
-		if ( scIn.equalsIgnoreCase("v") ) 
+		while (cliRunning)
 		{
-			System.out.println("Enter verbosity (none, some, all): ");
-			String strVerbosity = sc.nextLine();
+			System.out.println("TFTP Server");
+			System.out.println("v: Set verbosity (current: " + verbosityToString(verbosity) + ")");
+			System.out.println("q: Quit (finishes current transfer before quitting)");
+			System.out.println("r: run ");
+			scIn = sc.nextLine();
 
-			if ( strVerbosity.equalsIgnoreCase("none") ) 
+			if ( scIn.equalsIgnoreCase("v") ) 
 			{
-				verbosity = Verbosity.NONE;
-			}
-			else if ( strVerbosity.equalsIgnoreCase("some") ) 
-			{
-				verbosity = Verbosity.SOME;
-			}
-			else if ( strVerbosity.equalsIgnoreCase("all") )
-			{
-				verbosity = Verbosity.ALL;
-			}
-			else 
-			{
-				System.out.println("Invalid request type");
-			}
-		}
+				System.out.println("Enter verbosity (none, some, all): ");
+				String strVerbosity = sc.nextLine();
 
-		else if ( scIn.equalsIgnoreCase("q") ) 
-		{
-			abort = true;
-		}
-		else if ( scIn.equalsIgnoreCase("r") ){
-			// run
-		}
-	}
-
-	public void receiveAndSendTFTP() throws Exception
-	{
-		byte [] data;
-		Request req; // READ, WRITE or ERROR
-		int len, j=0, k=0;
-		String filename = new String();
-		String mode = new String();
-
-
-		for(;;) { // loop forever
-
-			commandLine();
-			if (abort){
-				while (runningThreadCount !=0){
-					// wait till threads finish 
-				}
-				System.exit(1);
-			}
-
-			// Construct a DatagramPacket for receiving packets up
-			// to 100 bytes long (the length of the byte array).
-			data = new byte[100];
-			receivePacket = new DatagramPacket(data, data.length);
-
-			System.out.println("Server: Waiting for packet.");
-
-			// Block until a datagram packet is received from receiveSocket.
-			try {
-				receiveSocket.receive(receivePacket);
-			} catch (IOException e) {
-				e.printStackTrace();
-				System.exit(1);
-			}
-
-			System.out.println("Server: Packet received.");
-			System.out.println("From host: " + receivePacket.getAddress());
-			System.out.println("Host port: " + receivePacket.getPort());
-			len = receivePacket.getLength();
-			System.out.println("Length: " + len);
-			System.out.println("Containing: " );
-			data = receivePacket.getData();
-			// print the bytes
-			for (j=0;j<len;j++) {
-				System.out.println("byte " + j + " " + data[j]);
-			}
-
-			// Form a String from the byte array.
-			String received = new String(data,0,len);
-			System.out.println(received);
-
-			// If it's a read, send back DATA (03) block 1
-			// If it's a write, send back ACK (04) block 0
-			// Otherwise, ignore it
-			if (data[0]!=0) req = Request.ERROR; // bad
-			else if (data[1]==1) req = Request.READ; // could be read
-			else if (data[1]==2) req = Request.WRITE; // could be write
-			else req = Request.ERROR; // bad
-
-			if (req !=Request.ERROR) { // check for filename
-				// search for next all 0 byte
-				for(j=2;j<len;j++) {
-					if (data[j] == 0) break;
-				}
-				if (j==len) req=Request.ERROR; // didn't find a 0 byte
-				if (j==2) req=Request.ERROR; // filename is 0 bytes long
-				// otherwise, extract filename
-				filename = new String(data,2,j-2);
-				
-			}
-
-			if(req!=Request.ERROR) { // check for mode
-				// search for next all 0 byte
-				for(k=j+1;k<len;k++) { 
-					if (data[k] == 0) break;
-				}
-				if (k==len) req=Request.ERROR; // didn't find a 0 byte
-				if (k==j+1) req=Request.ERROR; // mode is 0 bytes long
-				mode = new String(data,j,k-j);
-				
-				if ( mode.equalsIgnoreCase("octet") || mode.equalsIgnoreCase("netascii")) 
+				if ( strVerbosity.equalsIgnoreCase("none") ) 
 				{
-					req=Request.ERROR; // mode was not passed correctly
+					verbosity = TFTPServer.Verbosity.NONE;
+				}
+				else if ( strVerbosity.equalsIgnoreCase("some") ) 
+				{
+					verbosity = TFTPServer.Verbosity.SOME;
+				}
+				else if ( strVerbosity.equalsIgnoreCase("all") )
+				{
+					verbosity = TFTPServer.Verbosity.ALL;
+				}
+				else 
+				{
+					System.out.println("Invalid request type");
 				}
 			}
 
-			if(k!=len-1) req=Request.ERROR; // other stuff at end of packet
-			
-			/*TODO 	Exception should be thrown here (when we implement it) by checking if req==Request.ERROR
-			 * 		instead of checking inside ClientConnectionThread */
-
-			Thread t = new Thread(new ClientConnectionThread(receivePacket, this, req, verbosity, filename));
-			t.start();
-			threads.add(t);
-			runningThreadCount++;
-		} // end of loop
+			else if ( scIn.equalsIgnoreCase("q") ) 
+			{
+				parentServer.initiateExit();
+				cliRunning = false;
+			}
+		}
 	}
 
-	public void threadDone(){
-		this.runningThreadCount--;
-	}
-
-	public static void main( String args[] ) throws Exception
-	{
-		TFTPServer c = new TFTPServer();
-		c.receiveAndSendTFTP();
+	public void run() {
+		this.commandLine();
 	}
 }
 

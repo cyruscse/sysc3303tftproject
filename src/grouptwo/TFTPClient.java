@@ -66,8 +66,16 @@ public class TFTPClient
 
             System.out.println("TFTP Client");
             System.out.println("-----------");
-            System.out.println("1: File to read from/write to on server (current: " + remoteFile + ")");
-            System.out.println("2. File to read from/write to on client (current: " + localFile + ")");
+            if (requestType == TFTPClientTransfer.Request.WRITE)
+            {
+                System.out.println("1: File to write to on server (current: " + remoteFile + ")");
+                System.out.println("2. File to read from on client (current: " + localFile + ")");
+            }
+            else
+            {
+                System.out.println("1: File to read from on server (current: " + remoteFile + ")");
+                System.out.println("2. File to write to on client (current: " + localFile + ")");
+            }
             System.out.println("3: Read Request or Write Request (current: " + TFTPClientTransfer.requestToString(requestType) + ")");
             if ( clientReady == true )
             {
@@ -176,10 +184,10 @@ public class TFTPClient
     *   @return none
     */
     public void Testvalues() {
-		remoteFile = "/Users/cyrus/Documents/gittest/sysc3303tftproject/build/output.dat";
-		localFile = "/Users/cyrus/Documents/test.txt";
+		remoteFile = "/Users/cyrus/Documents/testing2";
+		localFile = "/Users/cyrus/Documents/gittest/sysc3303tftproject/build/512.dat";
 		//requestType = TFTPClientTransfer.Request.WRITE;
-		requestType = TFTPClientTransfer.Request.READ;
+		requestType = TFTPClientTransfer.Request.WRITE;
 		//mode = TFTPClientTransfer.Mode.TEST;
 		mode = TFTPClientTransfer.Mode.NORMAL;
 		verbosity = TFTPClientTransfer.Verbosity.ALL;
@@ -451,6 +459,25 @@ class TFTPClientTransfer extends Thread
         {
             sendPort = 23;
         }
+
+        if (requestType == Request.WRITE)
+        {
+            try {
+                fileOp = new FileOperation(localName, true, 512);
+            } catch (FileNotFoundException e) {
+                System.out.println("Local file " + localName + " does not exist!");
+                return;
+            }
+        }
+        else
+        {
+            try {
+                fileOp = new FileOperation(localName, false, 512);
+            } catch (FileNotFoundException e) {
+                System.out.println("Couldn't write to " + localName);
+                return;
+            }
+        }
       
         System.out.println("Client: sending request packet");
        
@@ -521,13 +548,6 @@ class TFTPClientTransfer extends Thread
             //other clients to use the request port
             sendPort = receivePacket.getPort();
 
-            try {
-                fileOp = new FileOperation(localName, true, 512);
-            } catch (FileNotFoundException e) {
-                System.out.println("Local file " + localName + " does not exist!");
-                return;
-            }
-
             for (j = 0; j < fileOp.getNumTFTPBlocks(); j++ ) 
             {
                 msg = new byte[516];
@@ -580,13 +600,6 @@ class TFTPClientTransfer extends Thread
         }
         else if ( requestType == Request.READ ) 
         {
-            try {
-                fileOp = new FileOperation(localName, false, 512);
-            } catch (FileNotFoundException e) {
-                System.out.println("Couldn't write to " + localName);
-                return;
-            }
-
             Boolean readingFile = true;
             Boolean willExit = false;
             k = 0;

@@ -9,7 +9,6 @@ import java.net.SocketException;
 import java.net.UnknownHostException;
 
 import grouptwo.FileOperation;
-//import src.grouptwo.TFTPClientTransfer.Verbosity;
 
 public class ClientConnectionThread implements Runnable {
 	// types of requests we can receive
@@ -17,7 +16,7 @@ public class ClientConnectionThread implements Runnable {
 		READ, WRITE
 	};
 
-	private Request requestType;
+	private TFTPServer.Request requestType;
 
 	// "some" verbosity prints packet details omitting data contents,
 	// "all" verbosity prints everything (including the 512 data bytes)
@@ -25,7 +24,7 @@ public class ClientConnectionThread implements Runnable {
 		NONE, SOME, ALL
 	};
 
-	private Verbosity verbose;
+	private TFTPServer.Verbosity verbose;
 
 	DatagramPacket receivePacket;
 	DatagramPacket sendPacket;
@@ -33,32 +32,24 @@ public class ClientConnectionThread implements Runnable {
 
 	private FileOperation fileOp;
 	private TFTPServer parent;
-	private String localName;
+	private String localName, mode;
 	private int port;
 	private InetAddress address;
 
 
-	public ClientConnectionThread(DatagramPacket receivePckt, TFTPServer parent, TFTPServer.Request requestResponse,
-			TFTPServer.Verbosity verbosity, String filename) {
-
+	public ClientConnectionThread(DatagramPacket receivePckt, TFTPServer parent, TFTPServer.Verbosity verbosity) {
 		this.receivePacket = receivePckt;
 		this.parent = parent;
 		this.port = receivePckt.getPort();
 		this.address = receivePckt.getAddress();
-
-		if (requestResponse == TFTPServer.Request.READ)
-			this.requestType = Request.READ;
-		else if (requestResponse == TFTPServer.Request.WRITE)
-			this.requestType = Request.WRITE;
+		mode = new String();
 
 		if (verbosity == TFTPServer.Verbosity.NONE)
-			this.verbose = Verbosity.NONE;
+			this.verbose = TFTPServer.Verbosity.NONE;
 		else if (verbosity == TFTPServer.Verbosity.SOME)
-			this.verbose = Verbosity.SOME;
+			this.verbose = TFTPServer.Verbosity.SOME;
 		else if (verbosity == TFTPServer.Verbosity.ALL)
-			this.verbose = Verbosity.ALL;
-
-		this.localName = filename;
+			this.verbose = TFTPServer.Verbosity.ALL;
 
 		try {
 			// Construct a new datagram socket and bind it to any port
@@ -76,12 +67,52 @@ public class ClientConnectionThread implements Runnable {
 	public void run() {
 
 		byte[] data, msg, response;
-		int len, j = 0, k = 0;
+		int len = 0, j = 0, k = 0;
 
 		System.out.println("Server: new thread created");
+		data = new byte[100];
+		data = receivePacket.getData();
+		len = receivePacket.getLength();
+
+		// If it's a read, send back DATA (03) block 1
+		// If it's a write, send back ACK (04) block 0
+		// Otherwise, ignore it
+		if (data[0]!=0) requestType = TFTPServer.Request.ERROR; // bad
+		else if (data[1]==1) requestType = TFTPServer.Request.READ; // could be read
+		else if (data[1]==2) requestType = TFTPServer.Request.WRITE; // could be write
+		else requestType = TFTPServer.Request.ERROR; // bad
+
+		if (requestType !=TFTPServer.Request.ERROR) { // check for filename
+			// search for next all 0 byte
+			for(j=2;j<len;j++) {
+				if (data[j] == 0) break;
+			}
+			if (j==len) requestType=TFTPServer.Request.ERROR; // didn't find a 0 byte
+			if (j==2) requestType=TFTPServer.Request.ERROR; // filename is 0 bytes long
+			// otherwise, extract filename
+			localName = new String(data,2,j-2);
+			
+		}
+
+		if(requestType!=TFTPServer.Request.ERROR) { // check for mode
+			// search for next all 0 byte
+			for(k=j+1;k<len;k++) { 
+				if (data[k] == 0) break;
+			}
+			if (k==len) requestType=TFTPServer.Request.ERROR; // didn't find a 0 byte
+			if (k==j+1) requestType=TFTPServer.Request.ERROR; // mode is 0 bytes long
+			mode = new String(data,j,k-j);
+			
+			if ( mode.equalsIgnoreCase("octet") || mode.equalsIgnoreCase("netascii")) 
+			{
+				requestType=TFTPServer.Request.ERROR; // mode was not passed correctly
+			}
+		}
+
+		if(k!=len-1) requestType=TFTPServer.Request.ERROR; // other stuff at end of packet
 
 		// Create a response.
-		if (requestType == Request.READ) // for Read it's 03 then block number
+		if (requestType == TFTPServer.Request.READ) // for Read it's 03 then block number
 		{
 
 			try {
@@ -170,7 +201,7 @@ public class ClientConnectionThread implements Runnable {
 			 * other way.
 			 */
 
-		} else if (requestType == Request.WRITE) // for Write it's 0400
+		} else if (requestType == TFTPServer.Request.WRITE) // for Write it's 0400
 		{
 
 			try {
@@ -180,7 +211,7 @@ public class ClientConnectionThread implements Runnable {
 				return;
 			}
 
-			if (verbose != Verbosity.NONE )
+			if (verbose != TFTPServer.Verbosity.NONE )
 			{
 				System.out.println("Server: Sending WRQ response.");
 			}
@@ -190,10 +221,10 @@ public class ClientConnectionThread implements Runnable {
 			response = new byte[]{0,4,0,0};
 			sendPacket = new DatagramPacket(response, response.length, receivePacket.getAddress(), receivePacket.getPort());
 
-			if ( verbose != Verbosity.NONE ) 
+			if ( verbose != TFTPServer.Verbosity.NONE ) 
 			{
 				printPacketDetails(sendPacket);
-				if ( verbose == Verbosity.ALL )
+				if ( verbose == TFTPServer.Verbosity.ALL )
 				{
 					System.out.println("Containing: ");
 					for (j = 0; j < sendPacket.getLength(); j++) 
@@ -220,7 +251,7 @@ public class ClientConnectionThread implements Runnable {
 				msg = new byte[516];
 				receivePacket = new DatagramPacket(msg, msg.length);
 
-				System.out.println("Client: Waiting for next data packet");
+				System.out.println("Server: Waiting for next data packet");
 
 				try {
 					sendReceiveSocket.receive(receivePacket);
@@ -231,10 +262,10 @@ public class ClientConnectionThread implements Runnable {
 
 				len = receivePacket.getLength();
 
-				if ( verbose != Verbosity.NONE ) 
+				if ( verbose != TFTPServer.Verbosity.NONE ) 
 				{
 					printPacketDetails(receivePacket);
-					if ( verbose == Verbosity.ALL )
+					if ( verbose == TFTPServer.Verbosity.ALL )
 					{
 						System.out.println("Containing: ");
 						for (j = 0; j < receivePacket.getLength(); j++) 
@@ -260,11 +291,11 @@ public class ClientConnectionThread implements Runnable {
 
 				sendPacket = new DatagramPacket(msg, msg.length, receivePacket.getAddress(), receivePacket.getPort());
 
-				if ( verbose != Verbosity.NONE ) 
+				if ( verbose != TFTPServer.Verbosity.NONE ) 
 				{
-					System.out.println("Client: Sending ACK packet " + k);
+					System.out.println("Server: Sending ACK packet " + blockNum);
 					printPacketDetails(sendPacket);
-					if ( verbose == Verbosity.ALL )
+					if ( verbose == TFTPServer.Verbosity.ALL )
 					{
 						System.out.println("Containing: ");
 						for (j = 0; j < sendPacket.getLength(); j++) 
@@ -302,6 +333,8 @@ public class ClientConnectionThread implements Runnable {
 			// throw new Exception("Not yet implemented");
 		}
 
+		System.out.println("File transfer complete");
+
 		/*
 		 * sendPacket = new DatagramPacket(response, response.length,
 		 * receivePacket.getAddress(), receivePacket.getPort());
@@ -329,7 +362,7 @@ public class ClientConnectionThread implements Runnable {
 
 		// We're finished with this socket, so close it.
 		sendReceiveSocket.close();
-		parent.threadDone();
+		parent.threadDone(Thread.currentThread());
 		// done the thread will die automatically
 	}
 
@@ -378,9 +411,9 @@ public class ClientConnectionThread implements Runnable {
 
 		if (len < 516)
 		{
-			if (verbose != Verbosity.NONE)
+			if (verbose != TFTPServer.Verbosity.NONE)
 			{
-				System.out.println("Received final write packet from server");
+				System.out.println("Received final write packet from client");
 				writeFile.finalizeFileWrite();
 			}
 
