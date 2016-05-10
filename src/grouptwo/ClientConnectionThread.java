@@ -381,6 +381,7 @@ public class ClientConnectionThread implements Runnable {
 		System.out.println("Host: " + packet.getAddress());
 		System.out.println("Host port: " + packet.getPort());
 		System.out.println("Length: " + packet.getLength());
+		System.out.println("Packet type: " + opcodeToString(packet.getData()));
 	}
 
 	/**
@@ -431,4 +432,31 @@ public class ClientConnectionThread implements Runnable {
 		msg[2] = (byte) (blockNumber / 256);
 		msg[3] = (byte) (blockNumber % 256);        
 	}
+
+	public static String opcodeToString(byte[] data)
+    {
+        if (data[0] != 0)
+        {
+            return "invalid";
+        }
+
+        if (data[1] == 1)
+        {
+            return "RRQ";
+        }
+        else if (data[1] == 2)
+        {
+            return "WRQ";
+        }
+        else if (data[1] == 3)
+        {
+            return "DATA";
+        }
+        else if (data[1] == 4)
+        {
+            return "ACK";
+        }
+
+        return "invalid";
+    }
 }

@@ -333,6 +333,33 @@ class TFTPClientTransfer extends Thread
         return "";
     }
 
+    public static String opcodeToString(byte[] data)
+    {
+        if (data[0] != 0)
+        {
+            return "invalid";
+        }
+
+        if (data[1] == 1)
+        {
+            return "RRQ";
+        }
+        else if (data[1] == 2)
+        {
+            return "WRQ";
+        }
+        else if (data[1] == 3)
+        {
+            return "DATA";
+        }
+        else if (data[1] == 4)
+        {
+            return "ACK";
+        }
+
+        return "invalid";
+    }
+
     /**
     *   Constructs the request packet, which consists of the opcode (01 for read, 02 for write), 0 byte,
     *   filename and another 0 byte.
@@ -451,6 +478,7 @@ class TFTPClientTransfer extends Thread
         System.out.println("Host: " + packet.getAddress());
         System.out.println("Host port: " + packet.getPort());
         System.out.println("Length: " + packet.getLength());
+        System.out.println("Packet type: " + opcodeToString(packet.getData()));
     }
 
     /**
@@ -596,20 +624,25 @@ class TFTPClientTransfer extends Thread
                     System.out.println("Client: Sending TFTP packet " + j + "/" + fileOp.getNumTFTPBlocks());
                 }
 
-                if ( verbose == Verbosity.ALL ) 
-                {
-                    for (k = 0; k < len; k++) 
-                    {
-                        System.out.println("byte " + k + " " + (msg[k] & 0xFF));
-                    }
-                }
-
                 try {
                     sendPacket = new DatagramPacket(msg, len,
                                      InetAddress.getLocalHost(), sendPort);
                 } catch (UnknownHostException e) {
                     e.printStackTrace();
                     return;
+                }
+
+                if ( verbose != Verbosity.NONE ) 
+                {
+                    printPacketDetails(sendPacket);
+                    if ( verbose == Verbosity.ALL )
+                    {
+                        System.out.println("Containing: ");
+                        for (j = 0; j < sendPacket.getLength(); j++) 
+                        {
+                            System.out.println("byte " + j + " " + (msg[j] & 0xFF));
+                        }
+                    }
                 }
 
                 // Send the datagram packet to the server via the send/receive socket.
