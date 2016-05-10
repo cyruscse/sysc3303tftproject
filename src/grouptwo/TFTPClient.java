@@ -171,7 +171,7 @@ public class TFTPClient
     }
     
     public void Testvalues() {
-		remoteFile = "/var/log/daily.out";
+		remoteFile = "/Users/cyrus/Documents/gittest/sysc3303tftproject/build/output.dat";
 		localFile = "/Users/cyrus/Documents/test.txt";
 		//requestType = TFTPClientTransfer.Request.WRITE;
 		requestType = TFTPClientTransfer.Request.READ;
@@ -310,7 +310,7 @@ class TFTPClientTransfer extends Thread
     {
         msg[0] = 0;
         msg[1] = 4;
-        
+        System.out.println("blockNumber " + blockNumber);
         msg[2] = (byte) (blockNumber / 256);
         msg[3] = (byte) (blockNumber % 256);        
     }
@@ -399,7 +399,7 @@ class TFTPClientTransfer extends Thread
                 System.out.println("Containing: ");
                 for (j = 0; j < sendPacket.getLength(); j++) 
                 {
-                    System.out.println("byte " + j + " " + msg[j]);
+                    System.out.println("byte " + j + " " + (msg[j] & 0xFF));
                 }
             }
         }
@@ -439,7 +439,7 @@ class TFTPClientTransfer extends Thread
                     System.out.println("Containing: ");
                     for (j = 0; j < receivePacket.getLength(); j++) 
                     {
-                        System.out.println("byte " + j + " " + msg[j]);
+                        System.out.println("byte " + j + " " + (msg[j] & 0xFF));
                     }
                 }
             }
@@ -472,7 +472,7 @@ class TFTPClientTransfer extends Thread
                 {
                     for (k = 0; k < len; k++) 
                     {
-                        System.out.println("byte " + k + " " + msg[k]);
+                        System.out.println("byte " + k + " " + (msg[k] & 0xFF));
                     }
                 }
 
@@ -547,7 +547,7 @@ class TFTPClientTransfer extends Thread
                         System.out.println("Containing: ");
                         for (j = 0; j < receivePacket.getLength(); j++) 
                         {
-                            System.out.println("byte " + j + " " + msg[j]);
+                            System.out.println("byte " + j + " " + (msg[j] & 0xFF));
                         }
                     }
                 }
@@ -579,7 +579,7 @@ class TFTPClientTransfer extends Thread
                         System.out.println("Containing: ");
                         for (j = 0; j < sendPacket.getLength(); j++) 
                         {
-                            System.out.println("byte " + j + " " + msg[j]);
+                            System.out.println("byte " + j + " " + (msg[j] & 0xFF));
                         }
                     }
                 }

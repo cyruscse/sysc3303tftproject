@@ -21,7 +21,18 @@ public class FileOperation
     //Gets number of TFTP data packets needed to transfer file
     public int getNumTFTPBlocks() 
     {   
+        if (file.length() == 0)
+        {
+            return 1;
+        }
+        
         double blocks = Math.ceil((double) file.length() / numBytes);
+        
+        if (file.length() % 512 == 0)
+        {
+            blocks += 1;
+        }
+
         return (int) blocks;
     }
 
@@ -71,6 +82,7 @@ public class FileOperation
         }
     }
 
+    //Close file once we are finished writing
     public void finalizeFileWrite()
     {
         try {
@@ -90,6 +102,8 @@ public class FileOperation
         //Server: Write Request writes to local machine
         if ( localRead == false ) 
         {
+            file.delete();
+            //Constructor: Path, Append (allows us to make a file out of packets)
             outStream = new FileOutputStream(absolutePath, true);
         }
         //Client: Write Request reads from local machine
