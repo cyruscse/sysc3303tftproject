@@ -15,7 +15,7 @@ public class TFTPIntHost {
    
    // UDP datagram packets and sockets used to send / receive
    private DatagramPacket sendPacket, receivePacket;
-   private DatagramSocket receiveSocket, sendSocket, sendReceiveSocket;
+   private DatagramSocket receiveSocket, sendReceiveSocketClient, sendReceiveSocket;
    
    public TFTPIntHost()
    {
@@ -28,6 +28,7 @@ public class TFTPIntHost {
          // port on the local host machine. This socket will be used to
          // send and receive UDP Datagram packets from the server.
          sendReceiveSocket = new DatagramSocket();
+          sendReceiveSocketClient = new DatagramSocket();
       } catch (SocketException se) {
          se.printStackTrace();
          System.exit(1);
@@ -36,74 +37,57 @@ public class TFTPIntHost {
 
    public void passOnTFTP()
    {
-
       byte[] data;
-      
-      int clientPort, j=0, len;
 
+      int serverPort,clientPort, j=0, len;
+      data = new byte[516];
+      receivePacket = new DatagramPacket(data, data.length);
+
+      System.out.println("Simulator: Waiting for intial request from Client.");
+      try {
+          receiveSocket.receive(receivePacket);
+       } catch (IOException e) {
+          e.printStackTrace();
+          System.exit(1);
+       }
+      System.out.println("Simulator: Packet received:");
+      System.out.println("From host: " + receivePacket.getAddress());
+      clientPort = receivePacket.getPort();
+      System.out.println("Host port: " + clientPort);
+      len = receivePacket.getLength();
+      System.out.println("Length: " + len);
+      System.out.println("Containing: " );
+      // print the bytes
+      for (j=0;j<len;j++) {
+         System.out.println("byte " + j + " " + data[j]);
+      }
+      // send initial request to server
+      sendPacket = new DatagramPacket(data, len,
+              receivePacket.getAddress(), 69);
+	  System.out.println("Simulator: sending request packet.");
+      System.out.println("To host: " + sendPacket.getAddress());
+      System.out.println("Destination host port: " + sendPacket.getPort());
+      len = sendPacket.getLength();
+      System.out.println("Length: " + len);
+      System.out.println("Containing: ");
+      for (j=0;j<len;j++) {
+          System.out.println("byte " + j + " " + data[j]);
+      }
+
+      // Send the request packet to the server via the send/receive socket.
+
+      try {
+         sendReceiveSocket.send(sendPacket);
+      } catch (IOException e) {
+         e.printStackTrace();
+         System.exit(1);
+      }      
       for(;;) { // loop forever
-         // Construct a DatagramPacket for receiving packets up
-         // to 100 bytes long (the length of the byte array).
-         
+    	 // recieve from server
          data = new byte[516];
          receivePacket = new DatagramPacket(data, data.length);
 
-         System.out.println("Simulator: Waiting for packet.");
-         // Block until a datagram packet is received from receiveSocket.
-         try {
-            receiveSocket.receive(receivePacket);
-         } catch (IOException e) {
-            e.printStackTrace();
-            System.exit(1);
-         }
-
-         // Process the received datagram.
-         System.out.println("Simulator: Packet received:");
-         System.out.println("From host: " + receivePacket.getAddress());
-         clientPort = receivePacket.getPort();
-         System.out.println("Host port: " + clientPort);
-         len = receivePacket.getLength();
-         System.out.println("Length: " + len);
-         System.out.println("Containing: " );
-         
-         // print the bytes
-         for (j=0;j<len;j++) {
-            System.out.println("byte " + j + " " + data[j]);
-         }
-
-         // Form a String from the byte array, and print the string.
-         String received = new String(data,0,len);
-         System.out.println(received);
-
-         sendPacket = new DatagramPacket(data, len,
-                                        receivePacket.getAddress(), 69);
-        
-         System.out.println("Simulator: sending packet.");
-         System.out.println("To host: " + sendPacket.getAddress());
-         System.out.println("Destination host port: " + sendPacket.getPort());
-         len = sendPacket.getLength();
-         System.out.println("Length: " + len);
-         System.out.println("Containing: ");
-         for (j=0;j<len;j++) {
-             System.out.println("byte " + j + " " + data[j]);
-         }
-
-         // Send the datagram packet to the server via the send/receive socket.
-
-         try {
-            sendReceiveSocket.send(sendPacket);
-         } catch (IOException e) {
-            e.printStackTrace();
-            System.exit(1);
-         }
-         
-         // Construct a DatagramPacket for receiving packets up
-         // to 100 bytes long (the length of the byte array).
-
-         data = new byte[516];
-         receivePacket = new DatagramPacket(data, data.length);
-
-         System.out.println("Simulator: Waiting for packet.");
+         System.out.println("Simulator: Waiting for packet from server.");
          try {
             // Block until a datagram is received via sendReceiveSocket.
             sendReceiveSocket.receive(receivePacket);
@@ -113,8 +97,9 @@ public class TFTPIntHost {
          }
 
          // Process the received datagram.
-         System.out.println("Simulator: Packet received:");
+         System.out.println("Simulator: Packet received from server:");
          System.out.println("From host: " + receivePacket.getAddress());
+         serverPort = receivePacket.getPort();
          System.out.println("Host port: " + receivePacket.getPort());
          len = receivePacket.getLength();
          System.out.println("Length: " + len);
@@ -122,11 +107,11 @@ public class TFTPIntHost {
          for (j=0;j<len;j++) {
             System.out.println("byte " + j + " " + data[j]);
          }
-
+         // send to client
          sendPacket = new DatagramPacket(data, receivePacket.getLength(),
                                receivePacket.getAddress(), clientPort);
 
-         System.out.println( "Simulator: Sending packet:");
+         System.out.println("Simulator: Sending packet to client:");
          System.out.println("To host: " + sendPacket.getAddress());
          System.out.println("Destination host port: " + sendPacket.getPort());
          len = sendPacket.getLength();
@@ -136,29 +121,65 @@ public class TFTPIntHost {
             System.out.println("byte " + j + " " + data[j]);
          }
 
-         // Send the datagram packet to the client via a new socket.
+         
 
          try {
-            sendSocket = new DatagramSocket();
-         } catch (SocketException se) {
-            se.printStackTrace();
-            System.exit(1);
-         }
-
-         try {
-            sendSocket.send(sendPacket);
+        	 sendReceiveSocketClient.send(sendPacket);
          } catch (IOException e) {
             e.printStackTrace();
             System.exit(1);
          }
 
-         System.out.println("Simulator: packet sent using port " + sendSocket.getLocalPort());
+         System.out.println("Simulator: packet sent using port " + sendReceiveSocketClient.getLocalPort());
          System.out.println();
+         
+         
+         // receive from client
+         data = new byte[516];
+         receivePacket = new DatagramPacket(data, data.length);
 
-         // We're finished with this socket, so close it.
-         sendSocket.close();
+         System.out.println("Simulator: Waiting for packet from client.");
+         try {
+            // Block until a datagram is received via sendReceiveSocket.
+        	 sendReceiveSocketClient.receive(receivePacket);
+         } catch(IOException e) {
+            e.printStackTrace();
+            System.exit(1);
+         }
+
+         // Process the received datagram.
+         System.out.println("Simulator: Packet received from client:");
+         System.out.println("From host: " + receivePacket.getAddress());
+         System.out.println("Host port: " + receivePacket.getPort());
+         len = receivePacket.getLength();
+         System.out.println("Length: " + len);
+         System.out.println("Containing: ");
+         for (j=0;j<len;j++) {
+            System.out.println("byte " + j + " " + data[j]);
+         }
+         
+         sendPacket = new DatagramPacket(data, len,
+                 receivePacket.getAddress(), serverPort);
+   	  		System.out.println("Simulator: sending packet to server.");
+         System.out.println("To host: " + sendPacket.getAddress());
+         System.out.println("Destination host port: " + sendPacket.getPort());
+         len = sendPacket.getLength();
+         System.out.println("Length: " + len);
+         System.out.println("Containing: ");
+         for (j=0;j<len;j++) {
+             System.out.println("byte " + j + " " + data[j]);
+         }
+
+         // Send to server.
+         try {
+            sendReceiveSocket.send(sendPacket);
+         } catch (IOException e) {
+            e.printStackTrace();
+            System.exit(1);
+         }
+         
       } // end of loop
-
+      
    }
 
    public static void main( String args[] )
