@@ -125,6 +125,9 @@ public class ClientConnectionThread implements Runnable {
 				System.out.println("Server Thread " + threadNumber +": "+" Local file " + localName + " does not exist!");
 				e.printStackTrace();
 				return;
+			} catch (Exception e) {
+				System.out.println("File is too big!");
+				return;
 			}
 
 			if (verbose == TFTPServer.Verbosity.ALL)
@@ -215,6 +218,9 @@ public class ClientConnectionThread implements Runnable {
 				fileOp = new FileOperation(localName, false, 512);
 			} catch (FileNotFoundException e) {
 				System.out.println("Couldn't write to " + localName);
+				return;
+			} catch (Exception e) {
+				System.out.println("File is too big!");
 				return;
 			}
 

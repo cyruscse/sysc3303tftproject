@@ -15,7 +15,7 @@ import grouptwo.FileOperation;
 public class TFTPClient 
 {
     private String localFile, remoteFile, strRequestType, strVerbosity, strMode;
-    private Boolean cliRunning, clientReady;
+    private Boolean cliRunning, clientReady, clientTransferring;
     private Thread tftpTransfer;
     private TFTPClientTransfer.Request requestType;
     private TFTPClientTransfer.Verbosity verbosity;
@@ -32,6 +32,7 @@ public class TFTPClient
     {
        cliRunning = true;
        clientReady = false;
+       clientTransferring = false;
        verbosity = TFTPClientTransfer.Verbosity.NONE;
        mode = TFTPClientTransfer.Mode.TEST;
        requestType = TFTPClientTransfer.Request.READ;
@@ -64,6 +65,14 @@ public class TFTPClient
                 clientReady = true;
             }
 
+            if ( clientTransferring )
+            {
+                if (tftpTransfer.getState() == Thread.State.TERMINATED)
+                {
+                    clientTransferring = false;
+                }
+            }
+
             System.out.println("TFTP Client");
             System.out.println("-----------");
             if (requestType == TFTPClientTransfer.Request.WRITE)
@@ -83,7 +92,7 @@ public class TFTPClient
             }
             System.out.println("m: Set mode (current: " + TFTPClientTransfer.modeToString(mode) + ")");
             System.out.println("v: Set verbosity (current: " + TFTPClientTransfer.verbosityToString(verbosity) + ")");
-            System.out.println("q: Quit");
+            System.out.println("q: Quit (once transfers are complete)");
 
             scIn = sc.nextLine();
 
@@ -122,6 +131,7 @@ public class TFTPClient
             {
                 tftpTransfer = new TFTPClientTransfer("clientTransfer", remoteFile, localFile, requestType, mode, verbosity);
                 tftpTransfer.start();
+                clientTransferring = true;
             }
 
             else if ( scIn.equalsIgnoreCase("m") ) {
@@ -166,8 +176,12 @@ public class TFTPClient
             }
 
             else if ( scIn.equalsIgnoreCase("q") ) 
-            {
-                System.exit(1);
+            {   
+                if (!clientTransferring)
+                {
+                    System.exit(1);
+                }
+                System.out.println("Can't exit during a TFTP transfer!");
             }
 
             else if ( scIn.equalsIgnoreCase("") == false ) 
@@ -467,6 +481,9 @@ class TFTPClientTransfer extends Thread
             } catch (FileNotFoundException e) {
                 System.out.println("Local file " + localName + " does not exist!");
                 return;
+            } catch (Exception e) {
+                System.out.println("File is too big!");
+                return;
             }
         }
         else
@@ -476,9 +493,12 @@ class TFTPClientTransfer extends Thread
             } catch (FileNotFoundException e) {
                 System.out.println("Couldn't write to " + localName);
                 return;
+            } catch (Exception e) {
+                System.out.println("File is too big!");
+                return;
             }
         }
-      
+
         if (verbose != Verbosity.NONE)
         {
             System.out.println("Client: sending request packet");

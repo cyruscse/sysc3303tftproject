@@ -137,7 +137,7 @@ public class FileOperation
     *   @param  int number of bytes to read write (for TFTP, 512)
     *   @return FileOperation
     */
-    public FileOperation(String absolutePath, Boolean localRead, int bytesRW) throws FileNotFoundException
+    public FileOperation(String absolutePath, Boolean localRead, int bytesRW) throws FileNotFoundException, Exception
     {
         numBytes = bytesRW;
         file = new File(absolutePath);
@@ -155,6 +155,11 @@ public class FileOperation
         else
         {
             inStream = new FileInputStream(absolutePath);
+
+            if (getNumTFTPBlocks() > 65536)
+            {
+                throw new Exception("File is too big!");
+            }
         }
     }
 }
