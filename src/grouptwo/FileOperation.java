@@ -56,15 +56,15 @@ public class FileOperation
                 System.exit(1);
             }
         }
-    
+
         return 4;
     }
 
     //Write each chunk of data into the FileOutputStream in order to recreate file
-    public void writeNextDataPacket(byte[] data, int dataOffset) throws FileNotFoundException 
+    public void writeNextDataPacket(byte[] data, int dataOffset, int len) throws FileNotFoundException 
     {
         try {
-            outStream.write(data, dataOffset, numBytes);
+            outStream.write(data, dataOffset, len);
         } catch (IOException e) {
             e.printStackTrace();
             System.exit(1);

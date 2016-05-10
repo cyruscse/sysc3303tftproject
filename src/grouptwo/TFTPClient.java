@@ -338,7 +338,7 @@ class TFTPClientTransfer extends Thread
             throw new Exception("Invalid data packet");
         }
 
-        readFile.writeNextDataPacket(msg, 4);
+        readFile.writeNextDataPacket(msg, 4, len - 4);
 
         System.out.println("len is " + len);
 
