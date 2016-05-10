@@ -9,7 +9,6 @@ import java.io.*;
 public class FileOperation
 {
     private File file;
-    private long readWriteOffset;
     private FileInputStream inStream;
     private FileOutputStream outStream;
     private int numBytes;
@@ -22,11 +21,8 @@ public class FileOperation
     //Gets number of TFTP data packets needed to transfer file
     public int getNumTFTPBlocks() 
     {   
-        if ( file.length() == 0 )
-        {
-            return 1;
-        }
-        return (int) Math.ceil(file.length() / numBytes);
+        double blocks = Math.ceil((double) file.length() / numBytes);
+        return (int) blocks;
     }
 
     public int size()
@@ -35,38 +31,33 @@ public class FileOperation
     }
 
     //Read FileInputStream in chunks then write each chunk into the provided byte array
+    //Returns length of final packet
     public int readNextDataPacket(byte[] data, int dataOffset) throws FileNotFoundException 
     {
-        int amountRead = 0;
+        int readAmount = numBytes;
 
         try {
-            //Skip to next set of data (up to what was read on last method call)
-            inStream.skip(readWriteOffset);
-
-            //Read numBytes from where we skipped to, then adjust the amount to skip
-            //on next method call
-            if (-1 != (amountRead = inStream.read(data, dataOffset, numBytes)) )
+            if (inStream.available() < readAmount)
             {
-                readWriteOffset += numBytes;
-                amountRead = numBytes + 4;
-            }
-            else
-            {
-                //If read didn't return -1 we read less than numBytes, so
-                //we have to find out how much we read
-                for (amountRead = 4; amountRead < data.length; amountRead++)
-                {
-                    if ( data[amountRead] == (byte) 0 )
-                    {
-                        return (amountRead + 1);
-                    }
-                }
+                readAmount = inStream.available();
             }
         } catch (IOException e) {
             e.printStackTrace();
             System.exit(1);
         }
-        return amountRead;
+
+        if (readAmount > 0)
+        {
+            try {
+                //Returns readAmount, add 4 for opcode/bytenumber
+                return inStream.read(data, dataOffset, readAmount) + 4;
+            } catch (IOException e) {
+                e.printStackTrace();
+                System.exit(1);
+            }
+        }
+    
+        return 4;
     }
 
     //Write each chunk of data into the FileOutputStream in order to recreate file
@@ -78,8 +69,6 @@ public class FileOperation
             e.printStackTrace();
             System.exit(1);
         }
-
-        readWriteOffset += numBytes;
     }
 
     public void finalizeFileWrite()
@@ -94,7 +83,6 @@ public class FileOperation
 
     public FileOperation(String absolutePath, Boolean localRead, int bytesRW) throws FileNotFoundException
     {
-        readWriteOffset = 0;
         numBytes = bytesRW;
         file = new File(absolutePath);
 
@@ -102,7 +90,7 @@ public class FileOperation
         //Server: Write Request writes to local machine
         if ( localRead == false ) 
         {
-            outStream = new FileOutputStream(absolutePath);
+            outStream = new FileOutputStream(absolutePath, true);
         }
         //Client: Write Request reads from local machine
         //Server: Read Request reads from local machine
