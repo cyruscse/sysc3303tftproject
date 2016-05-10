@@ -11,6 +11,8 @@ import java.net.*;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
+import grouptwo.TFTPServer.Verbosity;
+
 public class TFTPServer {
 	public static enum Verbosity { NONE, SOME, ALL };
 	public static enum Request { READ, WRITE, ERROR };
@@ -91,6 +93,11 @@ public class TFTPServer {
 		TFTPServer s = new TFTPServer();
 		s.receiveClients();
 	}
+
+	
+	public void setVerbosity(Verbosity v) {
+		this.verbosity = v;
+	}
 }
 
 class TFTPServerCommandLine extends Thread {
@@ -146,15 +153,15 @@ class TFTPServerCommandLine extends Thread {
 
 				if ( strVerbosity.equalsIgnoreCase("none") ) 
 				{
-					verbosity = TFTPServer.Verbosity.NONE;
+					parentServer.setVerbosity(TFTPServer.Verbosity.NONE);
 				}
 				else if ( strVerbosity.equalsIgnoreCase("some") ) 
 				{
-					verbosity = TFTPServer.Verbosity.SOME;
+					parentServer.setVerbosity(TFTPServer.Verbosity.SOME);
 				}
 				else if ( strVerbosity.equalsIgnoreCase("all") )
 				{
-					verbosity = TFTPServer.Verbosity.ALL;
+					parentServer.setVerbosity(TFTPServer.Verbosity.ALL);
 				}
 				else 
 				{
