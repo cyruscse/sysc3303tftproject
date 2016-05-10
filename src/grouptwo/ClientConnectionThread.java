@@ -141,6 +141,9 @@ public class ClientConnectionThread implements Runnable {
 				
 				System.out.println("done Block" + j);
 			}
+
+			//Close file now that we are done sending it to client
+			fileOp.closeFileRead();
 			/*
 			 * TODO Here is where we set up the file stream OUT of the file on
 			 * the server to be read read by the client: 1) Have to setup a loop

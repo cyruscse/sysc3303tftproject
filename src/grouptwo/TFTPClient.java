@@ -1,7 +1,3 @@
-// TFTPClient.java
-// The classes in this file are an implementation of a TFTP client (without error detection/correction)
-// It uses the FileOperation class to divide a file into 512 byte chunks (for read requests)
-// and re-assembles 512 byte chunks into a file (for write requests) 
 package grouptwo;
 
 import java.io.*;
@@ -9,24 +5,32 @@ import java.net.*;
 import java.util.*;
 import grouptwo.FileOperation;
 
-// TFTPClient
-// This class is the CLI (command line interface) for the client, it sets up file names, modes, etc.
-// The settings are saved over client transfers
+/**
+* TFTPClient is the user interface class for the TFTP client, it sets up
+* all the variables for the TFTP transfer and then spawns a TFTPClientTransfer thread.
+* This class provides a test method that presets values in order to save time.
+*
+* @author        Cyrus Sadeghi
+*/
 public class TFTPClient 
 {
     private String localFile, remoteFile, strRequestType, strVerbosity, strMode;
-    private Boolean clientTransferring, safeExit, attemptExit, clientReady;
+    private Boolean cliRunning, clientReady;
     private Thread tftpTransfer;
     private TFTPClientTransfer.Request requestType;
     private TFTPClientTransfer.Verbosity verbosity;
     private TFTPClientTransfer.Mode mode;
     private boolean TESTING = true;
 
+    /**
+    *   Constructor for TFTPClient, initializes data that will be used in CLI
+    *
+    *   @param  none
+    *   @return TFTPClient
+    */
     public TFTPClient() 
     {
-       clientTransferring = false;
-       safeExit = false;
-       attemptExit = false;
+       cliRunning = true;
        clientReady = false;
        verbosity = TFTPClientTransfer.Verbosity.NONE;
        mode = TFTPClientTransfer.Mode.TEST;
@@ -36,6 +40,14 @@ public class TFTPClient
        remoteFile = new String();
     }
 
+    /**
+    *   CLI for TFTP client, loops and blocks on next Scanner line in order to choose
+    *   a menu item. Invalid arguments are ignored and the client transfer thread is not allowed
+    *   to be created until file names have been provided
+    *
+    *   @param  none
+    *   @return none
+    */
     public void commandLine() 
     {
         Scanner sc = new Scanner(System.in);
@@ -45,37 +57,25 @@ public class TFTPClient
         	Testvalues();
         }
 
-        while ( safeExit == false ) 
+        while ( cliRunning ) 
         {
-            if ( attemptExit && clientTransferring == false ) 
-            {
-                System.exit(1);
-            }
-
-            if ( clientTransferring == false && remoteFile.isEmpty() == false && localFile.isEmpty() == false ) 
+            if ( remoteFile.isEmpty() == false && localFile.isEmpty() == false ) 
             {
                 clientReady = true;
             }
 
-            if ( clientTransferring == true && tftpTransfer.getState() == Thread.State.TERMINATED ) 
+            System.out.println("TFTP Client");
+            System.out.println("-----------");
+            System.out.println("1: File to read from/write to on server (current: " + remoteFile + ")");
+            System.out.println("2. File to read from/write to on client (current: " + localFile + ")");
+            System.out.println("3: Read Request or Write Request (current: " + TFTPClientTransfer.requestToString(requestType) + ")");
+            if ( clientReady == true )
             {
-                clientTransferring = false;
+                System.out.println("4: Start transfer");
             }
-
-            if (clientTransferring == false ) 
-            {
-                System.out.println("TFTP Client");
-                System.out.println("1: File to read from/write to on server (current: " + remoteFile + ")");
-                System.out.println("2. File to read from/write to on client (current: " + localFile + ")");
-                System.out.println("3: Read Request or Write Request (current: " + TFTPClientTransfer.requestToString(requestType) + ")");
-                if ( clientReady == true )
-                {
-                    System.out.println("4: Start transfer");
-                }
-                System.out.println("m: Set mode (current: " + TFTPClientTransfer.modeToString(mode) + ")");
-                System.out.println("v: Set verbosity (current: " + TFTPClientTransfer.verbosityToString(verbosity) + ")");
-                System.out.println("q: Quit (finishes current transfer before quitting)");
-            }
+            System.out.println("m: Set mode (current: " + TFTPClientTransfer.modeToString(mode) + ")");
+            System.out.println("v: Set verbosity (current: " + TFTPClientTransfer.verbosityToString(verbosity) + ")");
+            System.out.println("q: Quit");
 
             scIn = sc.nextLine();
 
@@ -114,10 +114,9 @@ public class TFTPClient
             {
                 tftpTransfer = new TFTPClientTransfer("clientTransfer", remoteFile, localFile, requestType, mode, verbosity);
                 tftpTransfer.start();
-                clientTransferring = true;
             }
 
-            else if ( scIn.equalsIgnoreCase("m") && clientTransferring == false ) {
+            else if ( scIn.equalsIgnoreCase("m") ) {
                 System.out.println("Enter mode (inthost, normal): ");
                 strMode = sc.nextLine();
                 
@@ -135,7 +134,7 @@ public class TFTPClient
                 }
             }
 
-            else if ( scIn.equalsIgnoreCase("v") && clientTransferring == false ) 
+            else if ( scIn.equalsIgnoreCase("v") ) 
             {
                 System.out.println("Enter verbosity (none, some, all): ");
                 strVerbosity = sc.nextLine();
@@ -160,7 +159,7 @@ public class TFTPClient
 
             else if ( scIn.equalsIgnoreCase("q") ) 
             {
-                attemptExit = true;
+                System.exit(1);
             }
 
             else if ( scIn.equalsIgnoreCase("") == false ) 
@@ -170,6 +169,12 @@ public class TFTPClient
        }
     }
     
+    /**
+    *   Sets up test values for CLI to save time
+    *
+    *   @param  none
+    *   @return none
+    */
     public void Testvalues() {
 		remoteFile = "/Users/cyrus/Documents/gittest/sysc3303tftproject/build/output.dat";
 		localFile = "/Users/cyrus/Documents/test.txt";
@@ -187,9 +192,15 @@ public class TFTPClient
     }
 }
 
-// TFTPClientTransfer
-// This class performs the actual file transfers with the server and error simulator
-// It sends and receives request, acknowledge and data packets
+/**
+* TFTPClientTransfer is the file transfer class. It extends Thread and is spawned by the CLI thread
+* Only one TFTPClientTransfer instance exists at any given time and it handles reading and writing from/to
+* the server. The class contains methods that constructs ACK, RRQ/WRQ, and DATA packets, and a method to 
+* communicate with the server (both reads and writes are handled there). Once the current transfer is complete
+* the thread exits and returns control to the CLI thread (to optionally start another transfer).
+*
+* @author        Cyrus Sadeghi
+*/
 class TFTPClientTransfer extends Thread 
 {
     // we can run in normal (send directly to server) or test
@@ -208,6 +219,18 @@ class TFTPClientTransfer extends Thread
     private Verbosity verbose;
     private String remoteName, localName, fileMode;
 
+    /**
+    *   Constructor for TFTPClientTransfer, initializes data used in class and creates DatagramSocket
+    *   that will be used for sending and receiving packets.
+    *
+    *   @param  String thread name that is sent to superclass (Thread)
+    *   @param  String name of file on server
+    *   @param  String name of file on local machine
+    *   @param  Request request type (read or write)
+    *   @param  Mode run mode (normal (direct to server) or test (through error sim))
+    *   @param  Verbosity verbosity of info (ranging from none to full packet details)
+    *   @return TFTPClientTransfer
+    */
     public TFTPClientTransfer(String threadName, String remoteFile, String localFile, Request transferType, Mode runMode, Verbosity verMode)
     {
        super(threadName);
@@ -227,6 +250,12 @@ class TFTPClientTransfer extends Thread
        }
     }
 
+    /**
+    *   Converts Request to String (used by CLI)
+    *
+    *   @param  Request to convert to String
+    *   @return String of converted Request
+    */
     public static String requestToString(Request req) 
     {
         if ( req == Request.READ ) 
@@ -240,6 +269,12 @@ class TFTPClientTransfer extends Thread
         return "";
     }
 
+    /**
+    *   Converts Mode to String (used by CLI)
+    *
+    *   @param  Mode to convert to String
+    *   @return String of converted Mode
+    */
     public static String modeToString(Mode req) 
     {
         if ( req == Mode.NORMAL ) 
@@ -253,6 +288,12 @@ class TFTPClientTransfer extends Thread
         return "";
     }
 
+    /**
+    *   Converts Verbosity to String (used by CLI)
+    *
+    *   @param  Verbosity to convert to String
+    *   @return String of converted Verbosity
+    */
     public static String verbosityToString(Verbosity ver)
     {
         if ( ver == Verbosity.NONE )
@@ -270,6 +311,13 @@ class TFTPClientTransfer extends Thread
         return "";
     }
 
+    /**
+    *   Constructs the request packet, which consists of the opcode (01 for read, 02 for write), 0 byte,
+    *   filename and another 0 byte.
+    *
+    *   @param  byte[] filename as byte array
+    *   @return int length of request packet
+    */
     private int constructReqPacketData(byte[] msg) 
     {
        byte[] fn, // filename as an array of bytes
@@ -304,33 +352,47 @@ class TFTPClientTransfer extends Thread
        return len;
     }
 
-    // Constructs acknowledge packet for TFTP reads
-    // Consists of ACK opcode and block number
+    /**
+    *   Constructs ACK packet, converts int blockNumber to byte representation
+    *
+    *   @param  byte[] array to store packet data in
+    *   @param  int current block number
+    *   @return none
+    */
     private void constructAckPacketData (byte[] msg, int blockNumber)
     {
         msg[0] = 0;
         msg[1] = 4;
-        System.out.println("blockNumber " + blockNumber);
         msg[2] = (byte) (blockNumber / 256);
         msg[3] = (byte) (blockNumber % 256);        
     }
 
-    // Constructs data packet for TFTP writes
-    // Consists of DATA opcode, block number and actual data
-    // Uses the FileOperation class to divide the file into data packets
+    /**
+    *   Constructs DATA write packet
+    *
+    *   @param  byte[] next data block to send
+    *   @param  int current block number
+    *   @param  FileOperation current file we are reading from to write to server
+    *   @return int length of DATA packet
+    */
     private int constructNextWritePacket(byte[] msg, int blockNumber, FileOperation writeFile) throws FileNotFoundException 
     {
        msg[0] = 0;
        msg[1] = 3;
-
        msg[2] = (byte) (blockNumber / 256);
        msg[3] = (byte) (blockNumber % 256);   
 
        return writeFile.readNextDataPacket(msg, 4);
     }
 
-    // Processes next read packet for TFTP reads
-    // Uses the FileOperation class to stitch together the data packets
+    /**
+    *   Processes DATA read packet
+    *
+    *   @param  byte[] data sent from server to client
+    *   @param  int length of data
+    *   @param  FileOperation current file we are writing to
+    *   @return Boolean indicating if this was the final DATA packet
+    */
     private Boolean processNextReadPacket(byte[] msg, int len, FileOperation readFile) throws Exception
     {
         if (msg[0] != 0 || msg[1] != 3)
@@ -339,8 +401,6 @@ class TFTPClientTransfer extends Thread
         }
 
         readFile.writeNextDataPacket(msg, 4, len - 4);
-
-        System.out.println("len is " + len);
 
         if (len < 516)
         {
@@ -358,6 +418,12 @@ class TFTPClientTransfer extends Thread
         }
     }
 
+    /**
+    *   Prints basic packet details
+    *
+    *   @param  DatagramPacket to print details of
+    *   @return none
+    */
     private void printPacketDetails(DatagramPacket packet) 
     {
         System.out.println("Host: " + packet.getAddress());
@@ -365,6 +431,13 @@ class TFTPClientTransfer extends Thread
         System.out.println("Length: " + packet.getLength());
     }
 
+    /**
+    *   Creates RRQ/WRQ, DATA, and ACK packets (using above methods) and sends them to server/receives from server
+    *   This method deals with creating/receiving DatagramPackets
+    *
+    *   @param  none
+    *   @return none
+    */
     private void sendAndReceive() 
     {
         byte[] msg = new byte[100];
@@ -524,7 +597,10 @@ class TFTPClientTransfer extends Thread
 
                 receivePacket = new DatagramPacket(msg, msg.length);
 
-                System.out.println("Client: Waiting for next data packet");
+                if (verbose != Verbosity.NONE )
+                {
+                    System.out.println("Client: Waiting for next data packet");
+                }
                 
                 try {
                       sendReceiveSocket.receive(receivePacket);
@@ -539,6 +615,7 @@ class TFTPClientTransfer extends Thread
 
                 len = receivePacket.getLength();
 
+                //Receive data packet from server
                 if ( verbose != Verbosity.NONE ) 
                 {
                     printPacketDetails(receivePacket);
@@ -552,6 +629,8 @@ class TFTPClientTransfer extends Thread
                     }
                 }
 
+                //Process data packet, processNextReadPacket will determine
+                //if its the last data packet
                 try {
                     willExit = processNextReadPacket(msg, len, fileOp);
                 } catch (Exception e) {
@@ -559,6 +638,7 @@ class TFTPClientTransfer extends Thread
                     return;
                 }
 
+                //Form ACK packet
                 msg = new byte[4];
 
                 constructAckPacketData(msg, k);
@@ -573,6 +653,7 @@ class TFTPClientTransfer extends Thread
 
                 if ( verbose != Verbosity.NONE ) 
                 {
+                    System.out.println("Client: Sending ACK packet " + k);
                     printPacketDetails(sendPacket);
                     if ( verbose == Verbosity.ALL )
                     {
@@ -585,13 +666,14 @@ class TFTPClientTransfer extends Thread
                 }
 
                 try {
-                      System.out.println("sending ACK!");
                       sendReceiveSocket.send(sendPacket);
                 } catch(IOException e) {
                       e.printStackTrace();
                       return;
                 }
 
+                //Can't exit right after we receive the last data packet,
+                //we have to acknowledge the data first
                 if (willExit)
                 {
                     readingFile = false;
