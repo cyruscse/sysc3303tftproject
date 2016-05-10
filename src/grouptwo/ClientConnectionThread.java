@@ -52,7 +52,7 @@ public class ClientConnectionThread implements Runnable {
 	@Override
 	public void run() {
 
-		byte[] data, response = new byte[4];
+		byte[] data, msg, response = new byte[4];
 		int len, j = 0, k = 0;
 
 		System.out.println("Server: new thread created");
@@ -78,7 +78,7 @@ public class ClientConnectionThread implements Runnable {
 				se.printStackTrace();
 				return;
 			}
-			byte[] msg;
+
 			System.out.println("block in file:" + fileOp.getNumTFTPBlocks());
 			for (j = 0; j < fileOp.getNumTFTPBlocks(); j++) {
 				msg = new byte[516];
