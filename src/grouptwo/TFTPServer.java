@@ -194,7 +194,7 @@ public class TFTPServer {
 			/*TODO 	Exception should be thrown here (when we implement it) by checking if req==Request.ERROR
 			 * 		instead of checking inside ClientConnectionThread */
 
-			Thread t = new Thread(new ClientConnectionThread(receivePacket, this, req, filename));
+			Thread t = new Thread(new ClientConnectionThread(receivePacket, this, req, verbosity, filename));
 			t.start();
 			threads.add(t);
 			runningThreadCount++;
