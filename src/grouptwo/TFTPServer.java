@@ -154,14 +154,17 @@ class TFTPServerCommandLine extends Thread {
 				if ( strVerbosity.equalsIgnoreCase("none") ) 
 				{
 					parentServer.setVerbosity(TFTPServer.Verbosity.NONE);
+					verbosity = TFTPServer.Verbosity.NONE;
 				}
 				else if ( strVerbosity.equalsIgnoreCase("some") ) 
 				{
 					parentServer.setVerbosity(TFTPServer.Verbosity.SOME);
+					verbosity = TFTPServer.Verbosity.SOME;
 				}
 				else if ( strVerbosity.equalsIgnoreCase("all") )
 				{
 					parentServer.setVerbosity(TFTPServer.Verbosity.ALL);
+					verbosity = TFTPServer.Verbosity.ALL;
 				}
 				else 
 				{
