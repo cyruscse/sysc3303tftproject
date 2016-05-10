@@ -1,11 +1,10 @@
 package grouptwo;
 
-// TFTPServer.java 
-// This class is the server side of a simple TFTP server based on
-// UDP/IP. The server receives a read or write packet from a client and
-// sends back the appropriate response without any actual file transfer.
-// One socket (69) is used to receive (it stays open) and another for each response. 
-
+/**
+ * This class is responsible for the UI of the server, it also listens on
+ * port 69 for any r/w requests and creates a thread for each request to be handled
+ * it is also responisble for the safe termination of the server 
+ */
 import java.io.*;
 import java.net.*;
 import java.util.*;
@@ -40,18 +39,27 @@ public class TFTPServer {
 		cliThread = new TFTPServerCommandLine(verbosity, this);
 	}
 
+	/**
+	 * used by thread t to notify the server that its done
+	 * @param t
+	 */
 	public void threadDone(Thread t)
 	{
 		clients.remove(t);
 		runningClientCount = clients.size();
 	}
-
+	/**
+	 * stops accepting connections from new clients
+	 */
 	public void initiateExit()
 	{
 		acceptConnections = false;
 		receiveSocket.close();
 	}
-
+	/**
+	 * listens on port 69 and accepts any new requests and
+	 * creates a thread to handle the request
+	 */
 	private void receiveClients()
 	{ 
 		cliThread.start();
@@ -80,14 +88,22 @@ public class TFTPServer {
 				if (!receiveSocket.isClosed())
 				{
 					System.out.println("verbosity " + (verbosity == Verbosity.ALL));
-					Thread client = new Thread(new ClientConnectionThread(receivePacket, this, verbosity));
+					Thread client = new Thread(new ClientConnectionThread(receivePacket, this, verbosity, clients.size()+1));
 					client.start();
 					clients.add(client);
 				}
 			}
 		}
 	}
-
+	
+	/**
+	 * used to set the verbosity of the server and its threads to the given value
+	 * @param v
+	 */
+	public void setVerbosity(Verbosity v) {
+		this.verbosity = v;
+	}
+	
 	public static void main(String[] args) 
 	{
 		TFTPServer s = new TFTPServer();
@@ -95,15 +111,16 @@ public class TFTPServer {
 	}
 
 	
-	public void setVerbosity(Verbosity v) {
-		this.verbosity = v;
-	}
 }
-
+/**
+ * class to implement the thread 
+ * responsible for handling the command line and user input
+ */
 class TFTPServerCommandLine extends Thread {
 	//"some" verbosity prints packet details omitting data contents,
 	//"all" verbosity prints everything (including the 512 data bytes)
 	private TFTPServer.Verbosity verbosity;
+	
 	private TFTPServer parentServer;
 
 	// UDP datagram packets and sockets used to receive
@@ -143,7 +160,7 @@ class TFTPServerCommandLine extends Thread {
 			System.out.println("TFTP Server");
 			System.out.println("v: Set verbosity (current: " + verbosityToString(verbosity) + ")");
 			System.out.println("q: Quit (finishes current transfer before quitting)");
-			System.out.println("r: run ");
+			
 			scIn = sc.nextLine();
 
 			if ( scIn.equalsIgnoreCase("v") ) 
@@ -152,19 +169,16 @@ class TFTPServerCommandLine extends Thread {
 				String strVerbosity = sc.nextLine();
 
 				if ( strVerbosity.equalsIgnoreCase("none") ) 
-				{
-					parentServer.setVerbosity(TFTPServer.Verbosity.NONE);
-					verbosity = TFTPServer.Verbosity.NONE;
+				{	verbosity = TFTPServer.Verbosity.NONE;
+					parentServer.setVerbosity(verbosity);
 				}
 				else if ( strVerbosity.equalsIgnoreCase("some") ) 
-				{
-					parentServer.setVerbosity(TFTPServer.Verbosity.SOME);
-					verbosity = TFTPServer.Verbosity.SOME;
+				{	verbosity = TFTPServer.Verbosity.SOME;
+					parentServer.setVerbosity(verbosity);
 				}
 				else if ( strVerbosity.equalsIgnoreCase("all") )
-				{
-					parentServer.setVerbosity(TFTPServer.Verbosity.ALL);
-					verbosity = TFTPServer.Verbosity.ALL;
+				{	verbosity = TFTPServer.Verbosity.ALL;
+					parentServer.setVerbosity(verbosity);
 				}
 				else 
 				{

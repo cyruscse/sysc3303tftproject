@@ -35,9 +35,10 @@ public class ClientConnectionThread implements Runnable {
 	private String localName, mode;
 	private int port;
 	private InetAddress address;
+	private int threadNumber;
 
-
-	public ClientConnectionThread(DatagramPacket receivePckt, TFTPServer parent, TFTPServer.Verbosity verbosity) {
+	public ClientConnectionThread(DatagramPacket receivePckt, TFTPServer parent, TFTPServer.Verbosity verbosity, int threadNumber) {
+		this.threadNumber = threadNumber;
 		this.receivePacket = receivePckt;
 		this.parent = parent;
 		this.port = receivePckt.getPort();
@@ -69,7 +70,7 @@ public class ClientConnectionThread implements Runnable {
 		byte[] data, msg, response;
 		int len = 0, j = 0, k = 0;
 
-		System.out.println("Server: new thread created");
+		System.out.println("Server: new thread created, Thread: " + threadNumber);
 		data = new byte[100];
 		data = receivePacket.getData();
 		len = receivePacket.getLength();
@@ -118,12 +119,12 @@ public class ClientConnectionThread implements Runnable {
 			try {
 				fileOp = new FileOperation(localName, true, 512); // change me
 			} catch (FileNotFoundException e) {
-				System.out.println("Local file " + localName + " does not exist!");
+				System.out.println("Server Thread " + threadNumber +": "+" Local file " + localName + " does not exist!");
 				e.printStackTrace();
 				return;
 			}
 
-			System.out.println("block in file:" + fileOp.getNumTFTPBlocks());
+			System.out.println("Server Thread " + threadNumber +": "+ "block in file:" + fileOp.getNumTFTPBlocks());
 			for (j = 0; j < fileOp.getNumTFTPBlocks(); j++) {
 				msg = new byte[516];
 
@@ -134,16 +135,16 @@ public class ClientConnectionThread implements Runnable {
 					return;
 				}
 
-				System.out.println("Server: Sending TFTP packet " + (j + 1) + "/" + fileOp.getNumTFTPBlocks());
+				System.out.println("Server: "+ "Thread " + threadNumber +": "+ "Sending TFTP packet " + (j + 1) + "/" + fileOp.getNumTFTPBlocks());
 
-				//if (verbosity == Verbosity.ALL) {
+				if (verbose == TFTPServer.Verbosity.ALL) {
 				for (k = 0; k < len; k++) {
 					System.out.println("byte " + k + " " + (msg[k] & 0xFF));
 				}
-				//}
+				}
 
 				sendPacket = new DatagramPacket(msg, len, address, port);
-				System.out.println("Server: sending packet.");
+				System.out.println("Server Thread "+threadNumber+ ": sending packet.");
 				System.out.println("to host: " + sendPacket.getAddress());
 				System.out.println("to port: " + sendPacket.getPort());
 
@@ -160,7 +161,7 @@ public class ClientConnectionThread implements Runnable {
 				msg = new byte[4];
 				receivePacket = new DatagramPacket(msg, msg.length);
 
-				System.out.println("Server: Waiting for data read acknowledgement");
+				System.out.println("Server Thread " + threadNumber +": Waiting for data read acknowledgement");
 
 				try {
 					sendReceiveSocket.receive(receivePacket);
@@ -174,32 +175,21 @@ public class ClientConnectionThread implements Runnable {
 				System.out.println("ack " + rcvd[0] + " " + rcvd[1] + " " + rcvd[2] + " " + rcvd[3] + " " + (byte) j/256 + " " + (byte) j % 256);
 
 				if (rcvd[0] == 0 && rcvd[1] == 4 && (rcvd[2] & 0xFF) == ((byte)(j / 256) & 0xFF) && (rcvd[3] & 0xFF) ==  ((byte)(j % 256) & 0xFF)) {
-					System.out.println("ACK valid!");
+					System.out.println("Server Thread " + threadNumber +": "+ "ACK valid!");
 
 
 				}
 				else{
-					System.out.println("ACK is invalid!");
+					System.out.println("Server Thread " + threadNumber +": "+ "ACK is invalid!");
 					return;
 				}
 
-				System.out.println("done Block" + j);
+				System.out.println("Server Thread " + threadNumber +": "+"done Block " + j);
 			}
 
 			//Close file now that we are done sending it to client
 			fileOp.closeFileRead();
-			/*
-			 * TODO Here is where we set up the file stream OUT of the file on
-			 * the server to be read read by the client: 1) Have to setup a loop
-			 * through all blocks of the file 2) For each block in the file we
-			 * have to (in order) : -set up the message (with 512 bytes being a
-			 * data block from the file) -create the datagram -send the datagram
-			 * -receive the response -verify the response is an ACK -loop again
-			 * (now on the next block)
-			 * 
-			 * Look at Cyrus' Client code for an idea on how this is done the
-			 * other way.
-			 */
+
 
 		} else if (requestType == TFTPServer.Request.WRITE) // for Write it's 0400
 		{
@@ -213,7 +203,7 @@ public class ClientConnectionThread implements Runnable {
 
 			if (verbose != TFTPServer.Verbosity.NONE )
 			{
-				System.out.println("Server: Sending WRQ response.");
+				System.out.println("Server Thread " + threadNumber +": Sending WRQ ACK0.");
 			}
 
 			// Send the initial ACK (block 0) that will establish a connection with the client 
@@ -251,7 +241,7 @@ public class ClientConnectionThread implements Runnable {
 				msg = new byte[516];
 				receivePacket = new DatagramPacket(msg, msg.length);
 
-				System.out.println("Server: Waiting for next data packet");
+				System.out.println("Server Thread " + threadNumber + ": Waiting for next data packet");
 
 				try {
 					sendReceiveSocket.receive(receivePacket);
@@ -293,7 +283,7 @@ public class ClientConnectionThread implements Runnable {
 
 				if ( verbose != TFTPServer.Verbosity.NONE ) 
 				{
-					System.out.println("Server: Sending ACK packet " + blockNum);
+					System.out.println("Server Thread " + threadNumber +": Sending ACK packet " + blockNum);
 					printPacketDetails(sendPacket);
 					if ( verbose == TFTPServer.Verbosity.ALL )
 					{
@@ -322,43 +312,12 @@ public class ClientConnectionThread implements Runnable {
 				blockNum++;
 			}
 
-
-			/*
-			 * TODO Here is where we set up the file stream INTO the file on the
-			 * server which is a write by the client. Generally the same as
-			 * above to-do comment block but with different roles.
-			 */
-
 		} else { // it was invalid, just quit
 			// throw new Exception("Not yet implemented");
 		}
 
-		System.out.println("File transfer complete");
+		System.out.println("Server Thread " + threadNumber +": File transfer complete");
 
-		/*
-		 * sendPacket = new DatagramPacket(response, response.length,
-		 * receivePacket.getAddress(), receivePacket.getPort());
-		 * 
-		 * System.out.println("Server: Sending packet:"); System.out.println(
-		 * "To host: " + sendPacket.getAddress()); System.out.println(
-		 * "Destination host port: " + sendPacket.getPort()); len =
-		 * sendPacket.getLength(); System.out.println("Length: " + len);
-		 * System.out.println("Containing: "); for (j=0;j<len;j++) {
-		 * System.out.println("byte " + j + " " + response[j]); }
-		 * 
-		 * // Send the datagram packet to the client via a new socket.
-		 * 
-		 * try { // Construct a new datagram socket and bind it to any port //
-		 * on the local host machine. This socket will be used to // send UDP
-		 * Datagram packets. sendReceiveSocket = new DatagramSocket(); } catch
-		 * (SocketException se) { se.printStackTrace(); System.exit(1); }
-		 * 
-		 * try { sendReceiveSocket.send(sendPacket); } catch (IOException e) {
-		 * e.printStackTrace(); System.exit(1); }
-		 * 
-		 * System.out.println("Server: packet sent using port " +
-		 * sendReceiveSocket.getLocalPort()); System.out.println();
-		 */
 
 		// We're finished with this socket, so close it.
 		sendReceiveSocket.close();
@@ -413,7 +372,7 @@ public class ClientConnectionThread implements Runnable {
 		{
 			if (verbose != TFTPServer.Verbosity.NONE)
 			{
-				System.out.println("Received final write packet from client");
+				System.out.println("Server Thread"+ threadNumber+ ": Received final write packet from client");
 				writeFile.finalizeFileWrite();
 			}
 
