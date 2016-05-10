@@ -333,6 +333,12 @@ class TFTPClientTransfer extends Thread
         return "";
     }
 
+    /**
+    *   Converts opcode to String
+    *
+    *   @param  byte[] containing opcode in first two bytes
+    *   @return String of converted opcode
+    */
     public static String opcodeToString(byte[] data)
     {
         if (data[0] != 0)
@@ -645,7 +651,6 @@ class TFTPClientTransfer extends Thread
                     }
                 }
 
-                // Send the datagram packet to the server via the send/receive socket.
                 try {
                     sendReceiveSocket.send(sendPacket);
                 } catch (IOException e) {

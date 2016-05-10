@@ -433,6 +433,12 @@ public class ClientConnectionThread implements Runnable {
 		msg[3] = (byte) (blockNumber % 256);        
 	}
 
+	/**
+    *   Converts opcode to String
+    *
+    *   @param  byte[] containing opcode in first two bytes
+    *   @return String of converted opcode
+    */
 	public static String opcodeToString(byte[] data)
     {
         if (data[0] != 0)
