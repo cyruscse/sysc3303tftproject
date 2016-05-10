@@ -185,7 +185,7 @@ public class TFTPClient
     */
     public void Testvalues() {
 		remoteFile = "/Users/cyrus/Documents/test3.txt";
-		localFile = "/Users/cyrus/Documents/gittest/sysc3303tftproject/build/max.dat";
+		localFile = "/Users/cyrus/Documents/gittest/sysc3303tftproject/testfiles/max.dat";
 		//requestType = TFTPClientTransfer.Request.WRITE;
 		requestType = TFTPClientTransfer.Request.WRITE;
 		//mode = TFTPClientTransfer.Mode.TEST;
@@ -479,7 +479,10 @@ class TFTPClientTransfer extends Thread
             }
         }
       
-        System.out.println("Client: sending request packet");
+        if (verbose != Verbosity.NONE)
+        {
+            System.out.println("Client: sending request packet");
+        }
        
         len = constructReqPacketData(msg);
 
@@ -506,7 +509,11 @@ class TFTPClientTransfer extends Thread
       
         // Form a String from the byte array, and print the string.
         String sending = new String(msg, 0, sendPacket.getLength());
-        System.out.println(sending);
+        
+        if (verbose == Verbosity.ALL)
+        { 
+            System.out.println("Client: request packet contains " + sending);
+        }
 
         // Send the datagram packet to the server via the send/receive socket.
         try {
@@ -516,12 +523,17 @@ class TFTPClientTransfer extends Thread
             return;
         }
 
+        System.out.println("Client: Beginning file transfer");
+
         if ( requestType == Request.WRITE ) 
         {
             msg = new byte[4];
             receivePacket = new DatagramPacket(msg, msg.length);
 
-            System.out.println("Client: Waiting for request acknowledgement");
+            if (verbose != Verbosity.NONE)
+            {
+                System.out.println("Client: Waiting for request acknowledgement");
+            }
           
             try {
                   sendReceiveSocket.receive(receivePacket);
@@ -559,7 +571,10 @@ class TFTPClientTransfer extends Thread
                     return;
                 }
                 
-                System.out.println("Client: Sending TFTP packet " + (j + 1) + "/" + fileOp.getNumTFTPBlocks());
+                if (verbose != Verbosity.NONE) 
+                {
+                    System.out.println("Client: Sending TFTP packet " + j + "/" + fileOp.getNumTFTPBlocks());
+                }
 
                 if ( verbose == Verbosity.ALL ) 
                 {
@@ -588,7 +603,10 @@ class TFTPClientTransfer extends Thread
                 msg = new byte[4];
                 receivePacket = new DatagramPacket(msg, msg.length);
 
-                System.out.println("Client: Waiting for data write acknowledgement");
+                if (verbose != Verbosity.NONE)
+                {
+                    System.out.println("Client: Waiting for data write acknowledgement");
+                }
               
                 try {
                       sendReceiveSocket.receive(receivePacket);
@@ -696,7 +714,7 @@ class TFTPClientTransfer extends Thread
             }
         }
         
-        System.out.println("File transfer complete");
+        System.out.println("Client: File transfer complete");
 
         // We're finished, so close the socket.
         sendReceiveSocket.close();

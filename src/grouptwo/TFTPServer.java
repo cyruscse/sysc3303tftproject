@@ -73,7 +73,7 @@ public class TFTPServer {
 				data = new byte[100];
 				receivePacket = new DatagramPacket(data, data.length);
 
-				System.out.println("Server: Waiting for packet.");
+				System.out.println("Server: Waiting for clients.");
 				
 				try {
 					receiveSocket.receive(receivePacket);
@@ -86,7 +86,6 @@ public class TFTPServer {
 
 				if (!receiveSocket.isClosed())
 				{
-					System.out.println("verbosity " + (verbosity == Verbosity.ALL));
 					Thread client = new Thread(new ClientConnectionThread(receivePacket, this, verbosity, clients.size()+1));
 					client.start();
 					clients.add(client);

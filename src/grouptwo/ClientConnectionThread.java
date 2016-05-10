@@ -70,7 +70,10 @@ public class ClientConnectionThread implements Runnable {
 		byte[] data, msg, response;
 		int len = 0, j = 0, k = 0;
 
-		System.out.println("Server: new thread created, Thread: " + threadNumber);
+		if (verbose == TFTPServer.Verbosity.ALL)
+		{
+			System.out.println("Server: new thread created, Thread: " + threadNumber);
+		}
 		data = new byte[100];
 		data = receivePacket.getData();
 		len = receivePacket.getLength();
@@ -124,7 +127,11 @@ public class ClientConnectionThread implements Runnable {
 				return;
 			}
 
-			System.out.println("Server Thread " + threadNumber +": "+ "block in file:" + fileOp.getNumTFTPBlocks());
+			if (verbose == TFTPServer.Verbosity.ALL)
+			{
+				System.out.println("Server Thread " + threadNumber +": "+ "block in file:" + fileOp.getNumTFTPBlocks());
+			}
+
 			for (j = 0; j < fileOp.getNumTFTPBlocks(); j++) {
 				msg = new byte[516];
 
@@ -135,20 +142,26 @@ public class ClientConnectionThread implements Runnable {
 					return;
 				}
 
-				System.out.println("Server: "+ "Thread " + threadNumber +": "+ "Sending TFTP packet " + (j + 1) + "/" + fileOp.getNumTFTPBlocks());
+				if (verbose != TFTPServer.Verbosity.NONE)
+				{
+					System.out.println("Server: "+ "Thread " + threadNumber +": "+ "Sending TFTP packet " + (j + 1) + "/" + fileOp.getNumTFTPBlocks());
+				}
 
 				if (verbose == TFTPServer.Verbosity.ALL) {
-				for (k = 0; k < len; k++) {
-					System.out.println("byte " + k + " " + (msg[k] & 0xFF));
-				}
+					for (k = 0; k < len; k++) {
+						System.out.println("byte " + k + " " + (msg[k] & 0xFF));
+					}
 				}
 
 				sendPacket = new DatagramPacket(msg, len, address, port);
-				System.out.println("Server Thread "+threadNumber+ ": sending packet.");
-				System.out.println("to host: " + sendPacket.getAddress());
-				System.out.println("to port: " + sendPacket.getPort());
+				if (verbose != TFTPServer.Verbosity.NONE)
+				{
+					System.out.println("Server Thread "+threadNumber+ ": sending packet.");
+					System.out.println("to host: " + sendPacket.getAddress());
+					System.out.println("to port: " + sendPacket.getPort());
 
-				System.out.println("Length: " + sendPacket.getLength());
+					System.out.println("Length: " + sendPacket.getLength());
+				}
 				// Send the datagram packet to the server via sendReceiveSocket
 				// socket.
 				try {
@@ -161,7 +174,10 @@ public class ClientConnectionThread implements Runnable {
 				msg = new byte[4];
 				receivePacket = new DatagramPacket(msg, msg.length);
 
-				System.out.println("Server Thread " + threadNumber +": Waiting for data read acknowledgement");
+				if (verbose != TFTPServer.Verbosity.NONE)
+				{
+					System.out.println("Server Thread " + threadNumber +": Waiting for data read acknowledgement");
+				}
 
 				try {
 					sendReceiveSocket.receive(receivePacket);
@@ -174,7 +190,7 @@ public class ClientConnectionThread implements Runnable {
 				byte[] rcvd = receivePacket.getData();
 				System.out.println("ack " + rcvd[0] + " " + rcvd[1] + " " + rcvd[2] + " " + rcvd[3] + " " + (byte) j/256 + " " + (byte) j % 256);
 
-				if (rcvd[0] == 0 && rcvd[1] == 4 && (rcvd[2] & 0xFF) == ((byte)(j / 256) & 0xFF) && (rcvd[3] & 0xFF) ==  ((byte)(j % 256) & 0xFF)) {
+				if (verbose == TFTPServer.Verbosity.ALL && rcvd[0] == 0 && rcvd[1] == 4 && (rcvd[2] & 0xFF) == ((byte)(j / 256) & 0xFF) && (rcvd[3] & 0xFF) ==  ((byte)(j % 256) & 0xFF)) {
 					System.out.println("Server Thread " + threadNumber +": "+ "ACK valid!");
 
 
@@ -184,7 +200,8 @@ public class ClientConnectionThread implements Runnable {
 					return;
 				}
 
-				System.out.println("Server Thread " + threadNumber +": "+"done Block " + j);
+				if (verbose == TFTPServer.Verbosity.ALL)
+					System.out.println("Server Thread " + threadNumber +": "+"done Block " + j);
 			}
 
 			//Close file now that we are done sending it to client
@@ -236,12 +253,17 @@ public class ClientConnectionThread implements Runnable {
 			Boolean willExit = false;
 			int blockNum = 0;
 
+			System.out.println("Server Thread " + threadNumber + ": Beginning file transfer");
+
 			while (writingFile)
 			{
 				msg = new byte[516];
 				receivePacket = new DatagramPacket(msg, msg.length);
 
-				System.out.println("Server Thread " + threadNumber + ": Waiting for next data packet");
+				if (verbose != TFTPServer.Verbosity.NONE)
+				{
+					System.out.println("Server Thread " + threadNumber + ": Waiting for next data packet");
+				}
 
 				try {
 					sendReceiveSocket.receive(receivePacket);
@@ -274,6 +296,11 @@ public class ClientConnectionThread implements Runnable {
 					return;
 				}
 
+				if (verbose != TFTPServer.Verbosity.NONE)
+				{
+					System.out.println("Server Thread " + threadNumber + ": Received TFTP packet " + blockNum);
+				}
+
 				//Form ACK packet
 				msg = new byte[4];
 
@@ -283,7 +310,7 @@ public class ClientConnectionThread implements Runnable {
 
 				if ( verbose != TFTPServer.Verbosity.NONE ) 
 				{
-					System.out.println("Server Thread " + threadNumber +": Sending ACK packet " + blockNum);
+					System.out.println("Server Thread " + threadNumber + ": Sending ACK packet " + blockNum);
 					printPacketDetails(sendPacket);
 					if ( verbose == TFTPServer.Verbosity.ALL )
 					{
@@ -316,7 +343,7 @@ public class ClientConnectionThread implements Runnable {
 			// throw new Exception("Not yet implemented");
 		}
 
-		System.out.println("Server Thread " + threadNumber +": File transfer complete");
+		System.out.println("Server Thread " + threadNumber + ": File transfer complete");
 
 
 		// We're finished with this socket, so close it.
@@ -328,8 +355,7 @@ public class ClientConnectionThread implements Runnable {
 	// Constructs data packet for TFTP writes
 	// Consists of DATA opcode, block number and actual data
 	// Uses the FileOperation class to divide the file into data packets
-	private int constructNextReadPacket(byte[] msg, int blockNumber, FileOperation writeFile)
-			throws FileNotFoundException {
+	private int constructNextReadPacket(byte[] msg, int blockNumber, FileOperation writeFile) throws FileNotFoundException {
 		msg[0] = 0;
 		msg[1] = 3;
 		msg[2] = (byte) (blockNumber / 256);
