@@ -184,8 +184,8 @@ public class TFTPClient
     *   @return none
     */
     public void Testvalues() {
-		remoteFile = "/Users/cyrus/Documents/testing2";
-		localFile = "/Users/cyrus/Documents/gittest/sysc3303tftproject/build/512.dat";
+		remoteFile = "C:\\Users\\kinan\\Downloads\\tst.pdf";
+		localFile = "C:\\Users\\kinan\\Downloads\\orbit lab.pdf";
 		//requestType = TFTPClientTransfer.Request.WRITE;
 		requestType = TFTPClientTransfer.Request.WRITE;
 		//mode = TFTPClientTransfer.Mode.TEST;
