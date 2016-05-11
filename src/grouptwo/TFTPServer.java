@@ -1,10 +1,5 @@
 package grouptwo;
 
-/**
- * This class is responsible for the UI of the server, it also listens on
- * port 69 for any r/w requests and creates a thread for each request to be handled
- * it is also responisble for the safe termination of the server 
- */
 import java.io.*;
 import java.net.*;
 import java.util.*;
@@ -12,7 +7,16 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import grouptwo.TFTPServer.Verbosity;
 
-public class TFTPServer {
+/**
+* TFTPServer is the main class for the server, it creates an instance of the CLI class
+* and handles creating multiple ClientConnectionThreads. TFTPServer delays graceful exits
+* until each ClientConnectionThread has returned and blocks new ClientConnectionThreads
+* once the operator has indicated that the server should shut down
+*
+* @author        Cyrus Sadeghi
+*/
+public class TFTPServer 
+{
 	public static enum Verbosity { NONE, SOME, ALL };
 	public static enum Request { READ, WRITE, ERROR };
 	private DatagramSocket receiveSocket;
@@ -24,6 +28,12 @@ public class TFTPServer {
 	private Boolean acceptConnections;
 	private byte [] data;
 
+	/**
+    *   Constructor for TFTPServer, initializes data that will be used to manage client transfer threads
+    *
+    *   @param  none
+    *   @return TFTPServer
+    */
 	public TFTPServer()
 	{
 		try {
@@ -40,26 +50,38 @@ public class TFTPServer {
 	}
 
 	/**
-	 * used by thread t to notify the server that its done
-	 * @param t
-	 */
+    *   Called by returning ClientConnectionThread, indicates to TFTPServer that the transfer is complete
+    *
+    *   @param  Thread ClientConnectionThread that finished
+    *   @return none
+    */
 	public void threadDone(Thread t)
 	{
 		clients.remove(t);
 		runningClientCount = clients.size();
 	}
+	
 	/**
-	 * stops accepting connections from new clients
-	 */
+    *   Called by CLI class, indicates to TFTPServer that it should begin exiting
+    *   (i.e. by closing the receiveSocket)
+    *
+    *   @param  none
+    *   @return none
+    */
 	public void initiateExit()
 	{
 		acceptConnections = false;
 		receiveSocket.close();
 	}
+	
 	/**
-	 * listens on port 69 and accepts any new requests and
-	 * creates a thread to handle the request
-	 */
+    *   Spawns CLI thread, and begins receiving DatagramPackets on port 69 from new clients
+    *   Each new client spawns a ClientConnectionThread that communicates over a new port
+    *   in order to allow the server to respond to new clients
+    *
+    *   @param  none
+    *   @return none
+    */
 	private void receiveClients()
 	{ 
 		cliThread.start();
@@ -95,9 +117,12 @@ public class TFTPServer {
 	}
 	
 	/**
-	 * used to set the verbosity of the server and its threads to the given value
-	 * @param v
-	 */
+    *   Called by CLI thread, sets the verbosity for new ClientConnectionThreads
+    *   Note: This doesn't change verbosity for ongoing transfers
+    *
+    *   @param  Verbosity verbosity to set to
+    *   @return none
+    */
 	public void setVerbosity(Verbosity v) {
 		this.verbosity = v;
 	}
@@ -110,10 +135,14 @@ public class TFTPServer {
 
 	
 }
+
 /**
- * class to implement the thread 
- * responsible for handling the command line and user input
- */
+* TFTPServerCommandLine is the class that handles user input for TFTPServer
+* Its responsibilites are to set the verbosity for new ClientConnectionThreads
+* and notify the server that it should begin exiting gracefully
+*
+* @author        Cyrus Sadeghi
+*/
 class TFTPServerCommandLine extends Thread {
 	//"some" verbosity prints packet details omitting data contents,
 	//"all" verbosity prints everything (including the 512 data bytes)
@@ -122,6 +151,13 @@ class TFTPServerCommandLine extends Thread {
 	private TFTPServer parentServer;
 	private Boolean cliRunning;
 
+	/**
+    *   Constructor for TFTPServerCommandLine, gets reference to TFTPServer object
+    *   in order to set verbosity and initiate exit
+    *
+    *   @param  TFTPServer server
+    *   @return TFTPServerCommandLine
+    */
 	public TFTPServerCommandLine(TFTPServer parent)
 	{
 		parentServer = parent;
@@ -129,6 +165,12 @@ class TFTPServerCommandLine extends Thread {
 		cliRunning = true;
 	}
 
+	/**
+    *   Converts Verbosity to String
+    *
+    *   @param  Verbosity to convert to String
+    *   @return String of converted Verbosity
+    */
 	public static String verbosityToString(TFTPServer.Verbosity ver)
 	{
 		if ( ver == TFTPServer.Verbosity.NONE )
@@ -146,6 +188,12 @@ class TFTPServerCommandLine extends Thread {
 		return "";
 	}
 
+	/**
+    *   CLI for TFTPServer, allows user to set verbosity and initiate server shutdown
+    *
+    *   @param  none
+    *   @return none
+    */
 	public void commandLine() 
 	{
 		Scanner sc = new Scanner(System.in);

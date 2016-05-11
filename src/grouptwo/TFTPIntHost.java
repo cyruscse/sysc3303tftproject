@@ -16,6 +16,8 @@ public class TFTPIntHost {
    // UDP datagram packets and sockets used to send / receive
    private DatagramPacket sendPacket, receivePacket;
    private DatagramSocket receiveSocket, sendReceiveSocketClient, sendReceiveSocket;
+   public static enum Verbosity { NONE, SOME, ALL };
+   private static Verbosity verbosity;
    
    public TFTPIntHost()
    {
@@ -39,39 +41,62 @@ public class TFTPIntHost {
    {
       byte[] data;
 
-      int serverPort,clientPort, j=0, len;
+      int serverPort=0, clientPort=0, j=0, len=0;
       data = new byte[516];
       receivePacket = new DatagramPacket(data, data.length);
 
-      System.out.println("Simulator: Waiting for intial request from Client.");
+      if (verbosity != Verbosity.NONE)
+      {
+         System.out.println("Simulator: Waiting for intial request from Client.");
+      }
+      else
+      {
+         System.out.println("Simulator: Ready to exchange packets");
+      }
+       
       try {
-          receiveSocket.receive(receivePacket);
-       } catch (IOException e) {
-          e.printStackTrace();
-          System.exit(1);
-       }
-      System.out.println("Simulator: Packet received:");
-      System.out.println("From host: " + receivePacket.getAddress());
+         receiveSocket.receive(receivePacket);
+      } catch (IOException e) {
+         e.printStackTrace();
+         System.exit(1);
+      }
+
       clientPort = receivePacket.getPort();
-      System.out.println("Host port: " + clientPort);
       len = receivePacket.getLength();
-      System.out.println("Length: " + len);
-      System.out.println("Containing: " );
-      // print the bytes
-      for (j=0;j<len;j++) {
-         System.out.println("byte " + j + " " + data[j]);
+      if (verbosity != Verbosity.NONE)
+      {
+            System.out.println("Simulator: Packet received:");
+            System.out.println("From host: " + receivePacket.getAddress());
+            System.out.println("Host port: " + clientPort);
+            System.out.println("Length: " + len);
+
+            if (verbosity == Verbosity.ALL)
+            {
+               System.out.println("Containing: " );
+               // print the bytes
+               for (j=0;j<len;j++) {
+                  System.out.println("byte " + j + " " + data[j]);
+               }
+            }
       }
       // send initial request to server
       sendPacket = new DatagramPacket(data, len,
               receivePacket.getAddress(), 69);
-	  System.out.println("Simulator: sending request packet.");
-      System.out.println("To host: " + sendPacket.getAddress());
-      System.out.println("Destination host port: " + sendPacket.getPort());
+
       len = sendPacket.getLength();
-      System.out.println("Length: " + len);
-      System.out.println("Containing: ");
-      for (j=0;j<len;j++) {
-          System.out.println("byte " + j + " " + data[j]);
+      if (verbosity != Verbosity.NONE)
+      {
+   	   System.out.println("Simulator: sending request packet.");
+         System.out.println("To host: " + sendPacket.getAddress());
+         System.out.println("Destination host port: " + sendPacket.getPort());
+         System.out.println("Length: " + len);
+         if (verbosity == Verbosity.ALL)
+         {
+            System.out.println("Containing: ");
+            for (j=0;j<len;j++) {
+                System.out.println("byte " + j + " " + data[j]);
+            }
+         }
       }
 
       // Send the request packet to the server via the send/receive socket.
@@ -87,7 +112,11 @@ public class TFTPIntHost {
          data = new byte[516];
          receivePacket = new DatagramPacket(data, data.length);
 
-         System.out.println("Simulator: Waiting for packet from server.");
+         if (verbosity != Verbosity.NONE)
+         {
+            System.out.println("Simulator: Waiting for packet from server.");
+         }
+
          try {
             // Block until a datagram is received via sendReceiveSocket.
             sendReceiveSocket.receive(receivePacket);
@@ -96,32 +125,42 @@ public class TFTPIntHost {
             System.exit(1);
          }
 
-         // Process the received datagram.
-         System.out.println("Simulator: Packet received from server:");
-         System.out.println("From host: " + receivePacket.getAddress());
          serverPort = receivePacket.getPort();
-         System.out.println("Host port: " + receivePacket.getPort());
          len = receivePacket.getLength();
-         System.out.println("Length: " + len);
-         System.out.println("Containing: ");
-         for (j=0;j<len;j++) {
-            System.out.println("byte " + j + " " + data[j]);
+         // Process the received datagram.
+         if (verbosity != Verbosity.NONE)
+         {
+            System.out.println("Simulator: Packet received from server:");
+            System.out.println("From host: " + receivePacket.getAddress());
+            System.out.println("Host port: " + receivePacket.getPort());
+            System.out.println("Length: " + len);
+            if (verbosity == Verbosity.ALL)
+            {
+               System.out.println("Containing: ");
+               for (j=0;j<len;j++) {
+                  System.out.println("byte " + j + " " + data[j]);
+               }
+            }
          }
          // send to client
          sendPacket = new DatagramPacket(data, receivePacket.getLength(),
                                receivePacket.getAddress(), clientPort);
 
-         System.out.println("Simulator: Sending packet to client:");
-         System.out.println("To host: " + sendPacket.getAddress());
-         System.out.println("Destination host port: " + sendPacket.getPort());
          len = sendPacket.getLength();
-         System.out.println("Length: " + len);
-         System.out.println("Containing: ");
-         for (j=0;j<len;j++) {
-            System.out.println("byte " + j + " " + data[j]);
-         }
-
-         
+         if (verbosity != Verbosity.NONE)
+         {
+            System.out.println("Simulator: Sending packet to client:");
+            System.out.println("To host: " + sendPacket.getAddress());
+            System.out.println("Destination host port: " + sendPacket.getPort());
+            System.out.println("Length: " + len);
+            if (verbosity == Verbosity.ALL)
+            {
+               System.out.println("Containing: ");
+               for (j=0;j<len;j++) {
+                  System.out.println("byte " + j + " " + data[j]);
+               }   
+            }
+         }   
 
          try {
         	 sendReceiveSocketClient.send(sendPacket);
@@ -130,15 +169,21 @@ public class TFTPIntHost {
             System.exit(1);
          }
 
-         System.out.println("Simulator: packet sent using port " + sendReceiveSocketClient.getLocalPort());
-         System.out.println();
-         
+         if (verbosity != Verbosity.NONE)
+         {
+            System.out.println("Simulator: packet sent using port " + sendReceiveSocketClient.getLocalPort());
+            System.out.println();
+         }
          
          // receive from client
          data = new byte[516];
          receivePacket = new DatagramPacket(data, data.length);
 
-         System.out.println("Simulator: Waiting for packet from client.");
+         if (verbosity != Verbosity.NONE)
+         {
+            System.out.println("Simulator: Waiting for packet from client.");
+         }
+         
          try {
             // Block until a datagram is received via sendReceiveSocket.
         	 sendReceiveSocketClient.receive(receivePacket);
@@ -147,27 +192,44 @@ public class TFTPIntHost {
             System.exit(1);
          }
 
-         // Process the received datagram.
-         System.out.println("Simulator: Packet received from client:");
-         System.out.println("From host: " + receivePacket.getAddress());
-         System.out.println("Host port: " + receivePacket.getPort());
          len = receivePacket.getLength();
-         System.out.println("Length: " + len);
-         System.out.println("Containing: ");
-         for (j=0;j<len;j++) {
-            System.out.println("byte " + j + " " + data[j]);
+         // Process the received datagram.
+         if (verbosity != Verbosity.NONE)
+         {
+            System.out.println("Simulator: Packet received from client:");
+            System.out.println("From host: " + receivePacket.getAddress());
+            System.out.println("Host port: " + receivePacket.getPort());
+            System.out.println("Length: " + len);
+            if (verbosity == Verbosity.ALL)
+            {
+               System.out.println("Containing: ");
+               for (j=0;j<len;j++) {
+                  System.out.println("byte " + j + " " + data[j]);
+               }
+            }
          }
          
          sendPacket = new DatagramPacket(data, len,
                  receivePacket.getAddress(), serverPort);
-   	  		System.out.println("Simulator: sending packet to server.");
-         System.out.println("To host: " + sendPacket.getAddress());
-         System.out.println("Destination host port: " + sendPacket.getPort());
+   	  	
+         if (verbosity != Verbosity.NONE)
+         {
+            System.out.println("Simulator: sending packet to server.");
+         }
+
          len = sendPacket.getLength();
-         System.out.println("Length: " + len);
-         System.out.println("Containing: ");
-         for (j=0;j<len;j++) {
-             System.out.println("byte " + j + " " + data[j]);
+         if (verbosity != Verbosity.NONE)
+         {
+            System.out.println("To host: " + sendPacket.getAddress());
+            System.out.println("Destination host port: " + sendPacket.getPort());
+            System.out.println("Length: " + len);
+            if (verbosity == Verbosity.ALL)
+            {
+               System.out.println("Containing: ");
+               for (j=0;j<len;j++) {
+                   System.out.println("byte " + j + " " + data[j]);
+               }
+            }
          }
 
          // Send to server.
@@ -185,6 +247,23 @@ public class TFTPIntHost {
    public static void main( String args[] )
    {
       TFTPIntHost s = new TFTPIntHost();
+      Scanner sc = new Scanner(System.in);
+      System.out.println("Enter verbosity (none, some, all): ");
+      String strVerbosity = sc.nextLine();
+
+      if ( strVerbosity.equalsIgnoreCase("all") ) 
+      {
+          verbosity = Verbosity.ALL;
+      }
+      else if ( strVerbosity.equalsIgnoreCase("some") ) 
+      {
+          verbosity = Verbosity.SOME;
+      }
+      else
+      {
+          verbosity = Verbosity.NONE;
+      }
+
       s.passOnTFTP();
    }
 }

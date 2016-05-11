@@ -20,7 +20,7 @@ public class TFTPClient
     private TFTPClientTransfer.Request requestType;
     private TFTPClientTransfer.Verbosity verbosity;
     private TFTPClientTransfer.Mode mode;
-    private boolean TESTING = true;
+    private boolean TESTING = false;
 
     /**
     *   Constructor for TFTPClient, initializes data that will be used in CLI
@@ -60,9 +60,13 @@ public class TFTPClient
 
         while ( cliRunning ) 
         {
-            if ( remoteFile.isEmpty() == false && localFile.isEmpty() == false ) 
+            if ( !remoteFile.isEmpty() && !localFile.isEmpty() && !clientTransferring ) 
             {
                 clientReady = true;
+            }
+            else
+            {
+                clientReady = false;
             }
 
             if ( clientTransferring )
@@ -198,12 +202,10 @@ public class TFTPClient
     *   @return none
     */
     public void Testvalues() {
-		remoteFile = "/Users/cyrus/Documents/test3.txt";
-		localFile = "/Users/cyrus/Documents/gittest/sysc3303tftproject/testfiles/max.dat";
-		//requestType = TFTPClientTransfer.Request.WRITE;
-		requestType = TFTPClientTransfer.Request.WRITE;
-		//mode = TFTPClientTransfer.Mode.TEST;
-		mode = TFTPClientTransfer.Mode.NORMAL;
+		localFile = "";
+		remoteFile = "";
+		requestType = TFTPClientTransfer.Request.READ;
+		mode = TFTPClientTransfer.Mode.TEST;
 		verbosity = TFTPClientTransfer.Verbosity.ALL;
 	}
 
@@ -627,7 +629,7 @@ class TFTPClientTransfer extends Thread
                 
                 if (verbose != Verbosity.NONE) 
                 {
-                    System.out.println("Client: Sending TFTP packet " + j + "/" + fileOp.getNumTFTPBlocks());
+                    System.out.println("Client: Sending TFTP packet " + j + "/" + (fileOp.getNumTFTPBlocks() - 1));
                 }
 
                 try {
@@ -644,9 +646,9 @@ class TFTPClientTransfer extends Thread
                     if ( verbose == Verbosity.ALL )
                     {
                         System.out.println("Containing: ");
-                        for (j = 0; j < sendPacket.getLength(); j++) 
+                        for (k = 0; k < sendPacket.getLength(); k++) 
                         {
-                            System.out.println("byte " + j + " " + (msg[j] & 0xFF));
+                            System.out.println("byte " + k + " " + (msg[k] & 0xFF));
                         }
                     }
                 }

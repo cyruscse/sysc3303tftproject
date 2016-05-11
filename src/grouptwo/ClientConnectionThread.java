@@ -10,6 +10,15 @@ import java.net.UnknownHostException;
 
 import grouptwo.FileOperation;
 
+/**
+* ClientConnectionThread is the TFTP transferring class for the server.
+* A new ClientConnectionThread is created for each client that sends a RRQ or WRQ
+* Many methods in this class have the same functionality as the client (only "mirrored",
+* i.e. WRQ writes to local machine on server, but read from local machine on client)
+*
+* @author        Kenan El-Gaouny
+* @author        Eliab Woldeyes
+*/
 public class ClientConnectionThread implements Runnable {
 	// types of requests we can receive
 	public static enum Request {
@@ -191,12 +200,12 @@ public class ClientConnectionThread implements Runnable {
 				}
 				// check if received is an ack
 				byte[] rcvd = receivePacket.getData();
-				System.out.println("ack " + rcvd[0] + " " + rcvd[1] + " " + rcvd[2] + " " + rcvd[3] + " " + (byte) j/256 + " " + (byte) j % 256);
 
-				if (verbose == TFTPServer.Verbosity.ALL && rcvd[0] == 0 && rcvd[1] == 4 && (rcvd[2] & 0xFF) == ((byte)(j / 256) & 0xFF) && (rcvd[3] & 0xFF) ==  ((byte)(j % 256) & 0xFF)) {
-					System.out.println("Server Thread " + threadNumber +": "+ "ACK valid!");
-
-
+				if (rcvd[0] == 0 && rcvd[1] == 4 && (rcvd[2] & 0xFF) == ((byte)(j / 256) & 0xFF) && (rcvd[3] & 0xFF) ==  ((byte)(j % 256) & 0xFF)) {
+					if (verbose != TFTPServer.Verbosity.NONE)
+					{
+						System.out.println("Server Thread " + threadNumber +": "+ "ACK valid!");
+					}
 				}
 				else{
 					System.out.println("Server Thread " + threadNumber +": "+ "ACK is invalid!");
