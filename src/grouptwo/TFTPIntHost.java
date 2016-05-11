@@ -314,6 +314,50 @@ class TFTPIntHostCommandLine extends Thread
         return "";
     }
 
+    /*** make a common menu method ***/
+    private void modifyPacket(Scanner sc)
+    {
+        String scIn = new String();
+
+        while (true)
+        {
+            System.out.println("Modification Menu");
+            System.our.println("del: Delay packet");
+            System.out.println("dup: Duplicate packet");
+            System.out.println("l: Lose packet");
+            System.out.println("r: Return to Main Menu");
+
+            scIn = sc.nextLine();
+
+            if ( scIn.equalsIgnoreCase("del") )
+            {
+
+            }
+            else if ( scIn.equalsIgnoreCase("dup") )
+            {
+
+            }
+            else if ( scIn.equalsIgnoreCase("l") )
+            {
+                
+            }
+            else if ( scIn.equalsIgnoreCase("r") )
+            {
+                return;
+            }
+            else if ( !scIn.equalsIgnoreCase("") )
+            {
+                System.out.println("Invalid option");
+            }
+        }
+    }
+
+    private void printModifyDetails()
+    {
+        System.out.println("this doesn't do anything yet");
+        return;
+    }
+
     /**
     *   CLI for TFTPIntHost, allows user to set verbosity and exit (non-graceful)
     *
@@ -328,12 +372,22 @@ class TFTPIntHostCommandLine extends Thread
         while (cliRunning)
         {
             System.out.println("TFTP Error Simulator");
+            System.out.println("m: Modify packet");
+            System.out.println("p: List packets that will be modified");
             System.out.println("v: Set verbosity (current: " + verbosityToString(verbosity) + ")");
             System.out.println("q: Quit");
             
             scIn = sc.nextLine();
 
-            if ( scIn.equalsIgnoreCase("v") ) 
+            if ( scIn.equalsIgnoreCase("m") )
+            {
+                modifyPacket(sc);
+            }
+            else if ( scIn.equalsIgnoreCase("p") )
+            {
+                printModifyDetails();
+            }
+            else if ( scIn.equalsIgnoreCase("v") ) 
             {
                 System.out.println("Enter verbosity (none, some, all): ");
                 String strVerbosity = sc.nextLine();
@@ -355,10 +409,13 @@ class TFTPIntHostCommandLine extends Thread
                     System.out.println("Invalid verbosity");
                 }
             }
-
             else if ( scIn.equalsIgnoreCase("q") ) 
             {
                 System.exit(1);
+            }
+            else if ( scIn.equalsIgnoreCase("") == false ) 
+            {
+                System.out.println("Invalid option");
             }
         }
     }
