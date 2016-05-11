@@ -22,7 +22,7 @@ public class TFTPServer
 	private DatagramSocket receiveSocket;
 	private DatagramPacket receivePacket;
 	private List<Thread> clients;
-	TFTPServerCommandLine cliThread;
+	private TFTPServerCommandLine cliThread;
 	private Integer runningClientCount;
 	private volatile Verbosity verbosity;
 	private Boolean acceptConnections;
@@ -123,7 +123,8 @@ public class TFTPServer
     *   @param  Verbosity verbosity to set to
     *   @return none
     */
-	public void setVerbosity(Verbosity v) {
+	public void setVerbosity(Verbosity v) 
+	{
 		this.verbosity = v;
 	}
 	
@@ -132,8 +133,6 @@ public class TFTPServer
 		TFTPServer s = new TFTPServer();
 		s.receiveClients();
 	}
-
-	
 }
 
 /**
@@ -226,7 +225,7 @@ class TFTPServerCommandLine extends Thread {
 				}
 				else 
 				{
-					System.out.println("Invalid request type");
+					System.out.println("Invalid verbosity");
 				}
 			}
 
@@ -238,7 +237,8 @@ class TFTPServerCommandLine extends Thread {
 		}
 	}
 
-	public void run() {
+	public void run() 
+	{
 		this.commandLine();
 	}
 }

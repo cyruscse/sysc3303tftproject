@@ -20,7 +20,7 @@ public class TFTPClient
     private TFTPClientTransfer.Request requestType;
     private TFTPClientTransfer.Verbosity verbosity;
     private TFTPClientTransfer.Mode mode;
-    private boolean TESTING = false;
+    private boolean TESTING = true;
 
     /**
     *   Constructor for TFTPClient, initializes data that will be used in CLI
@@ -202,8 +202,8 @@ public class TFTPClient
     *   @return none
     */
     public void Testvalues() {
-		localFile = "";
-		remoteFile = "";
+		localFile = "/Users/cyrus/Documents/gittest/sysc3303tftproject/testfiles/512.dat";
+		remoteFile = "/Users/cyrus/Documents/test.txt";
 		requestType = TFTPClientTransfer.Request.READ;
 		mode = TFTPClientTransfer.Mode.TEST;
 		verbosity = TFTPClientTransfer.Verbosity.ALL;
