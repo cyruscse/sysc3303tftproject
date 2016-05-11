@@ -20,6 +20,7 @@ public class TFTPIntHost
     private Verbosity verbosity;
     private TFTPIntHostCommandLine cliThread;
     private byte [] data;
+    private Set<simulatePacketInfo> simulateSet = new HashSet<simulatePacketInfo>(); //To be passed to ErrorSimulator 
 
     public TFTPIntHost()
     {
@@ -51,7 +52,7 @@ public class TFTPIntHost
                 System.exit(1);
             }
 
-            Thread client = new Thread(new ErrorSimulator(receivePacket, verbosity));
+            Thread client = new Thread(new ErrorSimulator(receivePacket, verbosity, simulateSet));
             client.start();
         }
     }
@@ -83,14 +84,19 @@ class ErrorSimulator extends Thread
     private InetAddress clientAddress;
     private int clientPort, serverPort, len;
     private byte [] data;
+    private Set<simulatePacketInfo> simulateSet = new HashSet<simulatePacketInfo>();
+    private int delayAmount;
+    private simulatePacketInfo.mode Simulate;
+   
 
-    public ErrorSimulator(DatagramPacket firstPacket, TFTPIntHost.Verbosity verbose)
+    public ErrorSimulator(DatagramPacket firstPacket, TFTPIntHost.Verbosity verbose, Set<simulatePacketInfo> simulateSet)
     {
         clientAddress = firstPacket.getAddress();
         clientPort = firstPacket.getPort();
         len = firstPacket.getLength();
         data = firstPacket.getData();
         verbosity = verbose;
+        this.simulateSet = simulateSet;
         
         try {
             sendReceiveSocket = new DatagramSocket();
@@ -99,6 +105,122 @@ class ErrorSimulator extends Thread
             System.exit(1);
         }
     }
+    
+    
+	//Decides whether to simulate error or send normally
+	public void errorSimulateSend() {
+		for (simulatePacketInfo check : simulateSet){
+			if (check.pType == getpType(sendPacket.getData()) && check.pNum == getpNum(sendPacket.getData()) && Simulate == simulatePacketInfo.mode.ERROR) {
+				if (check.LoseDuplicateDelay == simulatePacketInfo.errorSimulate.LOSE) {
+					losePacket(check);
+				} else if (check.LoseDuplicateDelay == simulatePacketInfo.errorSimulate.DUPLICATE) {
+					duplicatePacket(check);
+				} else if (check.LoseDuplicateDelay == simulatePacketInfo.errorSimulate.DELAY) {
+					delayPacket(check);
+				} else {
+					System.out.println("Error on " + check.pNum);
+				}
+				return;
+			} 
+		}
+		System.out.println("Sending packet " + getpNum(sendPacket.getData()) + " with no error simulation.");
+		try {
+	        sendReceiveSocket.send(sendPacket);
+	    } catch (IOException e) {
+	        e.printStackTrace();
+	        System.exit(1);
+	    }
+	}
+	
+	//returns packet type
+	 public static simulatePacketInfo.packetType getpType(byte[] data)
+	    {
+	        if (data[0] != 0)
+	        {
+	            return null;
+	        }
+
+	        if (data[1] == 1)
+	        {
+	        	return simulatePacketInfo.packetType.REQUEST;
+	        }
+	        else if (data[1] == 2)
+	        {
+	            return simulatePacketInfo.packetType.REQUEST;
+	        }
+	        else if (data[1] == 3)
+	        {
+	            return simulatePacketInfo.packetType.DATA;
+	        }
+	        else if (data[1] == 4)
+	        {
+	            return simulatePacketInfo.packetType.ACK;
+	        }
+
+	        return null;
+	    }
+	 
+	 //returns packet number
+	 public static int getpNum(byte[] data)
+	    {
+		 	Byte a = data[2];
+		 	Byte b = data[3];
+		 	int pNum = a.intValue() * 256 + b.intValue();
+	        return pNum;
+	    }
+    
+	//Do nothing with packet
+    public void losePacket(simulatePacketInfo check){
+    	System.out.println("Lose packet " + check.pNum);
+    }
+    
+    //Send the packet normally, wait a certain amount of time, then send again
+    public void duplicatePacket(simulatePacketInfo check){
+   	 System.out.println("Duplicate packet " + check.pNum);
+	 try {
+        sendReceiveSocket.send(sendPacket);
+    } catch (IOException e) {
+        e.printStackTrace();
+        System.exit(1);
+    }
+	 
+	 System.out.println("Wait " + delayAmount + " ms");
+	 try {
+		Thread.sleep(delayAmount);
+	} catch (InterruptedException e1) {
+		// TODO Auto-generated catch block
+		e1.printStackTrace();
+	}
+	 
+	 try {
+         sendReceiveSocket.send(sendPacket);
+     } catch (IOException e) {
+         e.printStackTrace();
+         System.exit(1);
+     }   
+	 
+   }
+    
+    
+    //Wait a certain amount of time then send packet
+    public void delayPacket(simulatePacketInfo check){
+    	System.out.println("Delay packet " + check.pNum + "by " + delayAmount + "ms ");
+    	
+    	 try {
+    			Thread.sleep(delayAmount);
+    		} catch (InterruptedException e1) {
+    			// TODO Auto-generated catch block
+    			e1.printStackTrace();
+    		}
+    	 
+    	 try {
+             sendReceiveSocket.send(sendPacket);
+         } catch (IOException e) {
+             e.printStackTrace();
+             System.exit(1);
+         }      
+    }
+    
 
     public void passOnTFTP()
     {
@@ -125,12 +247,7 @@ class ErrorSimulator extends Thread
             }
         }
 
-        try {
-            sendReceiveSocket.send(sendPacket);
-        } catch (IOException e) {
-            e.printStackTrace();
-            System.exit(1);
-        }      
+        errorSimulateSend(); 
         
         while (true) 
         {
@@ -190,18 +307,7 @@ class ErrorSimulator extends Thread
                 }
             }   
 
-            try {
-                sendReceiveSocket.send(sendPacket);
-            } catch (IOException e) {
-                e.printStackTrace();
-                System.exit(1);
-            }
-
-            if (verbosity != TFTPIntHost.Verbosity.NONE)
-            {
-                System.out.println("Simulator: packet sent using port " + sendReceiveSocket.getLocalPort());
-                System.out.println();
-            }
+            errorSimulateSend();
 
             // receive from client
             data = new byte[516];
@@ -262,12 +368,7 @@ class ErrorSimulator extends Thread
             }
 
             // Send to server.
-            try {
-                sendReceiveSocket.send(sendPacket);
-            } catch (IOException e) {
-                e.printStackTrace();
-                System.exit(1);
-            }
+            errorSimulateSend();
          
         } // end of loop
     }
@@ -426,4 +527,40 @@ class TFTPIntHostCommandLine extends Thread
     }
 }
 
+//Packet type, packet number, and error to simulate stored
+	class simulatePacketInfo {
+		public static enum errorSimulate { LOSE, DUPLICATE, DELAY };
+	    public static enum packetType { ACK, DATA, REQUEST };
+		public static enum mode { NORMAL, ERROR };
+		final packetType pType;
+		final int pNum;
+		final errorSimulate LoseDuplicateDelay;
 
+		simulatePacketInfo(String pType, String pNum, String LoseDuplicateDelay) {
+			if (pType.equalsIgnoreCase("ack")) {
+				this.pType = packetType.ACK;
+			} else if (pType.equalsIgnoreCase("data")) {
+				this.pType = packetType.DATA;
+			} else if (pType.equalsIgnoreCase("request")) {
+				this.pType = packetType.REQUEST;
+			} else {
+				this.pType = null;
+			}
+			
+			this.pNum = Integer.parseInt(pNum);
+			
+			if (LoseDuplicateDelay.equalsIgnoreCase("lose")) {
+				this.LoseDuplicateDelay = errorSimulate.LOSE;
+			} else if (LoseDuplicateDelay.equalsIgnoreCase("duplicate")) {
+				this.LoseDuplicateDelay = errorSimulate.DUPLICATE;
+			} else if (LoseDuplicateDelay.equalsIgnoreCase("delay")) {
+				this.LoseDuplicateDelay = errorSimulate.DELAY;
+			} else {
+				this.LoseDuplicateDelay = null;
+			}
+			
+			//if (this.pType != null && this.LoseDuplicateDelay != null){
+			//	simulateSet.add(this);
+			//}
+		}
+	}
