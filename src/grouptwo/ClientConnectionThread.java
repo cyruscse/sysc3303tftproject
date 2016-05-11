@@ -59,7 +59,6 @@ public class ClientConnectionThread implements Runnable {
 			System.out.println("Server: new thread created, Thread: " + threadNumber);
 		}
 		
-		data = new byte[100];
 		data = receivePacket.getData();
 		len = receivePacket.getLength();
 
@@ -138,6 +137,7 @@ public class ClientConnectionThread implements Runnable {
 				
 				TFTPCommon.sendPacket(sendPacket,sendReceiveSocket);
 
+				// Receive the client response for the data packet we just sent
 				msg = new byte[4];
 				receivePacket = new DatagramPacket(msg, msg.length);
 
@@ -190,29 +190,14 @@ public class ClientConnectionThread implements Runnable {
 
 			// Send the initial ACK (block 0) that will establish a connection with the client 
 			// for the file transfer.
-			response = new byte[]{0,4,0,0};
-			sendPacket = new DatagramPacket(response, response.length, receivePacket.getAddress(), receivePacket.getPort());
+			data = new byte[]{0,4,0,0};
+			
+			TFTPCommon.createPacket(sendPacket,data,data.length,receivePacket.getAddress(),receivePacket.getPort());
 
-			if ( verbose != TFTPCommon.Verbosity.NONE ) 
-			{
-				printPacketDetails(sendPacket);
-				if ( verbose == TFTPCommon.Verbosity.ALL )
-				{
-					System.out.println("Containing: ");
-					for (j = 0; j < sendPacket.getLength(); j++) 
-					{
-						System.out.println("byte " + j + " " + sendPacket.getData()[j]);
-					}
-				}
-			}
+			TFTPCommon.printPacketDetails(sendPacket,verbose,false);
 
 			// Send the datagram packet to the server via the send/receive socket.
-			try {
-				sendReceiveSocket.send(sendPacket);
-			} catch (IOException e) {
-				e.printStackTrace();
-				return;
-			}
+			TFTPCommon.sendPacket(sendPacket,sendReceiveSocket);
 
 			Boolean writingFile = true;
 			Boolean willExit = false;
@@ -230,32 +215,16 @@ public class ClientConnectionThread implements Runnable {
 					System.out.println("Server Thread " + threadNumber + ": Waiting for next data packet");
 				}
 
-				try {
-					sendReceiveSocket.receive(receivePacket);
-				} catch(IOException e) {
-					e.printStackTrace();
-					return;
-				}
+				TFTPCommon.receivePacket(receivePacket,sendReceiveSocket);
 
 				len = receivePacket.getLength();
-
-				if ( verbose != TFTPCommon.Verbosity.NONE ) 
-				{
-					printPacketDetails(receivePacket);
-					if ( verbose == TFTPCommon.Verbosity.ALL )
-					{
-						System.out.println("Containing: ");
-						for (j = 0; j < receivePacket.getLength(); j++) 
-						{
-							System.out.println("byte " + j + " " + msg[j]);
-						}
-					}
-				}
+				
+				TFTPCommon.printPacketDetails(receivePacket,verbose,false);
 
 				//Process data packet, processNextReadPacket will determine
 				//if its the last data packet
 				try {
-					willExit = processNextWritePacket(msg, len, fileOp);
+					willExit = TFTPCommon.validDataPacket(msg, len, fileOp, verbose);
 				} catch (Exception e) {
 					e.printStackTrace();
 					return;
@@ -269,30 +238,13 @@ public class ClientConnectionThread implements Runnable {
 				//Form ACK packet
 				msg = new byte[4];
 
-				constructAckPacketData(msg, blockNum);
+				TFTPCommon.constructAckPacket(msg, blockNum);
 
 				sendPacket = new DatagramPacket(msg, msg.length, receivePacket.getAddress(), receivePacket.getPort());
 
-				if ( verbose != TFTPCommon.Verbosity.NONE ) 
-				{
-					System.out.println("Server Thread " + threadNumber + ": Sending ACK packet " + blockNum);
-					printPacketDetails(sendPacket);
-					if ( verbose == TFTPCommon.Verbosity.ALL )
-					{
-						System.out.println("Containing: ");
-						for (j = 0; j < sendPacket.getLength(); j++) 
-						{
-							System.out.println("byte " + j + " " + (msg[j] & 0xFF));
-						}
-					}
-				}
+				TFTPCommon.printPacketDetails(sendPacket,verbose,false);
 
-				try {
-					sendReceiveSocket.send(sendPacket);
-				} catch(IOException e) {
-					e.printStackTrace();
-					return;
-				}
+				TFTPCommon.sendPacket(sendPacket,sendReceiveSocket);
 
 				//Can't exit right after we receive the last data packet,
 				//we have to acknowledge the data first
@@ -309,7 +261,6 @@ public class ClientConnectionThread implements Runnable {
 		}
 
 		System.out.println("Server Thread " + threadNumber + ": File transfer complete");
-
 
 		// We're finished with this socket, so close it.
 		sendReceiveSocket.close();
