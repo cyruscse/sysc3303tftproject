@@ -165,8 +165,8 @@ class ErrorSimulator extends Thread
 	    {
 		 	Byte a = data[2];
 		 	Byte b = data[3];
-		 	int pNum = a.intValue() * 256 + b.intValue();
-	        return pNum;
+		 	
+	        return Byte.toUnsignedInt(a) * 256 + Byte.toUnsignedInt(b);;
 	    }
     
 	//Do nothing with packet
