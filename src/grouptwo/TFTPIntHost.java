@@ -12,15 +12,13 @@ import java.net.*;
 import java.util.*;
 
 public class TFTPIntHost 
-{
-    public static enum Verbosity { NONE, SOME, ALL };
-   
+{ 
     private DatagramSocket receiveSocket;
     private DatagramPacket receivePacket;
-    private Verbosity verbosity;
+    private TFTPCommon.Verbosity verbosity;
     private TFTPIntHostCommandLine cliThread;
     private byte [] data;
-    private Set<simulatePacketInfo> simulateSet = new HashSet<simulatePacketInfo>(); //To be passed to ErrorSimulator 
+    private Set<SimulatePacketInfo> toModify;
 
     public TFTPIntHost()
     {
@@ -31,8 +29,25 @@ public class TFTPIntHost
             System.exit(1);
         }
 
-        verbosity = Verbosity.NONE;
+        verbosity = TFTPCommon.Verbosity.NONE;
         cliThread = new TFTPIntHostCommandLine(this);
+    }
+
+    /**
+    *   Called by CLI thread, sets the verbosity for new ClientConnectionThreads
+    *   Note: This doesn't change verbosity for ongoing transfers
+    *
+    *   @param  Verbosity verbosity to set to
+    *   @return none
+    */
+    public void setVerbosity(TFTPCommon.Verbosity v) 
+    {
+        this.verbosity = v;
+    }
+
+    public void nextSimulateSet(Set<SimulatePacketInfo> nextSet)
+    {
+        toModify = nextSet;
     }
 
     private void processClients()
@@ -52,21 +67,9 @@ public class TFTPIntHost
                 System.exit(1);
             }
 
-            Thread client = new Thread(new ErrorSimulator(receivePacket, verbosity, simulateSet));
+            Thread client = new Thread(new ErrorSimulator(receivePacket, verbosity, toModify));
             client.start();
         }
-    }
-
-    /**
-    *   Called by CLI thread, sets the verbosity for new ClientConnectionThreads
-    *   Note: This doesn't change verbosity for ongoing transfers
-    *
-    *   @param  Verbosity verbosity to set to
-    *   @return none
-    */
-    public void setVerbosity(Verbosity v) 
-    {
-        this.verbosity = v;
     }
 
     public static void main( String args[] )
@@ -80,16 +83,13 @@ class ErrorSimulator extends Thread
 {
     private DatagramSocket sendReceiveSocket;
     private DatagramPacket sendPacket, receivePacket;
-    private TFTPIntHost.Verbosity verbosity;
+    private TFTPCommon.Verbosity verbosity;
     private InetAddress clientAddress;
     private int clientPort, serverPort, len;
     private byte [] data;
-    private Set<simulatePacketInfo> simulateSet = new HashSet<simulatePacketInfo>();
-    private int delayAmount;
-    private simulatePacketInfo.mode Simulate;
-   
+    private Set<SimulatePacketInfo> simulateSet;
 
-    public ErrorSimulator(DatagramPacket firstPacket, TFTPIntHost.Verbosity verbose, Set<simulatePacketInfo> simulateSet)
+    public ErrorSimulator(DatagramPacket firstPacket, TFTPCommon.Verbosity verbose, Set<SimulatePacketInfo> simulateSet)
     {
         clientAddress = firstPacket.getAddress();
         clientPort = firstPacket.getPort();
@@ -108,22 +108,36 @@ class ErrorSimulator extends Thread
     
     
 	//Decides whether to simulate error or send normally
-	public void errorSimulateSend() {
-		for (simulatePacketInfo check : simulateSet){
-			if (check.pType == getpType(sendPacket.getData()) && check.pNum == getpNum(sendPacket.getData()) && Simulate == simulatePacketInfo.mode.ERROR) {
-				if (check.LoseDuplicateDelay == simulatePacketInfo.errorSimulate.LOSE) {
+    
+    //this needs logging with different verbosities
+	public void errorSimulateSend() 
+    {
+		for (SimulatePacketInfo check : simulateSet)
+        {
+			if (check.getPacketType() == TFTPCommon.getPacketType(sendPacket.getData()) && check.getPacketNum() == blockNumToPacket(sendPacket.getData()))
+            {
+				if (check.getModType() == TFTPCommon.ModificationType.LOSE) 
+                {
 					losePacket(check);
-				} else if (check.LoseDuplicateDelay == simulatePacketInfo.errorSimulate.DUPLICATE) {
+				} 
+                else if (check.getModType() == TFTPCommon.ModificationType.DUPLICATE) 
+                {
 					duplicatePacket(check);
-				} else if (check.LoseDuplicateDelay == simulatePacketInfo.errorSimulate.DELAY) {
+				} 
+                else if (check.getModType() == TFTPCommon.ModificationType.DELAY) 
+                {
 					delayPacket(check);
-				} else {
-					System.out.println("Error on " + check.pNum);
+				} 
+                else 
+                {
+					System.out.println("Error on " + check.getPacketNum());
 				}
 				return;
 			} 
 		}
-		System.out.println("Sending packet " + getpNum(sendPacket.getData()) + " with no error simulation.");
+
+		System.out.println("Sending packet " + blockNumToPacket(sendPacket.getData()) + " with no error simulation.");
+
 		try {
 	        sendReceiveSocket.send(sendPacket);
 	    } catch (IOException e) {
@@ -131,94 +145,69 @@ class ErrorSimulator extends Thread
 	        System.exit(1);
 	    }
 	}
-	
-	//returns packet type
-	 public static simulatePacketInfo.packetType getpType(byte[] data)
-	    {
-	        if (data[0] != 0)
-	        {
-	            return null;
-	        }
-
-	        if (data[1] == 1)
-	        {
-	        	return simulatePacketInfo.packetType.REQUEST;
-	        }
-	        else if (data[1] == 2)
-	        {
-	            return simulatePacketInfo.packetType.REQUEST;
-	        }
-	        else if (data[1] == 3)
-	        {
-	            return simulatePacketInfo.packetType.DATA;
-	        }
-	        else if (data[1] == 4)
-	        {
-	            return simulatePacketInfo.packetType.ACK;
-	        }
-
-	        return null;
-	    }
 	 
-	 //returns packet number
-	 public static int getpNum(byte[] data)
-	    {
-		 	Byte a = data[2];
-		 	Byte b = data[3];
-		 	
-	        return Byte.toUnsignedInt(a) * 256 + Byte.toUnsignedInt(b);;
-	    }
+	//returns packet number
+	public static int blockNumToPacket(byte[] data)
+    {
+	 	Byte a = data[2];
+	 	Byte b = data[3];
+	 	
+        return Byte.toUnsignedInt(a) * 256 + Byte.toUnsignedInt(b);
+    }
     
 	//Do nothing with packet
-    public void losePacket(simulatePacketInfo check){
-    	System.out.println("Lose packet " + check.pNum);
+    public void losePacket(SimulatePacketInfo check)
+    {
+    	System.out.println("Lose packet " + check.getPacketNum());
     }
     
     //Send the packet normally, wait a certain amount of time, then send again
-    public void duplicatePacket(simulatePacketInfo check){
-   	 System.out.println("Duplicate packet " + check.pNum);
-	 try {
-        sendReceiveSocket.send(sendPacket);
-    } catch (IOException e) {
-        e.printStackTrace();
-        System.exit(1);
+    public void duplicatePacket (SimulatePacketInfo check)
+    {
+        System.out.println("Duplicate packet " + check.getPacketNum());
+        try {
+            sendReceiveSocket.send(sendPacket);
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
+
+        System.out.println("Wait " + check.getDuplicateGap() + " ms");
+        
+        try {
+            Thread.sleep(check.getDuplicateGap());
+        } catch (InterruptedException e1) {
+            // TODO Auto-generated catch block
+            e1.printStackTrace();
+        }
+
+        try {
+            sendReceiveSocket.send(sendPacket);
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.exit(1);
+        }   
     }
-	 
-	 System.out.println("Wait " + delayAmount + " ms");
-	 try {
-		Thread.sleep(delayAmount);
-	} catch (InterruptedException e1) {
-		// TODO Auto-generated catch block
-		e1.printStackTrace();
-	}
-	 
-	 try {
-         sendReceiveSocket.send(sendPacket);
-     } catch (IOException e) {
-         e.printStackTrace();
-         System.exit(1);
-     }   
-	 
-   }
     
     
     //Wait a certain amount of time then send packet
-    public void delayPacket(simulatePacketInfo check){
-    	System.out.println("Delay packet " + check.pNum + "by " + delayAmount + "ms ");
+    public void delayPacket (SimulatePacketInfo check)
+    {
+    	System.out.println("Delay packet " + check.getPacketNum() + "by " + check.getDelayAmount() + "ms ");
     	
-    	 try {
-    			Thread.sleep(delayAmount);
-    		} catch (InterruptedException e1) {
-    			// TODO Auto-generated catch block
-    			e1.printStackTrace();
-    		}
+    	try {
+			Thread.sleep(check.getDelayAmount());
+		} catch (InterruptedException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
     	 
-    	 try {
-             sendReceiveSocket.send(sendPacket);
-         } catch (IOException e) {
-             e.printStackTrace();
-             System.exit(1);
-         }      
+        try {
+            sendReceiveSocket.send(sendPacket);
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.exit(1);
+        }      
     }
     
 
@@ -231,13 +220,13 @@ class ErrorSimulator extends Thread
 
         len = sendPacket.getLength();
         
-        if (verbosity != TFTPIntHost.Verbosity.NONE)
+        if (verbosity != TFTPCommon.Verbosity.NONE)
         {
             System.out.println("Simulator: sending request packet.");
             System.out.println("To host: " + sendPacket.getAddress());
             System.out.println("Destination host port: " + sendPacket.getPort());
             System.out.println("Length: " + len);
-            if (verbosity == TFTPIntHost.Verbosity.ALL)
+            if (verbosity == TFTPCommon.Verbosity.ALL)
             {
                 System.out.println("Containing: ");
                 for (j = 0; j < len; j++) 
@@ -255,7 +244,7 @@ class ErrorSimulator extends Thread
             data = new byte[516];
             receivePacket = new DatagramPacket(data, data.length);
 
-            if (verbosity != TFTPIntHost.Verbosity.NONE)
+            if (verbosity != TFTPCommon.Verbosity.NONE)
             {
                 System.out.println("Simulator: Waiting for packet from server.");
             }
@@ -270,13 +259,13 @@ class ErrorSimulator extends Thread
             serverPort = receivePacket.getPort();
             len = receivePacket.getLength();
 
-            if (verbosity != TFTPIntHost.Verbosity.NONE)
+            if (verbosity != TFTPCommon.Verbosity.NONE)
             {
                 System.out.println("Simulator: Packet received from server:");
                 System.out.println("From host: " + receivePacket.getAddress());
                 System.out.println("Host port: " + receivePacket.getPort());
                 System.out.println("Length: " + len);
-                if (verbosity == TFTPIntHost.Verbosity.ALL)
+                if (verbosity == TFTPCommon.Verbosity.ALL)
                 {
                     System.out.println("Containing: ");
                     for (j=0;j<len;j++) {
@@ -291,13 +280,13 @@ class ErrorSimulator extends Thread
 
             len = sendPacket.getLength();
             
-            if (verbosity != TFTPIntHost.Verbosity.NONE)
+            if (verbosity != TFTPCommon.Verbosity.NONE)
             {
                 System.out.println("Simulator: Sending packet to client:");
                 System.out.println("To host: " + sendPacket.getAddress());
                 System.out.println("Destination host port: " + sendPacket.getPort());
                 System.out.println("Length: " + len);
-                if (verbosity == TFTPIntHost.Verbosity.ALL)
+                if (verbosity == TFTPCommon.Verbosity.ALL)
                 {
                     System.out.println("Containing: ");
                     for (j=0;j<len;j++) 
@@ -313,7 +302,7 @@ class ErrorSimulator extends Thread
             data = new byte[516];
             receivePacket = new DatagramPacket(data, data.length);
 
-            if (verbosity != TFTPIntHost.Verbosity.NONE)
+            if (verbosity != TFTPCommon.Verbosity.NONE)
             {
                 System.out.println("Simulator: Waiting for packet from client.");
             }
@@ -328,13 +317,13 @@ class ErrorSimulator extends Thread
 
             len = receivePacket.getLength();
             // Process the received datagram.
-            if (verbosity != TFTPIntHost.Verbosity.NONE)
+            if (verbosity != TFTPCommon.Verbosity.NONE)
             {
                 System.out.println("Simulator: Packet received from client:");
                 System.out.println("From host: " + receivePacket.getAddress());
                 System.out.println("Host port: " + receivePacket.getPort());
                 System.out.println("Length: " + len);
-                if (verbosity == TFTPIntHost.Verbosity.ALL)
+                if (verbosity == TFTPCommon.Verbosity.ALL)
                 {
                     System.out.println("Containing: ");
                     for (j=0;j<len;j++) 
@@ -346,18 +335,18 @@ class ErrorSimulator extends Thread
          
             sendPacket = new DatagramPacket(data, len, receivePacket.getAddress(), serverPort);
         
-            if (verbosity != TFTPIntHost.Verbosity.NONE)
+            if (verbosity != TFTPCommon.Verbosity.NONE)
             {
                 System.out.println("Simulator: sending packet to server.");
             }
 
             len = sendPacket.getLength();
-            if (verbosity != TFTPIntHost.Verbosity.NONE)
+            if (verbosity != TFTPCommon.Verbosity.NONE)
             {
                 System.out.println("To host: " + sendPacket.getAddress());
                 System.out.println("Destination host port: " + sendPacket.getPort());
                 System.out.println("Length: " + len);
-                if (verbosity == TFTPIntHost.Verbosity.ALL)
+                if (verbosity == TFTPCommon.Verbosity.ALL)
                 {
                     System.out.println("Containing: ");
                     for (j=0;j<len;j++) 
@@ -381,82 +370,166 @@ class ErrorSimulator extends Thread
 
 class TFTPIntHostCommandLine extends Thread
 {
-    private TFTPIntHost.Verbosity verbosity;
+    private TFTPCommon.Verbosity verbosity;
     private TFTPIntHost parentSimulator;
     private Boolean cliRunning;
+    private Set<SimulatePacketInfo> nextSet;
 
     public TFTPIntHostCommandLine(TFTPIntHost parent)
     {
         parentSimulator = parent;
-        verbosity = TFTPIntHost.Verbosity.NONE;
+        verbosity = TFTPCommon.Verbosity.NONE;
         cliRunning = true;
+        nextSet = new HashSet<SimulatePacketInfo>();
     }
 
-    /**
-    *   Converts Verbosity to String
-    *
-    *   @param  Verbosity to convert to String
-    *   @return String of converted Verbosity
-    */
-    public static String verbosityToString(TFTPIntHost.Verbosity ver)
+    private void commitNextSet()
     {
-        if ( ver == TFTPIntHost.Verbosity.NONE )
-        {
-            return "normal";
-        }
-        else if ( ver == TFTPIntHost.Verbosity.SOME )
-        {
-            return "basic packet details";
-        }
-        else if ( ver == TFTPIntHost.Verbosity.ALL )
-        {
-            return "full packet details (including data contents)";
-        }
-        return "";
+        parentSimulator.nextSimulateSet(nextSet);
+        nextSet = new HashSet<SimulatePacketInfo>();
     }
 
     /*** make a common menu method ***/
     private void modifyPacket(Scanner sc)
     {
-        String scIn = new String();
-
+        //loop "forever", this returns with user input
         while (true)
         {
+            String scIn = new String();
+            int packetToModify = 0;
+            int parsedString = 0;
+            int delayAmount = 0;
+            TFTPCommon.PacketType packetType = TFTPCommon.PacketType.INVALID;
+            TFTPCommon.ModificationType modType = TFTPCommon.ModificationType.NONE;
+
             System.out.println("Modification Menu");
-            System.our.println("del: Delay packet");
+            System.out.println("delay: Delay packet");
             System.out.println("dup: Duplicate packet");
-            System.out.println("l: Lose packet");
+            System.out.println("lose: Lose packet");
             System.out.println("r: Return to Main Menu");
 
-            scIn = sc.nextLine();
+            while ( modType == TFTPCommon.ModificationType.NONE )
+            {
+                System.out.print("Enter modification type: ");
 
-            if ( scIn.equalsIgnoreCase("del") )
-            {
+                scIn = sc.nextLine();
 
-            }
-            else if ( scIn.equalsIgnoreCase("dup") )
-            {
+                if ( scIn.equalsIgnoreCase("delay") )
+                {
+                    while ( delayAmount == 0 )
+                    {
+                        System.out.print("Enter delay amount (ms): ");
 
+                        scIn = sc.nextLine();
+
+                        if ( scIn.equalsIgnoreCase("r") )
+                        {
+                            return;
+                        }
+
+                        try {
+                            parsedString = Integer.parseInt(scIn);
+                        } catch (NumberFormatException e) {
+                            System.out.println("Input was not a number, try again.");
+                        }
+
+                        if (parsedString < 1 || parsedString > 65535)
+                        {
+                            System.out.println("Invalid delay, try again.");
+                        }
+                        else
+                        {
+                            delayAmount = parsedString;
+                        }
+                    }
+                    modType = TFTPCommon.ModificationType.DELAY;                
+                }
+                else if ( scIn.equalsIgnoreCase("dup") )
+                {
+                    modType = TFTPCommon.ModificationType.DUPLICATE;
+                }
+                else if ( scIn.equalsIgnoreCase("lose") )
+                {
+                    modType = TFTPCommon.ModificationType.LOSE;
+                }
+                else if ( scIn.equalsIgnoreCase("r") )
+                {
+                    return;
+                }
+                else if ( !scIn.equalsIgnoreCase("") )
+                {
+                    System.out.println("Invalid option");
+                }
             }
-            else if ( scIn.equalsIgnoreCase("l") )
+
+            while ( packetType == TFTPCommon.PacketType.INVALID ) 
             {
-                
+                System.out.print("What packet type should be modified? (request, data or ack): ");
+                scIn = sc.nextLine();
+
+                if ( scIn.equalsIgnoreCase("request") )
+                {
+                    packetType = TFTPCommon.PacketType.REQUEST;
+                    packetToModify = 1;
+                }
+                else if ( scIn.equalsIgnoreCase("data") )
+                {
+                    packetType = TFTPCommon.PacketType.DATA;
+                }
+                else if ( scIn.equalsIgnoreCase("ack") )
+                {
+                    packetType = TFTPCommon.PacketType.ACK;
+                }
+                else if ( !scIn.equalsIgnoreCase("") )
+                {
+                    System.out.println("Invalid packet type, try again.");
+                }
             }
-            else if ( scIn.equalsIgnoreCase("r") )
+
+            while ( packetToModify == 0 )
             {
-                return;
+                System.out.print("Enter packet # to modify (or r to return): ");
+
+                scIn = sc.nextLine();
+
+                if ( scIn.equalsIgnoreCase("r") )
+                {
+                    return;
+                }
+
+                try {
+                    parsedString = Integer.parseInt(scIn);
+                } catch (NumberFormatException e) {
+                    System.out.println("Input was not a number, try again.");
+                }
+
+                if (parsedString < 1 || parsedString > 65535)
+                {
+                    System.out.println("Invalid packet number, try again.");
+                }
+                else
+                {
+                    packetToModify = parsedString;
+                }
             }
-            else if ( !scIn.equalsIgnoreCase("") )
+
+            if ( modType == TFTPCommon.ModificationType.DELAY )
             {
-                System.out.println("Invalid option");
+                nextSet.add(new SimulatePacketInfo(modType, packetToModify, packetType, delayAmount));
+            }
+            else
+            {
+                nextSet.add(new SimulatePacketInfo(modType, packetToModify, packetType));
             }
         }
     }
 
     private void printModifyDetails()
     {
-        System.out.println("this doesn't do anything yet");
-        return;
+        for (SimulatePacketInfo s : nextSet)
+        {
+            System.out.println(s.toString());
+        }
     }
 
     /**
@@ -473,14 +546,19 @@ class TFTPIntHostCommandLine extends Thread
         while (cliRunning)
         {
             System.out.println("TFTP Error Simulator");
-            System.out.println("m: Modify packet");
+            System.out.println("c: Commit errors for next client"); //dont call this commit
+            System.out.println("m: Modify packet(s)");
             System.out.println("p: List packets that will be modified");
-            System.out.println("v: Set verbosity (current: " + verbosityToString(verbosity) + ")");
+            System.out.println("v: Set verbosity (current: " + TFTPCommon.verbosityToString(verbosity) + ")");
             System.out.println("q: Quit");
             
             scIn = sc.nextLine();
 
-            if ( scIn.equalsIgnoreCase("m") )
+            if ( scIn.equalsIgnoreCase("c") )
+            {
+                commitNextSet();
+            }
+            else if ( scIn.equalsIgnoreCase("m") )
             {
                 modifyPacket(sc);
             }
@@ -494,15 +572,15 @@ class TFTPIntHostCommandLine extends Thread
                 String strVerbosity = sc.nextLine();
 
                 if ( strVerbosity.equalsIgnoreCase("none") ) 
-                {   verbosity = TFTPIntHost.Verbosity.NONE;
+                {   verbosity = TFTPCommon.Verbosity.NONE;
                     parentSimulator.setVerbosity(verbosity);
                 }
                 else if ( strVerbosity.equalsIgnoreCase("some") ) 
-                {   verbosity = TFTPIntHost.Verbosity.SOME;
+                {   verbosity = TFTPCommon.Verbosity.SOME;
                     parentSimulator.setVerbosity(verbosity);
                 }
                 else if ( strVerbosity.equalsIgnoreCase("all") )
-                {   verbosity = TFTPIntHost.Verbosity.ALL;
+                {   verbosity = TFTPCommon.Verbosity.ALL;
                     parentSimulator.setVerbosity(verbosity);
                 }
                 else 
@@ -512,6 +590,7 @@ class TFTPIntHostCommandLine extends Thread
             }
             else if ( scIn.equalsIgnoreCase("q") ) 
             {
+                sc.close();
                 System.exit(1);
             }
             else if ( scIn.equalsIgnoreCase("") == false ) 
@@ -528,39 +607,60 @@ class TFTPIntHostCommandLine extends Thread
 }
 
 //Packet type, packet number, and error to simulate stored
-	class simulatePacketInfo {
-		public static enum errorSimulate { LOSE, DUPLICATE, DELAY };
-	    public static enum packetType { ACK, DATA, REQUEST };
-		public static enum mode { NORMAL, ERROR };
-		final packetType pType;
-		final int pNum;
-		final errorSimulate LoseDuplicateDelay;
+class SimulatePacketInfo 
+{
+	private TFTPCommon.PacketType pType;
+	private int pNum, delayAmount, duplicateGap;
+	private TFTPCommon.ModificationType loseDuplicateDelay;
 
-		simulatePacketInfo(String pType, String pNum, String LoseDuplicateDelay) {
-			if (pType.equalsIgnoreCase("ack")) {
-				this.pType = packetType.ACK;
-			} else if (pType.equalsIgnoreCase("data")) {
-				this.pType = packetType.DATA;
-			} else if (pType.equalsIgnoreCase("request")) {
-				this.pType = packetType.REQUEST;
-			} else {
-				this.pType = null;
-			}
-			
-			this.pNum = Integer.parseInt(pNum);
-			
-			if (LoseDuplicateDelay.equalsIgnoreCase("lose")) {
-				this.LoseDuplicateDelay = errorSimulate.LOSE;
-			} else if (LoseDuplicateDelay.equalsIgnoreCase("duplicate")) {
-				this.LoseDuplicateDelay = errorSimulate.DUPLICATE;
-			} else if (LoseDuplicateDelay.equalsIgnoreCase("delay")) {
-				this.LoseDuplicateDelay = errorSimulate.DELAY;
-			} else {
-				this.LoseDuplicateDelay = null;
-			}
-			
-			//if (this.pType != null && this.LoseDuplicateDelay != null){
-			//	simulateSet.add(this);
-			//}
-		}
+	public SimulatePacketInfo (TFTPCommon.ModificationType loseDuplicateDelay, int pNum, TFTPCommon.PacketType pType) 
+    {
+		this.pType = pType;
+		this.pNum = pNum;
+        this.loseDuplicateDelay = loseDuplicateDelay;
 	}
+
+    public SimulatePacketInfo (TFTPCommon.ModificationType loseDuplicateDelay, int pNum, TFTPCommon.PacketType pType, int amount)
+    {
+        this(loseDuplicateDelay, pNum, pType);
+
+        if ( loseDuplicateDelay == TFTPCommon.ModificationType.DELAY )
+        {
+            delayAmount = amount;
+        }
+        else if ( loseDuplicateDelay == TFTPCommon.ModificationType.DUPLICATE )
+        {
+            duplicateGap = amount;
+        }
+    }
+
+    public TFTPCommon.PacketType getPacketType()
+    {
+        return pType;
+    }
+
+    public int getPacketNum()
+    {
+        return pNum;
+    }
+
+    public TFTPCommon.ModificationType getModType()
+    {
+        return loseDuplicateDelay;
+    }
+
+    public int getDelayAmount()
+    {
+        return delayAmount;
+    }
+
+    public int getDuplicateGap()
+    {
+        return duplicateGap;
+    }
+
+    public String toString() 
+    {
+        return ("Packet: " + TFTPCommon.packetTypeToString(pType) + " " + pNum + " Error Type: " + TFTPCommon.errorSimulateToString(loseDuplicateDelay));
+    }
+}

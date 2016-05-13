@@ -17,6 +17,10 @@ public class TFTPCommon {
 	//"all" verbosity prints everything (including the 512 data bytes)
 	public static enum Verbosity { NONE, SOME, ALL };
 
+	public static enum PacketType { INVALID, ACK, DATA, REQUEST };
+
+	public static enum ModificationType { NONE, LOSE, DUPLICATE, DELAY };
+
 	/**
 	 *   Create a DatagramSocket instance. If port parameter is 0, then the
 	 *   socket will be created on the first available port.
@@ -121,6 +125,30 @@ public class TFTPCommon {
 		}		
 	}
 
+
+    public static PacketType getPacketType(byte[] data)
+    {
+        if (data[0] != 0)
+        {
+            return null;
+        }
+
+        if (data[1] == 1 || data[1] == 2)
+        {
+            return PacketType.REQUEST;
+        }
+        else if (data[1] == 3)
+        {
+            return PacketType.DATA;
+        }
+        else if (data[1] == 4)
+        {
+            return PacketType.ACK;
+        }
+
+        return null;
+    }
+
 	/**
 	 *   Converts Request to String (used by CLI)
 	 *
@@ -214,6 +242,43 @@ public class TFTPCommon {
 
 		return "invalid";
 	}
+
+	//find way to merge this with opcodeToString
+	public static String packetTypeToString(PacketType type)
+	{
+		if (type == PacketType.ACK)
+		{
+			return "ACK";
+		}
+		else if (type == PacketType.DATA)
+		{
+			return "DATA";
+		}
+		else if (type == PacketType.REQUEST)
+		{
+			return "WRQ/RRQ";
+		}
+
+		return "invalid";
+	}
+
+    public static String errorSimulateToString (ModificationType error)
+    {
+        if (error == ModificationType.LOSE)
+        {
+            return "lose";
+        }
+        else if (error == ModificationType.DUPLICATE)
+        {
+            return "duplicate";
+        }
+        else if (error == ModificationType.DELAY)
+        {
+            return "delay";
+        }
+
+        return "invalid";
+    }
 
 	/**
 	 *   Constructs ACK packet, converts int blockNumber to byte representation
