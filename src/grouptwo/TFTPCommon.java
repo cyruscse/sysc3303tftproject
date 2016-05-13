@@ -71,19 +71,44 @@ public class TFTPCommon {
 	 *   @param  DatagramPacket instance to receive
 	 *   @param  DatagramSocket to receive from
 	 *   @return none
+	 * 
 	 */
 	public static void receivePacket(DatagramPacket packet, DatagramSocket socket)
 	{
 		try {
 			socket.receive(packet);
-		} catch (SocketException e) {
+		} 
+		catch (SocketException e) {
 			System.out.println("Socket closed, no longer accepting new packets.");
 		} catch (IOException e) {
 			e.printStackTrace();
 			return;
 		}	
 	}
-
+	/**
+	 *   Receive a DatagramPacket through a DatagramSocket with a timeout.
+	 *   @param  DatagramPacket instance to receive
+	 *   @param  DatagramSocket to receive from
+	 *   @param timeout time before timeout in milliseconds
+	 *   @throws SocketTimeoutException
+	 *   @return none
+	 * 
+	 */
+	public static void receivePacketWTimeout(DatagramPacket packet, DatagramSocket socket,
+			int timeout) throws SocketTimeoutException { 
+		try {
+			socket.setSoTimeout(timeout);
+			socket.receive(packet);
+		} catch(SocketTimeoutException se){
+			throw se;
+		}catch (SocketException e) {
+			System.out.println("Socket closed, no longer accepting new packets.");
+		} catch (IOException e) {
+			e.printStackTrace();
+			return;
+		}
+		
+	}
 	/**
 	 *   Prints basic packet details based on the verbosity of the host
 	 *
@@ -327,7 +352,6 @@ public class TFTPCommon {
 		{
 			throw new Exception("Invalid data packet");
 		}
-
 		file.writeNextDataPacket(msg, 4, len - 4);
 
 		if (len < 516)
@@ -345,6 +369,7 @@ public class TFTPCommon {
 			return false;
 		}
 	}
+
 	
 	/**
 	 *   Processes ACK packet
@@ -362,4 +387,5 @@ public class TFTPCommon {
 		}
 		else return false;
 	}
+
 }

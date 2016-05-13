@@ -244,6 +244,8 @@ class TFTPClientTransfer extends Thread
 	private TFTPCommon.Request requestType;
 	private TFTPCommon.Verbosity verbose;
 	private String remoteName, localName, fileMode;
+	private int timeout = 100;
+	private int maxTimeout = 6000;
 
 	/**
 	 *   Constructor for TFTPClientTransfer, initializes data used in class and creates DatagramSocket
@@ -267,6 +269,7 @@ class TFTPClientTransfer extends Thread
 		requestType = transferType;
 		run = runMode;
 		verbose = verMode;
+		
 
 		TFTPCommon.createSocket(sendReceiveSocket,0);
 
@@ -329,7 +332,8 @@ class TFTPClientTransfer extends Thread
 	private void sendAndReceive() 
 	{
 		byte[] msg = new byte[100];
-		int blockNum, len, sendPort;
+		int blockNum, len, sendPort, timeoutCount;
+		boolean packetReceivedBeforeTimeout;
 
 		if (run == TFTPCommon.Mode.NORMAL) 
 		{
@@ -439,16 +443,62 @@ class TFTPClientTransfer extends Thread
 
 				msg = new byte[4];
 				receivePacket = new DatagramPacket(msg, msg.length);
-
-				if (verbose != TFTPCommon.Verbosity.NONE)
-				{
-					System.out.println("Client: Waiting for data write acknowledgement");
+				
+				timeoutCount = 0;
+				packetReceivedBeforeTimeout = false;
+				
+				while (timeoutCount < maxTimeout && !packetReceivedBeforeTimeout) { // wait
+					// for
+					// one
+					// minute
+					// before
+					// quiting
+					
+				if (verbose != TFTPCommon.Verbosity.NONE){
+						System.out.println("Client: Waiting for data write acknowledgement");
 				}
+				
+				try {
+					TFTPCommon.receivePacketWTimeout(receivePacket,sendReceiveSocket,timeout);// for timeOut
+					// received packet
+					packetReceivedBeforeTimeout = true;
+				} catch (SocketTimeoutException e) {
+					System.out.println("TIMED OUT after " + timeout + "seconds");
+					System.out.println("sending data again for the " + timeoutCount + 1 + "th time");
+					TFTPCommon.sendPacket(sendPacket, sendReceiveSocket);// send data again
+				}
+				
+				}//end while
+				
+				// check if received is an ack
+				//handle duplicate acks
 
-				TFTPCommon.receivePacket(receivePacket,sendReceiveSocket);
+				byte[] rcvd = receivePacket.getData();
+				if (TFTPCommon.validACKPacket(receivePacket,blockNum)) 
+				{
+					if (verbose != TFTPCommon.Verbosity.NONE)
+					{
+						System.out.println("Client: "+ "ACK valid!");
+						if (verbose == TFTPCommon.Verbosity.ALL)
+							System.out.println("Client: "+"done Block ");
+					}
+				}else if (rcvd[0] == 0 && rcvd[1] == 4) {
+					// duplicate ack received
+					System.out.println("Client: " + "ACK is duplicated");
+					System.out.println("Client: " + "Packet ignored");
+					
+				} else {
+					System.out.println("Client: " + "ACK is invalid!");
+					
+				}
+				
 			}
-		}
-		else if ( requestType == TFTPCommon.Request.READ ) 
+
+			//Close file now that we are done sending it to client
+			fileOp.closeFileRead();
+			
+		
+	    }else if ( requestType == TFTPCommon.Request.READ ) 
 		{
 			Boolean readingFile = true;
 			Boolean willExit = false;
@@ -465,35 +515,71 @@ class TFTPClientTransfer extends Thread
 					System.out.println("Client: Waiting for next data packet");
 				}
 
-				TFTPCommon.receivePacket(receivePacket,sendReceiveSocket);
-
-				//After receiving from server, communicate over server(/host)-supplied port to allow
-				//other clients to use the request port
-				sendPort = receivePacket.getPort();
+				try {
+					TFTPCommon.receivePacketWTimeout(receivePacket,sendReceiveSocket, 60000);
+				} catch (SocketTimeoutException e1) {
+					// packet not received within time
+					// dont resend ack just die 
+					// time here must be longer than time for write requests
+					System.out.println("conection must have been lost havent recieved any data packets in 60000ms");
+					return; 
+				}
 
 				len = receivePacket.getLength();
+	
 
 				TFTPCommon.printPacketDetails(receivePacket,verbose,false);
 
 				//Process data packet, processNextReadPacket will determine
 				//if its the last data packet
-				try {
-					willExit = TFTPCommon.validDataPacket(msg, len, fileOp, verbose);
-				} catch (Exception e) {
-					e.printStackTrace();
-					return;
+				
+				if ((msg[2] & 0xFF) == ((byte) (blockNum / 256) & 0xFF)&& (msg[3] & 0xFF) == ((byte) (blockNum % 256) & 0xFF)) {
+					// we received the correct data block with the right number
+					try {
+						willExit = TFTPCommon.validDataPacket(msg, len, fileOp, verbose);
+					} catch (Exception e) {
+						// invalid data
+						return;
+					}
+					if (verbose != TFTPCommon.Verbosity.NONE)
+					{
+						System.out.println("Client" + ": Received TFTP packet " + blockNum);
+					}
+
+					//Form ACK packet
+					msg = new byte[4];
+
+					TFTPCommon.constructAckPacket(msg, blockNum);
+
+					sendPacket = new DatagramPacket(msg, msg.length, receivePacket.getAddress(), receivePacket.getPort());
+
+					TFTPCommon.printPacketDetails(sendPacket,verbose,false);
+
+					TFTPCommon.sendPacket(sendPacket,sendReceiveSocket);
+					} else if ((msg[2] & 0xFF) == ((byte) ((blockNum - 1) / 256) & 0xFF)
+						&& (msg[3] & 0xFF) == ((byte) ((blockNum - 1) % 256) & 0xFF)) {
+						///// duplicate received don't write but acknowledge
+						blockNum--;
+						System.out.println("duplicate data block data " + blockNum + "received, not writing to file");
+						msg = new byte[4]; 
+	
+						TFTPCommon.constructAckPacket(msg, blockNum);
+	
+						sendPacket = new DatagramPacket(msg, msg.length, receivePacket.getAddress(), receivePacket.getPort());
+	
+						TFTPCommon.printPacketDetails(sendPacket,verbose,false);
+	
+						TFTPCommon.sendPacket(sendPacket,sendReceiveSocket);
+					
+				} else if (msg[0] == 0 && msg[1] == 3) { //  might not even need this else
+					// delayed data received
+					// find block num of received date and send corresponding
+					//int dataPacketNum = getpNum(data);
+					// send ack dataPacketNum
+					//^^still need to do^^^
+					// decrement counter
+					blockNum--;
 				}
-
-				//Form ACK packet
-				msg = new byte[4];
-
-				TFTPCommon.constructAckPacket(msg, blockNum);
-
-				TFTPCommon.createPacket(sendPacket,msg,msg.length,localAddress,sendPort);
-
-				TFTPCommon.printPacketDetails(sendPacket,verbose,false);
-
-				TFTPCommon.sendPacket(sendPacket,sendReceiveSocket);
 
 				//Can't exit right after we receive the last data packet,
 				//we have to acknowledge the data first
@@ -510,6 +596,14 @@ class TFTPClientTransfer extends Thread
 
 		// We're finished, so close the socket.
 		sendReceiveSocket.close();
+	}
+	
+	public static int getpNum(byte[] data) {
+		Byte a = data[2];
+		Byte b = data[3];
+
+		return Byte.toUnsignedInt(a) * 256 + Byte.toUnsignedInt(b);
+		
 	}
 
 	public void run()
