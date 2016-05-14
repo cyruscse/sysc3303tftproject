@@ -50,11 +50,6 @@ public class TFTPIntHost
     {
         toModify.addAll(nextSet);
         System.out.println("Packet modifications commited");
-
-        for (SimulatePacketInfo s : toModify)
-        {
-            System.out.println(s);
-        }
     }
 
     private void processClients()
@@ -122,10 +117,7 @@ class ErrorSimulator extends Thread
 	public void errorSimulateSend() 
     {
 		for (SimulatePacketInfo check : simulateSet)
-        {
-            System.out.println("sendPacket: " + TFTPCommon.packetTypeToString(TFTPCommon.getPacketType(sendPacket.getData())) + " " + TFTPCommon.blockNumToPacket(sendPacket.getData()));
-            System.out.println("check: " + TFTPCommon.packetTypeToString(check.getPacketType()) + " " + check.getPacketNum());
-			
+        {			
             if (check.getPacketType() == TFTPCommon.getPacketType(sendPacket.getData()) 
                 && (check.getPacketNum() == TFTPCommon.blockNumToPacket(sendPacket.getData()) || TFTPCommon.getPacketType(sendPacket.getData()) == TFTPCommon.PacketType.REQUEST))
             {
@@ -162,7 +154,7 @@ class ErrorSimulator extends Thread
 	//Do nothing with packet
     public void losePacket (SimulatePacketInfo check)
     {
-    	System.out.println("Lose " + TFTPCommon.packetTypeAndNumber(sendPacket.getData()));
+        System.out.println("Lose " + TFTPCommon.packetTypeAndNumber(sendPacket.getData()));
         simulateSet.remove(check);
     }
     
