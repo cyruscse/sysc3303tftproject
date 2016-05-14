@@ -5,50 +5,24 @@ import java.net.*;
 
 public class TFTPCommon {
 
-	// we can run in normal (send directly to server) or test
-	// (send to simulator) mode
+	//Normal Mode: Skip error simulator
+	//Test Mode: Use error simulator as intermediate host
 	public static enum Mode { NORMAL, TEST };
 
-	// types of request beteen server and client
-	public static enum Request { READ, WRITE, ERROR };
+	//Request Packet Types
+	public static enum Request { ERROR, READ, WRITE };
 
-	// verbosity possible settings
-	//"some" verbosity prints packet details omitting data contents,
-	//"all" verbosity prints everything (including the 512 data bytes)
+	//"SOME" verbosity prints all packet information except for data contents
+	//"ALL" prints all packet information
 	public static enum Verbosity { NONE, SOME, ALL };
 
+	//TFTP packet types
 	public static enum PacketType { INVALID, ACK, DATA, REQUEST };
 
+	//Error Simulator modes
 	public static enum ModificationType { NONE, LOSE, DUPLICATE, DELAY };
 
-	/**
-	 *   Create a DatagramSocket instance. If port parameter is 0, then the
-	 *   socket will be created on the first available port.
-	 *   
-	 *   IMPORTANT:	Must make sure to call .close() on the socket when 
-	 *   			finished with it.
-	 *   @param  DatagramSocket to create
-	 *   @return none
-	 */
-	public static void createSocket(DatagramSocket socket, int port)
-	{
-		try {
-			socket = new DatagramSocket(port);
-		} catch (SocketException se) {
-			se.printStackTrace();
-			System.exit(1);
-		}
-	}
-
-	/**
-	 *   Create a DatagramPacket instance.
-	 *   @param  DatagramPacket to create
-	 *   @return none
-	 */
-	public static void createPacket(DatagramPacket packet, byte[] data, int dataLength, InetAddress address, int port)
-	{
-		packet = new DatagramPacket(data, dataLength, address, port);
-	}
+	public static int TFTPListenPort = 69;
 
 	/**
 	 *   Send a DatagramPacket through a DatagramSocket.
@@ -77,8 +51,7 @@ public class TFTPCommon {
 	{
 		try {
 			socket.receive(packet);
-		} 
-		catch (SocketException e) {
+		} catch (SocketException e) {
 			System.out.println("Socket closed, no longer accepting new packets.");
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -99,9 +72,9 @@ public class TFTPCommon {
 		try {
 			socket.setSoTimeout(timeout);
 			socket.receive(packet);
-		} catch(SocketTimeoutException se){
+		} catch(SocketTimeoutException se) {
 			throw se;
-		}catch (SocketException e) {
+		} catch (SocketException e) {
 			System.out.println("Socket closed, no longer accepting new packets.");
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -150,12 +123,20 @@ public class TFTPCommon {
 		}		
 	}
 
+	public static String packetTypeAndNumber (byte[] data)
+	{
+		if ( getPacketType(data) == PacketType.REQUEST)
+		{
+			return (opcodeToString(data) + " packet");
+		}
+		return (opcodeToString(data) + " packet " + blockNumToPacket(data));
+	}
 
     public static PacketType getPacketType(byte[] data)
     {
         if (data[0] != 0)
         {
-            return null;
+            return PacketType.INVALID;
         }
 
         if (data[1] == 1 || data[1] == 2)
@@ -171,7 +152,7 @@ public class TFTPCommon {
             return PacketType.ACK;
         }
 
-        return null;
+        return PacketType.INVALID;
     }
 
 	/**
@@ -328,16 +309,36 @@ public class TFTPCommon {
 	 *   @param  FileOperation current file we are reading data from
 	 *   @return int length of DATA packet
 	 */
-	public static int constructDataPacket(byte[] msg, int blockNumber, FileOperation file) throws FileNotFoundException 
+	public static int constructDataPacket(byte[] msg, int blockNumber, FileOperation file) 
 	{
 		msg[0] = 0;
 		msg[1] = 3;
 		msg[2] = (byte) (blockNumber / 256);
 		msg[3] = (byte) (blockNumber % 256);   
 
-		return file.readNextDataPacket(msg, 4);
+		try {
+			return file.readNextDataPacket(msg, 4);
+		} catch (FileNotFoundException e) {			//This exception should never happen, we check the file before creating packets
+			e.printStackTrace();					//It still needs to be caught though
+			System.exit(1);
+			return -1;   							//Need this return for compilation (even though it's after exit)
+		}
 	}
 
+	/**
+	 *   Convert 16 bit block number to int packet number
+	 *
+	 *   @param  byte[] contents of packet
+	 *   @return int block number
+	 */
+	public static int blockNumToPacket(byte[] data)
+    {
+	 	Byte a = data[2];
+	 	Byte b = data[3];
+	 	
+        return Byte.toUnsignedInt(a) * 256 + Byte.toUnsignedInt(b);
+    }
+    
 	/**
 	 *   Processes DATA packet
 	 *
@@ -369,7 +370,6 @@ public class TFTPCommon {
 			return false;
 		}
 	}
-
 	
 	/**
 	 *   Processes ACK packet

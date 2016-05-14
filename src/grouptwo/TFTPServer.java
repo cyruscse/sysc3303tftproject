@@ -15,13 +15,12 @@ import java.util.*;
  */
 public class TFTPServer 
 {
-
 	private DatagramSocket receiveSocket;
 	private DatagramPacket receivePacket;
 	private List<Thread> clients;
 	private TFTPServerCommandLine cliThread;
 	private Integer runningClientCount;
-	private volatile TFTPCommon.Verbosity verbosity;
+	private TFTPCommon.Verbosity verbosity;
 	private Boolean acceptConnections;
 	private byte [] data;
 
@@ -33,7 +32,12 @@ public class TFTPServer
 	 */
 	public TFTPServer()
 	{
-		TFTPCommon.createSocket(receiveSocket,69);
+		try {
+			receiveSocket = new DatagramSocket(TFTPCommon.TFTPListenPort);
+		} catch (SocketException e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
 
 		clients = new ArrayList<Thread>();
 		runningClientCount = 0;
@@ -90,17 +94,20 @@ public class TFTPServer
 
 				System.out.println("Server: Waiting for clients.");
 
-				TFTPCommon.receivePacket(receivePacket,receiveSocket);
+				TFTPCommon.receivePacket(receivePacket, receiveSocket);
 				
-				System.out.println("Server: Packet received.");
-
-				TFTPCommon.printPacketDetails(receivePacket,verbosity,true);
-
-				if (!receiveSocket.isClosed())
+				if (TFTPCommon.getPacketType(receivePacket.getData()) != TFTPCommon.PacketType.INVALID)
 				{
-					Thread client = new Thread(new ClientConnectionThread(receivePacket, this, verbosity, clients.size()+1));
-					client.start();
-					clients.add(client);
+					System.out.println("Server: Packet received.");
+
+					TFTPCommon.printPacketDetails(receivePacket, verbosity, true);
+
+					if (!receiveSocket.isClosed())
+					{
+						Thread client = new Thread(new ClientConnectionThread(receivePacket, this, verbosity, clients.size() + 1));
+						client.start();
+						clients.add(client);
+					}
 				}
 			}
 		}
@@ -166,6 +173,7 @@ class TFTPServerCommandLine extends Thread {
 		while (cliRunning)
 		{
 			System.out.println("TFTP Server");
+			System.out.println("-----------");
 			System.out.println("v: Set verbosity (current: " + TFTPCommon.verbosityToString(verbosity) + ")");
 			System.out.println("q: Quit (finishes current transfer before quitting)");
 
@@ -173,7 +181,7 @@ class TFTPServerCommandLine extends Thread {
 
 			if ( scIn.equalsIgnoreCase("v") ) 
 			{
-				System.out.println("Enter verbosity (none, some, all): ");
+				System.out.print("Enter verbosity (none, some, all): ");
 				String strVerbosity = sc.nextLine();
 
 				if ( strVerbosity.equalsIgnoreCase("none") ) 

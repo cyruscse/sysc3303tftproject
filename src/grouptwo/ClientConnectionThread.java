@@ -48,7 +48,12 @@ public class ClientConnectionThread implements Runnable {
 		this.verbose = verbosity;
 		mode = new String();
 
-		TFTPCommon.createSocket(sendReceiveSocket,0);
+		try {
+			sendReceiveSocket = new DatagramSocket();
+		} catch (SocketException e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
 	}
 
 	@Override
@@ -123,19 +128,14 @@ public class ClientConnectionThread implements Runnable {
 			for (blockNum = 0; blockNum < fileOp.getNumTFTPBlocks(); blockNum++) {
 				msg = new byte[516];
 
-				try {
-					len = TFTPCommon.constructDataPacket(msg, blockNum, fileOp);
-				} catch (FileNotFoundException e) {
-					System.out.println("File not found!");
-					return;
-				}
+				len = TFTPCommon.constructDataPacket(msg, blockNum, fileOp);
 
 				if (verbose != TFTPCommon.Verbosity.NONE)
 				{
 					System.out.println("Server: "+ "Thread " + threadNumber +": "+ "Sending TFTP packet " + (blockNum + 1) + "/" + fileOp.getNumTFTPBlocks());
 				}
 
-				TFTPCommon.createPacket(sendPacket,msg,len,address,port);
+				sendPacket = new DatagramPacket(msg, len, address, port);
 				
 				TFTPCommon.printPacketDetails(sendPacket,verbose,false);
 				
@@ -198,9 +198,10 @@ public class ClientConnectionThread implements Runnable {
 			fileOp.closeFileRead();
 
 
-		} else if (requestType == TFTPCommon.Request.WRITE) // for Write it's 0400
-		{
+		} 
 
+		else if (requestType == TFTPCommon.Request.WRITE)
+		{
 			try {
 				fileOp = new FileOperation(localName, false, 512);
 			} catch (FileNotFoundException e) {
@@ -220,7 +221,7 @@ public class ClientConnectionThread implements Runnable {
 			// for the file transfer.
 			data = new byte[]{0,4,0,0};
 			
-			TFTPCommon.createPacket(sendPacket,data,data.length,receivePacket.getAddress(),receivePacket.getPort());
+			sendPacket = new DatagramPacket(data, data.length, receivePacket.getAddress(), receivePacket.getPort());
 
 			TFTPCommon.printPacketDetails(sendPacket,verbose,false);
 

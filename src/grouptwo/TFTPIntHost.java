@@ -30,6 +30,7 @@ public class TFTPIntHost
         }
 
         verbosity = TFTPCommon.Verbosity.NONE;
+        toModify = new HashSet<SimulatePacketInfo>();
         cliThread = new TFTPIntHostCommandLine(this);
     }
 
@@ -47,7 +48,13 @@ public class TFTPIntHost
 
     public void nextSimulateSet(Set<SimulatePacketInfo> nextSet)
     {
-        toModify = nextSet;
+        toModify.addAll(nextSet);
+        System.out.println("Packet modifications commited");
+
+        for (SimulatePacketInfo s : toModify)
+        {
+            System.out.println(s);
+        }
     }
 
     private void processClients()
@@ -69,6 +76,7 @@ public class TFTPIntHost
 
             Thread client = new Thread(new ErrorSimulator(receivePacket, verbosity, toModify));
             client.start();
+            toModify = new HashSet<SimulatePacketInfo>();
         }
     }
 
@@ -87,6 +95,7 @@ class ErrorSimulator extends Thread
     private InetAddress clientAddress;
     private int clientPort, serverPort, len;
     private byte [] data;
+    private SimulatePacketInfo simCompare;
     private Set<SimulatePacketInfo> simulateSet;
 
     public ErrorSimulator(DatagramPacket firstPacket, TFTPCommon.Verbosity verbose, Set<SimulatePacketInfo> simulateSet)
@@ -114,7 +123,11 @@ class ErrorSimulator extends Thread
     {
 		for (SimulatePacketInfo check : simulateSet)
         {
-			if (check.getPacketType() == TFTPCommon.getPacketType(sendPacket.getData()) && check.getPacketNum() == blockNumToPacket(sendPacket.getData()))
+            System.out.println("sendPacket: " + TFTPCommon.packetTypeToString(TFTPCommon.getPacketType(sendPacket.getData())) + " " + TFTPCommon.blockNumToPacket(sendPacket.getData()));
+            System.out.println("check: " + TFTPCommon.packetTypeToString(check.getPacketType()) + " " + check.getPacketNum());
+			
+            if (check.getPacketType() == TFTPCommon.getPacketType(sendPacket.getData()) 
+                && (check.getPacketNum() == TFTPCommon.blockNumToPacket(sendPacket.getData()) || TFTPCommon.getPacketType(sendPacket.getData()) == TFTPCommon.PacketType.REQUEST))
             {
 				if (check.getModType() == TFTPCommon.ModificationType.LOSE) 
                 {
@@ -136,7 +149,7 @@ class ErrorSimulator extends Thread
 			} 
 		}
 
-		System.out.println("Sending packet " + blockNumToPacket(sendPacket.getData()) + " with no error simulation.");
+		System.out.println("Sending " + TFTPCommon.packetTypeAndNumber(sendPacket.getData()) + " with no error simulation.");
 
 		try {
 	        sendReceiveSocket.send(sendPacket);
@@ -145,26 +158,19 @@ class ErrorSimulator extends Thread
 	        System.exit(1);
 	    }
 	}
-	 
-	//returns packet number
-	public static int blockNumToPacket(byte[] data)
-    {
-	 	Byte a = data[2];
-	 	Byte b = data[3];
-	 	
-        return Byte.toUnsignedInt(a) * 256 + Byte.toUnsignedInt(b);
-    }
-    
+
 	//Do nothing with packet
-    public void losePacket(SimulatePacketInfo check)
+    public void losePacket (SimulatePacketInfo check)
     {
-    	System.out.println("Lose packet " + check.getPacketNum());
+    	System.out.println("Lose " + TFTPCommon.packetTypeAndNumber(sendPacket.getData()));
+        simulateSet.remove(check);
     }
     
     //Send the packet normally, wait a certain amount of time, then send again
     public void duplicatePacket (SimulatePacketInfo check)
     {
-        System.out.println("Duplicate packet " + check.getPacketNum());
+        System.out.println("Duplicate " + TFTPCommon.packetTypeAndNumber(sendPacket.getData()));
+        
         try {
             sendReceiveSocket.send(sendPacket);
         } catch (IOException e) {
@@ -175,7 +181,7 @@ class ErrorSimulator extends Thread
         System.out.println("Wait " + check.getDuplicateGap() + " ms");
         
         try {
-            Thread.sleep(check.getDuplicateGap());
+            Thread.sleep(check.getDuplicateGap());  //we can't use sleep (probably), error sim will be asleep when first packet gets a response
         } catch (InterruptedException e1) {
             // TODO Auto-generated catch block
             e1.printStackTrace();
@@ -187,13 +193,14 @@ class ErrorSimulator extends Thread
             e.printStackTrace();
             System.exit(1);
         }   
+        simulateSet.remove(check);
     }
     
     
     //Wait a certain amount of time then send packet
     public void delayPacket (SimulatePacketInfo check)
     {
-    	System.out.println("Delay packet " + check.getPacketNum() + "by " + check.getDelayAmount() + "ms ");
+    	System.out.println("Delay " + TFTPCommon.packetTypeAndNumber(sendPacket.getData()) + " by " + check.getDelayAmount() + "ms ");
     	
     	try {
 			Thread.sleep(check.getDelayAmount());
@@ -207,7 +214,8 @@ class ErrorSimulator extends Thread
         } catch (IOException e) {
             e.printStackTrace();
             System.exit(1);
-        }      
+        } 
+        simulateSet.remove(check);     
     }
     
 
@@ -216,7 +224,7 @@ class ErrorSimulator extends Thread
         int j = 0;
 
         //TODO might have to move request code to loop (?)
-        sendPacket = new DatagramPacket(data, len, clientAddress, 69); //TODO define 69 somewhere
+        sendPacket = new DatagramPacket(data, len, clientAddress, TFTPCommon.TFTPListenPort); //TODO define 69 somewhere
 
         len = sendPacket.getLength();
         
@@ -406,6 +414,7 @@ class TFTPIntHostCommandLine extends Thread
             System.out.println("delay: Delay packet");
             System.out.println("dup: Duplicate packet");
             System.out.println("lose: Lose packet");
+            System.out.println("p: Print pending modifications");
             System.out.println("r: Return to Main Menu");
 
             while ( modType == TFTPCommon.ModificationType.NONE )
@@ -480,6 +489,10 @@ class TFTPIntHostCommandLine extends Thread
                 {
                     packetType = TFTPCommon.PacketType.ACK;
                 }
+                else if ( scIn.equalsIgnoreCase("r") )
+                {
+                    return;
+                }
                 else if ( !scIn.equalsIgnoreCase("") )
                 {
                     System.out.println("Invalid packet type, try again.");
@@ -546,6 +559,7 @@ class TFTPIntHostCommandLine extends Thread
         while (cliRunning)
         {
             System.out.println("TFTP Error Simulator");
+            System.out.println("--------------------");
             System.out.println("c: Commit errors for next client"); //dont call this commit
             System.out.println("m: Modify packet(s)");
             System.out.println("p: List packets that will be modified");
@@ -564,6 +578,7 @@ class TFTPIntHostCommandLine extends Thread
             }
             else if ( scIn.equalsIgnoreCase("p") )
             {
+                System.out.println("Note: These modifications haven't been commited for the next client connnection");
                 printModifyDetails();
             }
             else if ( scIn.equalsIgnoreCase("v") ) 
