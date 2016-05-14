@@ -36,11 +36,12 @@ public class ClientConnectionThread implements Runnable {
 	private int port;
 	private InetAddress address;
 	private int threadNumber;
-	private int timeout = 1000;
-	private int maxTimeout = 10; // number of timeouts before quiting
+	private int timeout;
+	private int maxTimeout; // number of timeouts before quiting
 	private final String consolePrefix = ("Server Thread " + (threadNumber + 1) + ": ");
 
-	public ClientConnectionThread(DatagramPacket receivePckt, TFTPServer parent, TFTPCommon.Verbosity verbosity, int threadNumber) {
+	public ClientConnectionThread(DatagramPacket receivePckt, TFTPServer parent, TFTPCommon.Verbosity verbosity, int threadNumber) 
+	{
 		this.threadNumber = threadNumber;
 		receivePacket = receivePckt;
 		this.parent = parent;
@@ -48,6 +49,8 @@ public class ClientConnectionThread implements Runnable {
 		address = receivePckt.getAddress();
 		verbose = verbosity;
 		mode = new String();
+		timeout = 1000;
+		maxTimeout = 10;
 
 		try {
 			sendReceiveSocket = new DatagramSocket();
@@ -57,9 +60,17 @@ public class ClientConnectionThread implements Runnable {
 		}
 	}
 
-	@Override
-	public void run() {
+	private void sendACKPacket(int blockNum)
+	{
+		byte[] msg = new byte[4];
+		TFTPCommon.constructAckPacket(msg, blockNum);
+		sendPacket = new DatagramPacket(msg, msg.length, receivePacket.getAddress(), receivePacket.getPort());
+		TFTPCommon.printPacketDetails(sendPacket, verbose, false);
+		TFTPCommon.sendPacket(sendPacket, sendReceiveSocket);
+	}
 
+	public void run() 
+	{
 		byte[] data, msg, response;
 		int blockNum, len, j = 0, k = 0, timeoutCount;
 
@@ -113,7 +124,6 @@ public class ClientConnectionThread implements Runnable {
 		// then make sure we receive an ACK packet for the block we just sent.
 		if (requestType == TFTPCommon.Request.READ)
 		{
-
 			try {
 				fileOp = new FileOperation(localName, true, 512); 
 			} catch (FileNotFoundException e) {
@@ -125,88 +135,10 @@ public class ClientConnectionThread implements Runnable {
 				return;
 			}
 
-			timeoutCount = 0;
-			blockNum = 0;
-			msg = new byte[516];
-
-			while (blockNum < fileOp.getNumTFTPBlocks())
-			{
-				if (timeoutCount == 0)
-				{
-					msg = new byte[516];
-					len = TFTPCommon.constructDataPacket(msg, blockNum, fileOp);
-				}
-
-				if (verbose != TFTPCommon.Verbosity.NONE)
-				{
-					System.out.println(consolePrefix + "Sending DATA " + blockNum + "/" + (fileOp.getNumTFTPBlocks() - 1) + " len " + len);
-				}
-
-				sendPacket = new DatagramPacket(msg, len, address, port);
-				
-				TFTPCommon.printPacketDetails(sendPacket, verbose, false);
-	
-				TFTPCommon.sendPacket(sendPacket, sendReceiveSocket);
-
-				// Receive the client response for the data packet we just sent
-				response = new byte[4];
-				receivePacket = new DatagramPacket(response, response.length);
-
-				if (timeoutCount < maxTimeout) 
-				{	
-					if (verbose != TFTPCommon.Verbosity.NONE)
-					{
-						System.out.println(consolePrefix + "Waiting for data read acknowledgement");
-					}
-					
-					try {
-						TFTPCommon.receivePacketWTimeout(receivePacket, sendReceiveSocket, timeout);
-					} catch (SocketTimeoutException e) {
-						timeoutCount++;
-						System.out.println(consolePrefix + "Receive timed out after " + timeout + " ms");
-						System.out.println(consolePrefix + "Resending DATA " + blockNum  + ": Attempt " + timeoutCount);
-					}
-				}
-				else
-				{
-					System.out.println(consolePrefix + "Maximum timeouts reached for DATA " + blockNum + ". Thread returning.");
-					break;
-				}
-
-				if (receivePacket.getPort() != -1)
-				{ 
-					if (TFTPCommon.validACKPacket(response, blockNum)) 
-					{
-						if (verbose != TFTPCommon.Verbosity.NONE)
-						{
-							System.out.println(consolePrefix + "ACK valid!");
-							if (verbose == TFTPCommon.Verbosity.ALL)
-								System.out.println(consolePrefix + "done Block " + blockNum);
-						}
-
-						timeoutCount = 0; //Reset timeout count once a successful ACK is received
-						blockNum++;
-					}
-					else if (TFTPCommon.getPacketType(response) == TFTPCommon.PacketType.ACK && TFTPCommon.blockNumToPacket(response) < blockNum) 
-					{
-						// duplicate ack received
-						System.out.println(consolePrefix + "Duplicate ACK received, ignoring");
-					} 
-					else 
-					{
-						System.out.println(consolePrefix + "Invalid packet received, ignoring");
-						TFTPCommon.printPacketDetails(receivePacket, TFTPCommon.Verbosity.ALL, false);
-					}
-				}			
-			}
+			TFTPCommon.sendDataWTimeout(sendPacket, receivePacket, sendReceiveSocket, address, timeout, maxTimeout, port, fileOp, verbose, consolePrefix);
 
 			//Close file now that we are done sending it to client
-
-			if ( blockNum == fileOp.getNumTFTPBlocks())
-			{
-				System.out.println("good read");
-				fileOp.closeFileRead();
-			}
+			fileOp.closeFileRead();
 		} 
 
 		else if (requestType == TFTPCommon.Request.WRITE)
@@ -215,31 +147,19 @@ public class ClientConnectionThread implements Runnable {
 				fileOp = new FileOperation(localName, false, 512);
 			} catch (FileNotFoundException e) {
 				System.out.println(consolePrefix + "Couldn't write to " + localName);
+				parent.threadDone(Thread.currentThread());
 				return;
 			} catch (Exception e) {
 				System.out.println(consolePrefix + "File is too big!");
+				parent.threadDone(Thread.currentThread());
 				return;
 			}
-
-			if (verbose != TFTPCommon.Verbosity.NONE )
-			{
-				System.out.println(consolePrefix + "Sending WRQ ACK0.");
-			}
-
-			// Send the initial ACK (block 0) that will establish a connection with the client 
-			// for the file transfer.
-			data = new byte[]{0,4,0,0};
-			
-			sendPacket = new DatagramPacket(data, data.length, receivePacket.getAddress(), receivePacket.getPort());
-
-			TFTPCommon.printPacketDetails(sendPacket,verbose,false);
-
-			// Send the datagram packet to the server via the send/receive socket.
-			TFTPCommon.sendPacket(sendPacket,sendReceiveSocket);
 
 			Boolean writingFile = true;
 			Boolean willExit = false;
 			blockNum = 0;
+
+			sendACKPacket(blockNum); //Respond to WRQ
 
 			System.out.println(consolePrefix + "Beginning file transfer");
 
@@ -262,65 +182,38 @@ public class ClientConnectionThread implements Runnable {
 					System.out.println(consolePrefix + "conection must have been lost havent recieved any data packets in 60000ms");
 					System.out.println(consolePrefix + "Killing Thread");
 					parent.threadDone(Thread.currentThread());
-					return; // kill thread
+					return;
 				}
 
 				len = receivePacket.getLength();
 				
-				TFTPCommon.printPacketDetails(receivePacket,verbose,false);
+				TFTPCommon.printPacketDetails(receivePacket, verbose, false);
 
-				//Process data packet, processNextReadPacket will determine
-				//if its the last data packet
-				//determine if a duplicate or late
-				//packet is received here
-				
-				if ((msg[2] & 0xFF) == ((byte) (blockNum / 256) & 0xFF)&& (msg[3] & 0xFF) == ((byte) (blockNum % 256) & 0xFF)) {
+				//Process data packet, writeDataPacket will determine if its the last data packet
+				if (TFTPCommon.validDATAPacket(msg, blockNum)) 
+				{
 					// we received the correct data block with the right number
 					try {
-						willExit = TFTPCommon.validDataPacket(msg, len, fileOp, verbose);
+						willExit = TFTPCommon.writeDataPacket(msg, len, fileOp, verbose);
 					} catch (Exception e) {
-						// invalid data
+						parent.threadDone(Thread.currentThread());
 						return;
 					}
+					
 					if (verbose != TFTPCommon.Verbosity.NONE)
 					{
-						System.out.println(consolePrefix + "Received TFTP packet " + blockNum);
+						System.out.println(consolePrefix + "Received DATA " + blockNum);
 					}
 
-					//Form ACK packet
-					msg = new byte[4];
+					sendACKPacket(blockNum);
+					blockNum++;
+				} 
+				else if (TFTPCommon.getPacketType(msg) == TFTPCommon.PacketType.DATA && TFTPCommon.blockNumToPacket(msg) < blockNum) 
+				{
+					System.out.println(consolePrefix + "Duplicate DATA " + TFTPCommon.blockNumToPacket(msg) + " received, not writing to file");
 
-					TFTPCommon.constructAckPacket(msg, blockNum);
-
-					sendPacket = new DatagramPacket(msg, msg.length, receivePacket.getAddress(), receivePacket.getPort());
-
-					TFTPCommon.printPacketDetails(sendPacket,verbose,false);
-
-					TFTPCommon.sendPacket(sendPacket,sendReceiveSocket);
-					} else if ((msg[2] & 0xFF) == ((byte) ((blockNum - 1) / 256) & 0xFF)
-						&& (msg[3] & 0xFF) == ((byte) ((blockNum - 1) % 256) & 0xFF)) {
-						///// duplicate received don't write but acknowledge
-						blockNum--;
-						System.out.println(consolePrefix + "duplicate data block data " + blockNum + "received, not writing to file");
-						msg = new byte[4]; 
-	
-						TFTPCommon.constructAckPacket(msg, blockNum);
-	
-						sendPacket = new DatagramPacket(msg, msg.length, receivePacket.getAddress(), receivePacket.getPort());
-	
-						TFTPCommon.printPacketDetails(sendPacket,verbose,false);
-	
-						TFTPCommon.sendPacket(sendPacket,sendReceiveSocket);
-					
-				} else if (msg[0] == 0 && msg[1] == 3) { //  might not even need this else
-					// delayed data received
-					// find block num of received date and send corresponding
-					int dataPacketNum = getpNum(data);
-					// send ack dataPacketNum
-					//^^still need to do^^^
-					// decrement counter
-					blockNum--;
-				}
+					sendACKPacket(blockNum);
+				} 
 				
 				//Can't exit right after we receive the last data packet,
 				//we have to acknowledge the data first
@@ -328,12 +221,12 @@ public class ClientConnectionThread implements Runnable {
 				{
 					writingFile = false;
 				}
-
-				blockNum++;
 			}
-
-		} else { // it was invalid, just quit
-			// throw new Exception("Not yet implemented");
+		} 
+		else 
+		{
+			parent.threadDone(Thread.currentThread());
+			return;
 		}
 
 		System.out.println(consolePrefix + "File transfer complete");	//if for this as well (when maxtimeouts have been reached)
@@ -343,12 +236,4 @@ public class ClientConnectionThread implements Runnable {
 		parent.threadDone(Thread.currentThread());
 		// done the thread will die automatically
 	}
-	// returns packet number
-			public static int getpNum(byte[] data) {
-				Byte a = data[2];
-				Byte b = data[3];
-
-				return Byte.toUnsignedInt(a) * 256 + Byte.toUnsignedInt(b);
-				
-			}
 }

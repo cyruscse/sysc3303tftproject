@@ -85,6 +85,84 @@ public class TFTPCommon {
 		}
 	}
 
+	public static void sendDataWTimeout (DatagramPacket sendPacket, DatagramPacket receivePacket, DatagramSocket sendReceiveSocket, InetAddress address, int timeout, int maxTimeout, int port, FileOperation fileOp, Verbosity verbose, String consolePrefix)
+	{
+		int timeoutCount = 0;
+		int blockNum = 0;
+		int len = 0;
+		byte[] dataMsg = new byte[516];
+		byte[] ackMsg = new byte[4];
+
+		while (blockNum < fileOp.getNumTFTPBlocks())
+		{
+			if (timeoutCount == 0)
+			{
+				dataMsg = new byte[516];
+				len = constructDataPacket(dataMsg, blockNum, fileOp);
+			}
+
+			if (verbose != Verbosity.NONE)
+			{
+				System.out.println(consolePrefix + "Sending DATA " + blockNum + "/" + (fileOp.getNumTFTPBlocks() - 1));
+			}
+
+			sendPacket = new DatagramPacket(dataMsg, len, address, port);
+			
+			printPacketDetails(sendPacket, verbose, false);
+			sendPacket(sendPacket, sendReceiveSocket);
+
+			// Receive the client response for the data packet we just sent
+			ackMsg = new byte[4];
+			receivePacket = new DatagramPacket(ackMsg, ackMsg.length);
+
+			if (timeoutCount < maxTimeout) 
+			{	
+				if (verbose != Verbosity.NONE)
+				{
+					System.out.println(consolePrefix + "Waiting for data read acknowledgement");
+				}
+				
+				try {
+					receivePacketWTimeout(receivePacket, sendReceiveSocket, timeout);
+				} catch (SocketTimeoutException e) {
+					timeoutCount++;
+					System.out.println(consolePrefix + "Receive timed out after " + timeout + " ms");
+					System.out.println(consolePrefix + "Resending DATA " + blockNum  + ": Attempt " + timeoutCount);
+				}
+			}
+			else
+			{
+				System.out.println(consolePrefix + "Maximum timeouts reached for DATA " + blockNum + ". Thread returning.");
+				break;
+			}
+
+			if (receivePacket.getPort() != -1)
+			{ 
+				if (validACKPacket(ackMsg, blockNum)) 
+				{
+					if (verbose != Verbosity.NONE)
+					{
+						System.out.println(consolePrefix + "ACK valid!");
+						if (verbose == Verbosity.ALL)
+							System.out.println(consolePrefix + "done Block " + blockNum);
+					}
+
+					timeoutCount = 0; //Reset timeout count once a successful ACK is received
+					blockNum++;
+				}
+				else if (getPacketType(ackMsg) == PacketType.ACK && blockNumToPacket(ackMsg) < blockNum) 
+				{
+					System.out.println(consolePrefix + "Duplicate ACK received, ignoring");
+				} 
+				else 
+				{
+					System.out.println(consolePrefix + "Invalid packet received, ignoring" + " " + blockNum);
+					printPacketDetails(receivePacket, verbose, false);
+				}
+			}			
+		}
+	}
+
 	/**
 	 *   Prints basic packet details based on the verbosity of the host
 	 *
@@ -350,12 +428,13 @@ public class TFTPCommon {
 	 *   @param  FileOperation current file we are writing to
 	 *   @return Boolean indicating if this was the final DATA packet
 	 */
-	public static Boolean validDataPacket(byte[] msg, int len, FileOperation file, Verbosity verbose) throws Exception
+	public static Boolean writeDataPacket(byte[] msg, int len, FileOperation file, Verbosity verbose) throws Exception
 	{
 		if (msg[0] != 0 || msg[1] != 3)
 		{
 			throw new Exception("Invalid data packet");
 		}
+		
 		file.writeNextDataPacket(msg, 4, len - 4);
 
 		if (len < 516)
@@ -368,14 +447,24 @@ public class TFTPCommon {
 
 			return true;
 		}
-		else
-		{
-			return false;
-		}
+
+		return false;
+	}
+
+	/**
+	 *   Check validity of received DATA packet
+	 *
+	 *   @param  byte[] packet data
+	 *   @param  int length of data
+	 *   @return Boolean indicating if DATA is valid or not
+	 */
+	public static Boolean validDATAPacket(byte[] data, int blockNum)
+	{
+		return ( getPacketType(data) == PacketType.DATA && blockNumToPacket(data) == blockNum );
 	}
 	
 	/**
-	 *   Processes ACK packet
+	 *   Check validity of received ACK packet
 	 *
 	 *   @param  byte[] packet data
 	 *   @param  int length of data
@@ -383,12 +472,6 @@ public class TFTPCommon {
 	 */
 	public static Boolean validACKPacket(byte[] data, int blockNum)
 	{
-		if ( getPacketType(data) == PacketType.ACK && blockNumToPacket(data) == blockNum)
-		{
-			return true;
-		}
-		
-		return false;
+		return ( getPacketType(data) == PacketType.ACK && blockNumToPacket(data) == blockNum );
 	}
-
 }

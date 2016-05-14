@@ -205,9 +205,9 @@ public class TFTPClient
 	 *   @return none
 	 */
 	public void Testvalues() {
-		localFile = "/Users/cyrus/test.out";
-		remoteFile = "/Users/cyrus/Documents/gittest/sysc3303tftproject/testfiles/1000.dat";
-		requestType = TFTPCommon.Request.READ;
+		localFile = "/Users/cyrus/Downloads/TFTPServer.java";
+		remoteFile = "/Users/cyrus/test2.out";
+		requestType = TFTPCommon.Request.WRITE;
 		mode = TFTPCommon.Mode.TEST;
 		verbosity = TFTPCommon.Verbosity.ALL;
 	}
@@ -249,8 +249,10 @@ class TFTPClientTransfer extends Thread
 	private TFTPClient parent;
 	private int sendPort;
 	private int sendReceiveTimeout;
-	private int maxWriteTimeouts;
-	private int maxSendReceiveAttempts;
+	private int timeout;
+	private int maxTimeout;
+	private InetAddress serverAddress;
+	private final String consolePrefix = ("Client: ");
 
 	/**
 	 *   Constructor for TFTPClientTransfer, initializes data used in class and creates DatagramSocket
@@ -275,9 +277,15 @@ class TFTPClientTransfer extends Thread
 		run = runMode;
 		verbose = verMode;
 		parent = cliThread;
-		sendReceiveTimeout = 5000;
-		maxWriteTimeouts = 6000;
-		maxSendReceiveAttempts = 5;
+		timeout = 1000;
+		maxTimeout = 10;
+		
+		try {
+			serverAddress = InetAddress.getLocalHost();
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
 
 		try {
 			sendReceiveSocket = new DatagramSocket();
@@ -329,20 +337,14 @@ class TFTPClientTransfer extends Thread
 
 		receivePacket = new DatagramPacket(data, data.length);
 
-		for (int i = 0; i < maxSendReceiveAttempts; i++)
+		for (int i = 0; i < maxTimeout; i++)
 		{
 			if (verbose != TFTPCommon.Verbosity.NONE)
 			{
 				System.out.println("Client: sending request packet");
 			}
 
-			try {
-				sendPacket = new DatagramPacket(msg, len, InetAddress.getLocalHost(), sendPort);
-			} catch (UnknownHostException e) {
-				e.printStackTrace();
-				return;
-			}
-
+			sendPacket = new DatagramPacket(msg, len, serverAddress, sendPort);
 			TFTPCommon.printPacketDetails(sendPacket, verbose, true);
 
 			// Send the datagram packet to the server via the send/receive socket.
@@ -354,10 +356,10 @@ class TFTPClientTransfer extends Thread
 			}
 
 			try {
-				TFTPCommon.receivePacketWTimeout(receivePacket, sendReceiveSocket, sendReceiveTimeout);
+				TFTPCommon.receivePacketWTimeout(receivePacket, sendReceiveSocket, timeout);
 				return;
 			} catch (SocketTimeoutException e) {
-				System.out.println("Client: Server did not respond to request within " + (sendReceiveTimeout / 1000) + " seconds, trying again: attempt " + (i + 1) + " of " + maxSendReceiveAttempts);
+				System.out.println("Client: Server did not respond to request within " + timeout + " ms, trying again: attempt " + (i + 1) + " of " + maxTimeout);
 			}
 		}
 
@@ -399,7 +401,6 @@ class TFTPClientTransfer extends Thread
 				return;
 			}
 		}
-
 		else
 		{
 			try {
@@ -430,77 +431,8 @@ class TFTPClientTransfer extends Thread
 			//After receiving from server, communicate over server(/host)-supplied port to allow
 			//other clients to use the request port
 			sendPort = receivePacket.getPort();
-
-			for (blockNum = 0; blockNum < fileOp.getNumTFTPBlocks(); blockNum++ ) 
-			{
-				msg = new byte[516];
-
-				len = TFTPCommon.constructDataPacket(msg, blockNum, fileOp);
-
-				if (verbose != TFTPCommon.Verbosity.NONE) 
-				{
-					System.out.println("Client: Sending TFTP packet " + blockNum + "/" + (fileOp.getNumTFTPBlocks() - 1));
-				}
-
-				sendPacket = new DatagramPacket(msg, len, localAddress, sendPort);
-
-				TFTPCommon.printPacketDetails(sendPacket, verbose, false);
-
-				TFTPCommon.sendPacket(sendPacket, sendReceiveSocket);
-
-				msg = new byte[4];
-				receivePacket = new DatagramPacket(msg, msg.length);
-				
-				timeoutCount = 0;
-				packetReceivedBeforeTimeout = false;
-				
-				while (timeoutCount < maxWriteTimeouts && !packetReceivedBeforeTimeout) 
-				{
-					if (verbose != TFTPCommon.Verbosity.NONE)
-					{
-						System.out.println("Client: Waiting for data write acknowledgement");
-					}
-					
-					try {
-						TFTPCommon.receivePacketWTimeout(receivePacket, sendReceiveSocket, sendReceiveTimeout);
-						// received packet
-						packetReceivedBeforeTimeout = true;
-					} catch (SocketTimeoutException e) {
-						System.out.println("TIMED OUT after " + sendReceiveTimeout + "seconds");
-						System.out.println("sending data again for the " + timeoutCount + 1 + "th time");
-						TFTPCommon.sendPacket(sendPacket, sendReceiveSocket);// send data again
-					}
-					
-					}//end while
-					
-					// check if received is an ack
-					//handle duplicate acks
-
-					byte[] rcvd = receivePacket.getData();
-
-					if (TFTPCommon.validACKPacket(rcvd, blockNum)) 
-					{
-						if (verbose != TFTPCommon.Verbosity.NONE)
-						{
-							System.out.println("Client: "+ "ACK valid!");
-							if (verbose == TFTPCommon.Verbosity.ALL)
-								System.out.println("Client: "+"done Block ");
-						}
-					}
-					else if (TFTPCommon.getPacketType(rcvd) == TFTPCommon.PacketType.ACK) 
-					{
-						// duplicate ack received
-						System.out.println("Client: " + "ACK is duplicated");
-						System.out.println("Client: " + "Packet ignored");
-						
-					}
-					else 
-					{
-						System.out.println("Client: " + "ACK is invalid!");
-						
-					}
-				
-				}
+			
+			TFTPCommon.sendDataWTimeout(sendPacket, receivePacket, sendReceiveSocket, serverAddress, timeout, maxTimeout, sendPort, fileOp, verbose, consolePrefix);
 
 			//Close file now that we are done sending it to client
 			fileOp.closeFileRead();
@@ -520,7 +452,7 @@ class TFTPClientTransfer extends Thread
 				if ((msg[2] & 0xFF) == ((byte) (blockNum / 256) & 0xFF) && (msg[3] & 0xFF) == ((byte) (blockNum % 256) & 0xFF)) 
 				{
 					try {
-						willExit = TFTPCommon.validDataPacket(msg, len, fileOp, verbose);
+						willExit = TFTPCommon.writeDataPacket(msg, len, fileOp, verbose);
 					} catch (Exception e) {
 						// invalid data
 						parent.clientTransferring(false);
