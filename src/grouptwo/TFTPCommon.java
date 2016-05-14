@@ -24,6 +24,8 @@ public class TFTPCommon {
 
 	public static int TFTPListenPort = 69;
 
+	public static int TFTPErrorSimPort = 23;
+
 	/**
 	 *   Send a DatagramPacket through a DatagramSocket.
 	 *   @param  DatagramPacket to send
@@ -58,6 +60,7 @@ public class TFTPCommon {
 			return;
 		}	
 	}
+
 	/**
 	 *   Receive a DatagramPacket through a DatagramSocket with a timeout.
 	 *   @param  DatagramPacket instance to receive
@@ -67,21 +70,21 @@ public class TFTPCommon {
 	 *   @return none
 	 * 
 	 */
-	public static void receivePacketWTimeout(DatagramPacket packet, DatagramSocket socket,
-			int timeout) throws SocketTimeoutException { 
+	public static void receivePacketWTimeout(DatagramPacket packet, DatagramSocket socket, int timeout) throws SocketTimeoutException 
+	{ 
 		try {
 			socket.setSoTimeout(timeout);
 			socket.receive(packet);
-		} catch(SocketTimeoutException se) {
-			throw se;
+		} catch (SocketTimeoutException e) {
+			throw e;
 		} catch (SocketException e) {
-			System.out.println("Socket closed, no longer accepting new packets.");
+			System.out.println("Local socket closed, no longer accepting new packets.");
 		} catch (IOException e) {
 			e.printStackTrace();
 			return;
 		}
-		
 	}
+
 	/**
 	 *   Prints basic packet details based on the verbosity of the host
 	 *
@@ -354,7 +357,7 @@ public class TFTPCommon {
 			throw new Exception("Invalid data packet");
 		}
 		file.writeNextDataPacket(msg, 4, len - 4);
-
+		
 		if (len < 516)
 		{
 			if (verbose != Verbosity.NONE)

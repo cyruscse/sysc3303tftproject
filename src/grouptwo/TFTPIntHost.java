@@ -23,7 +23,7 @@ public class TFTPIntHost
     public TFTPIntHost()
     {
         try {
-            receiveSocket = new DatagramSocket(23);
+            receiveSocket = new DatagramSocket(TFTPCommon.TFTPErrorSimPort);
         } catch (SocketException se) {
             se.printStackTrace();
             System.exit(1);
@@ -570,7 +570,10 @@ class TFTPIntHostCommandLine extends Thread
             }
             else if ( scIn.equalsIgnoreCase("p") )
             {
-                System.out.println("Note: These modifications haven't been commited for the next client connnection");
+                if ( !nextSet.isEmpty() )
+                {
+                    System.out.println("Note: These modifications haven't been commited for the next client connnection");
+                }
                 printModifyDetails();
             }
             else if ( scIn.equalsIgnoreCase("v") ) 
