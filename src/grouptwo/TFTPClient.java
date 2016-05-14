@@ -205,8 +205,8 @@ public class TFTPClient
 	 *   @return none
 	 */
 	public void Testvalues() {
-		localFile = "/var/log/daily.out";
-		remoteFile = "/Users/cyrus/Documents/test.txt";
+		localFile = "/Users/cyrus/test.out";
+		remoteFile = "/Users/cyrus/Documents/gittest/sysc3303tftproject/testfiles/1000.dat";
 		requestType = TFTPCommon.Request.READ;
 		mode = TFTPCommon.Mode.TEST;
 		verbosity = TFTPCommon.Verbosity.ALL;
@@ -477,7 +477,8 @@ class TFTPClientTransfer extends Thread
 					//handle duplicate acks
 
 					byte[] rcvd = receivePacket.getData();
-					if (TFTPCommon.validACKPacket(receivePacket, blockNum)) 
+
+					if (TFTPCommon.validACKPacket(rcvd, blockNum)) 
 					{
 						if (verbose != TFTPCommon.Verbosity.NONE)
 						{
@@ -486,15 +487,13 @@ class TFTPClientTransfer extends Thread
 								System.out.println("Client: "+"done Block ");
 						}
 					}
-
-					else if (rcvd[0] == 0 && rcvd[1] == 4) 
+					else if (TFTPCommon.getPacketType(rcvd) == TFTPCommon.PacketType.ACK) 
 					{
 						// duplicate ack received
 						System.out.println("Client: " + "ACK is duplicated");
 						System.out.println("Client: " + "Packet ignored");
 						
-					} 
-
+					}
 					else 
 					{
 						System.out.println("Client: " + "ACK is invalid!");
@@ -537,8 +536,8 @@ class TFTPClientTransfer extends Thread
 					msg = new byte[4];
 					TFTPCommon.constructAckPacket(msg, blockNum);
 					sendPacket = new DatagramPacket(msg, msg.length, receivePacket.getAddress(), receivePacket.getPort());
-					TFTPCommon.printPacketDetails(sendPacket,verbose,false);
-					TFTPCommon.sendPacket(sendPacket,sendReceiveSocket);
+					TFTPCommon.printPacketDetails(sendPacket, verbose, false);
+					TFTPCommon.sendPacket(sendPacket, sendReceiveSocket);
 
 					blockNum++;
 				} 
@@ -553,8 +552,8 @@ class TFTPClientTransfer extends Thread
 
 					TFTPCommon.constructAckPacket(msg, blockNum);
 					sendPacket = new DatagramPacket(msg, msg.length, receivePacket.getAddress(), receivePacket.getPort());
-					TFTPCommon.printPacketDetails(sendPacket,verbose,false);
-					TFTPCommon.sendPacket(sendPacket,sendReceiveSocket);
+					TFTPCommon.printPacketDetails(sendPacket, verbose, false);
+					TFTPCommon.sendPacket(sendPacket, sendReceiveSocket);
 				} 
 /*
 				else if (msg[0] == 0 && msg[1] == 3) 
@@ -585,7 +584,7 @@ class TFTPClientTransfer extends Thread
 				}
 
 				try {
-					TFTPCommon.receivePacketWTimeout(receivePacket,sendReceiveSocket, 60000);
+					TFTPCommon.receivePacketWTimeout(receivePacket, sendReceiveSocket, 60000);
 				} catch (SocketTimeoutException e1) {
 					// packet not received within time
 					// dont resend ack just die 

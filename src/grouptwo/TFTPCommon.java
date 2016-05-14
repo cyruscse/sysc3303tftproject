@@ -357,7 +357,7 @@ public class TFTPCommon {
 			throw new Exception("Invalid data packet");
 		}
 		file.writeNextDataPacket(msg, 4, len - 4);
-		
+
 		if (len < 516)
 		{
 			if (verbose != Verbosity.NONE)
@@ -381,14 +381,14 @@ public class TFTPCommon {
 	 *   @param  int length of data
 	 *   @return Boolean indicating if ACK is valid or not
 	 */
-	public static Boolean validACKPacket(DatagramPacket packet, int blockNum)
+	public static Boolean validACKPacket(byte[] data, int blockNum)
 	{
-		if ( packet.getData()[0] == 0 && packet.getData()[1] == 4 && (packet.getData()[2] & 0xFF) == ((byte)(blockNum / 256) & 0xFF)
-						&& (packet.getData()[3] & 0xFF) ==  ((byte)(blockNum % 256) & 0xFF) )
+		if ( getPacketType(data) == PacketType.ACK && blockNumToPacket(data) == blockNum)
 		{
 			return true;
 		}
-		else return false;
+		
+		return false;
 	}
 
 }

@@ -36,16 +36,17 @@ public class ClientConnectionThread implements Runnable {
 	private int port;
 	private InetAddress address;
 	private int threadNumber;
-	private int timeout = 100;
-	private int maxTimeout = 6000; // number of timeouts before quiting
+	private int timeout = 1000;
+	private int maxTimeout = 10; // number of timeouts before quiting
+	private final String consolePrefix = ("Server Thread " + (threadNumber + 1) + ": ");
 
 	public ClientConnectionThread(DatagramPacket receivePckt, TFTPServer parent, TFTPCommon.Verbosity verbosity, int threadNumber) {
 		this.threadNumber = threadNumber;
-		this.receivePacket = receivePckt;
+		receivePacket = receivePckt;
 		this.parent = parent;
-		this.port = receivePckt.getPort();
-		this.address = receivePckt.getAddress();
-		this.verbose = verbosity;
+		port = receivePckt.getPort();
+		address = receivePckt.getAddress();
+		verbose = verbosity;
 		mode = new String();
 
 		try {
@@ -61,11 +62,10 @@ public class ClientConnectionThread implements Runnable {
 
 		byte[] data, msg, response;
 		int blockNum, len, j = 0, k = 0, timeoutCount;
-		boolean packetReceivedBeforeTimeout;
 
 		if (verbose == TFTPCommon.Verbosity.ALL)
 		{
-			System.out.println("Server: new thread created, Thread: " + threadNumber);
+			System.out.println(consolePrefix + "created");
 		}
 		
 		data = receivePacket.getData();
@@ -117,87 +117,96 @@ public class ClientConnectionThread implements Runnable {
 			try {
 				fileOp = new FileOperation(localName, true, 512); 
 			} catch (FileNotFoundException e) {
-				System.out.println("Server Thread " + threadNumber +": "+" Local file " + localName + " does not exist!");
+				System.out.println(consolePrefix + "Local file " + localName + " does not exist!");
 				e.printStackTrace();
 				return;
 			} catch (Exception e) {
-				System.out.println("File is too big!");
+				System.out.println(consolePrefix + "File is too big!");
 				return;
 			}
 
-			for (blockNum = 0; blockNum < fileOp.getNumTFTPBlocks(); blockNum++) {
-				msg = new byte[516];
+			timeoutCount = 0;
+			blockNum = 0;
+			msg = new byte[516];
 
-				len = TFTPCommon.constructDataPacket(msg, blockNum, fileOp);
+			while (blockNum < fileOp.getNumTFTPBlocks())
+			{
+				if (timeoutCount == 0)
+				{
+					msg = new byte[516];
+					len = TFTPCommon.constructDataPacket(msg, blockNum, fileOp);
+				}
 
 				if (verbose != TFTPCommon.Verbosity.NONE)
 				{
-					System.out.println("Server: "+ "Thread " + threadNumber +": "+ "Sending TFTP packet " + (blockNum + 1) + "/" + fileOp.getNumTFTPBlocks());
+					System.out.println(consolePrefix + "Sending DATA " + blockNum + "/" + (fileOp.getNumTFTPBlocks() - 1) + " len " + len);
 				}
 
 				sendPacket = new DatagramPacket(msg, len, address, port);
 				
-				TFTPCommon.printPacketDetails(sendPacket,verbose,false);
-				
-				TFTPCommon.sendPacket(sendPacket,sendReceiveSocket);
+				TFTPCommon.printPacketDetails(sendPacket, verbose, false);
+	
+				TFTPCommon.sendPacket(sendPacket, sendReceiveSocket);
 
 				// Receive the client response for the data packet we just sent
-				msg = new byte[4];
-				receivePacket = new DatagramPacket(msg, msg.length);
-/////////////////////////// timeout stuff
-/////////////////////////// here///////////////////////////////
-				timeoutCount = 0;
-				packetReceivedBeforeTimeout = false;
-				while (timeoutCount < maxTimeout && !packetReceivedBeforeTimeout) { // wait
-					// for
-					// one
-					// minute
-					// before
-					// quiting
-					
-				if (verbose != TFTPCommon.Verbosity.NONE)
-				{
-					System.out.println("Server Thread " + threadNumber +": Waiting for data read acknowledgement");
-				}
-				
-				try {
-					TFTPCommon.receivePacketWTimeout(receivePacket,sendReceiveSocket,timeout);// for timeOut
-					// received packet
-					packetReceivedBeforeTimeout = true;
-				} catch (SocketTimeoutException e) {
-					System.out.println("TIMED OUT after " + timeout + "seconds");
-					System.out.println("sending data again for the " + timeoutCount + 1 + "th time");
-					TFTPCommon.sendPacket(sendPacket, sendReceiveSocket);// send data again
-				}
-			} // end while
-				// check if received is an ack
-				//handle duplicate acks
+				response = new byte[4];
+				receivePacket = new DatagramPacket(response, response.length);
 
-				byte[] rcvd = receivePacket.getData();
-				if (TFTPCommon.validACKPacket(receivePacket,blockNum)) 
-				{
+				if (timeoutCount < maxTimeout) 
+				{	
 					if (verbose != TFTPCommon.Verbosity.NONE)
 					{
-						System.out.println("Server Thread " + threadNumber +": "+ "ACK valid!");
-						if (verbose == TFTPCommon.Verbosity.ALL)
-							System.out.println("Server Thread " + threadNumber +": "+"done Block " + j);
+						System.out.println(consolePrefix + "Waiting for data read acknowledgement");
 					}
-				}else if (rcvd[0] == 0 && rcvd[1] == 4) {
-					// duplicate ack received
-					System.out.println("Server Thread " + threadNumber + ": " + "ACK is duplicated");
-					System.out.println("Server Thread " + threadNumber + ": " + "Packet ignored");
-					j--;
-				} else {
-					System.out.println("Server Thread " + threadNumber + ": " + "ACK is invalid!");
-					j--;
+					
+					try {
+						TFTPCommon.receivePacketWTimeout(receivePacket, sendReceiveSocket, timeout);
+					} catch (SocketTimeoutException e) {
+						timeoutCount++;
+						System.out.println(consolePrefix + "Receive timed out after " + timeout + " ms");
+						System.out.println(consolePrefix + "Resending DATA " + blockNum  + ": Attempt " + timeoutCount);
+					}
 				}
-				
+				else
+				{
+					System.out.println(consolePrefix + "Maximum timeouts reached for DATA " + blockNum + ". Thread returning.");
+					break;
+				}
+
+				if (receivePacket.getPort() != -1)
+				{ 
+					if (TFTPCommon.validACKPacket(response, blockNum)) 
+					{
+						if (verbose != TFTPCommon.Verbosity.NONE)
+						{
+							System.out.println(consolePrefix + "ACK valid!");
+							if (verbose == TFTPCommon.Verbosity.ALL)
+								System.out.println(consolePrefix + "done Block " + blockNum);
+						}
+
+						timeoutCount = 0; //Reset timeout count once a successful ACK is received
+						blockNum++;
+					}
+					else if (TFTPCommon.getPacketType(response) == TFTPCommon.PacketType.ACK && TFTPCommon.blockNumToPacket(response) < blockNum) 
+					{
+						// duplicate ack received
+						System.out.println(consolePrefix + "Duplicate ACK received, ignoring");
+					} 
+					else 
+					{
+						System.out.println(consolePrefix + "Invalid packet received, ignoring");
+						TFTPCommon.printPacketDetails(receivePacket, TFTPCommon.Verbosity.ALL, false);
+					}
+				}			
 			}
 
 			//Close file now that we are done sending it to client
-			fileOp.closeFileRead();
 
-
+			if ( blockNum == fileOp.getNumTFTPBlocks())
+			{
+				System.out.println("good read");
+				fileOp.closeFileRead();
+			}
 		} 
 
 		else if (requestType == TFTPCommon.Request.WRITE)
@@ -205,16 +214,16 @@ public class ClientConnectionThread implements Runnable {
 			try {
 				fileOp = new FileOperation(localName, false, 512);
 			} catch (FileNotFoundException e) {
-				System.out.println("Couldn't write to " + localName);
+				System.out.println(consolePrefix + "Couldn't write to " + localName);
 				return;
 			} catch (Exception e) {
-				System.out.println("File is too big!");
+				System.out.println(consolePrefix + "File is too big!");
 				return;
 			}
 
 			if (verbose != TFTPCommon.Verbosity.NONE )
 			{
-				System.out.println("Server Thread " + threadNumber +": Sending WRQ ACK0.");
+				System.out.println(consolePrefix + "Sending WRQ ACK0.");
 			}
 
 			// Send the initial ACK (block 0) that will establish a connection with the client 
@@ -232,7 +241,7 @@ public class ClientConnectionThread implements Runnable {
 			Boolean willExit = false;
 			blockNum = 0;
 
-			System.out.println("Server Thread " + threadNumber + ": Beginning file transfer");
+			System.out.println(consolePrefix + "Beginning file transfer");
 
 			while (writingFile)
 			{
@@ -241,7 +250,7 @@ public class ClientConnectionThread implements Runnable {
 
 				if (verbose != TFTPCommon.Verbosity.NONE)
 				{
-					System.out.println("Server Thread " + threadNumber + ": Waiting for next data packet");
+					System.out.println(consolePrefix + "Waiting for next data packet");
 				}
 
 				try {
@@ -250,8 +259,8 @@ public class ClientConnectionThread implements Runnable {
 					// packet not received within time
 					// dont resend ack just die 
 					// time here must be longer than time for write requests
-					System.out.println("conection must have been lost havent recieved any data packets in 60000ms");
-					System.out.println("Killing Thread");
+					System.out.println(consolePrefix + "conection must have been lost havent recieved any data packets in 60000ms");
+					System.out.println(consolePrefix + "Killing Thread");
 					parent.threadDone(Thread.currentThread());
 					return; // kill thread
 				}
@@ -275,7 +284,7 @@ public class ClientConnectionThread implements Runnable {
 					}
 					if (verbose != TFTPCommon.Verbosity.NONE)
 					{
-						System.out.println("Server Thread " + threadNumber + ": Received TFTP packet " + blockNum);
+						System.out.println(consolePrefix + "Received TFTP packet " + blockNum);
 					}
 
 					//Form ACK packet
@@ -292,7 +301,7 @@ public class ClientConnectionThread implements Runnable {
 						&& (msg[3] & 0xFF) == ((byte) ((blockNum - 1) % 256) & 0xFF)) {
 						///// duplicate received don't write but acknowledge
 						blockNum--;
-						System.out.println("duplicate data block data " + blockNum + "received, not writing to file");
+						System.out.println(consolePrefix + "duplicate data block data " + blockNum + "received, not writing to file");
 						msg = new byte[4]; 
 	
 						TFTPCommon.constructAckPacket(msg, blockNum);
@@ -327,7 +336,7 @@ public class ClientConnectionThread implements Runnable {
 			// throw new Exception("Not yet implemented");
 		}
 
-		System.out.println("Server Thread " + threadNumber + ": File transfer complete");
+		System.out.println(consolePrefix + "File transfer complete");	//if for this as well (when maxtimeouts have been reached)
 
 		// We're finished with this socket, so close it.
 		sendReceiveSocket.close();
