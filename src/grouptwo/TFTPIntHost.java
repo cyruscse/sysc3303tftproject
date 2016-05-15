@@ -395,7 +395,10 @@ class TFTPIntHostCommandLine extends Thread
                 }
             }
 
-            packetToModify = getIntMenu(sc, "Enter packet number: ");
+            if (packetType != TFTPCommon.PacketType.REQUEST)
+            {
+                packetToModify = getIntMenu(sc, "Enter packet number: ");
+            }
 
             if ( modType == TFTPCommon.ModificationType.DELAY )
             {
