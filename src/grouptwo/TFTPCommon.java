@@ -99,12 +99,13 @@ public class TFTPCommon {
 		int timeoutCount = 0;
 		int blockNum = 0;
 		int len = 0;
+		Boolean sendData = true;
 		byte[] dataMsg = new byte[516];
 		byte[] ackMsg = new byte[4];
 
 		while (blockNum < fileOp.getNumTFTPBlocks())
 		{
-			if (blockNumToPacket(dataMsg) < blockNum || blockNum == 0)
+			if (sendData)
 			{
 				if (timeoutCount == 0)
 				{
@@ -127,7 +128,7 @@ public class TFTPCommon {
 			ackMsg = new byte[4];
 			receive = new DatagramPacket(ackMsg, ackMsg.length);
 
-			if (timeoutCount < maxTimeout) 
+			if (timeoutCount < maxTimeout)
 			{	
 				if (verbose != Verbosity.NONE)
 				{
@@ -164,15 +165,18 @@ public class TFTPCommon {
 
 					timeoutCount = 0; //Reset timeout count once a successful ACK is received
 					blockNum++;
+					sendData = true;
 				}
 				else if (getPacketType(ackMsg) == PacketType.ACK && blockNumToPacket(ackMsg) < blockNum) 
 				{
 					System.out.println(consolePrefix + "Duplicate ACK received, ignoring");
+					sendData = false;
 				} 
 				else 
 				{
 					System.out.println(consolePrefix + "Invalid packet received, ignoring" + " " + blockNum);
 					printPacketDetails(receive, verbose, false);
+					sendData = false;
 				}
 			}			
 		}

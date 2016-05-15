@@ -299,7 +299,7 @@ class TFTPIntHostCommandLine extends Thread
 
     private int getIntMenu (Scanner sc, String promptMessage)
     {
-        int parsedString = 0;
+        int parsedString = -1;
         String scIn = new String();
 
         while ( true )
