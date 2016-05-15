@@ -290,15 +290,42 @@ class TFTPIntHostCommandLine extends Thread
         nextSet = new HashSet<SimulatePacketInfo>();
     }
 
+    private int getIntMenu (Scanner sc, String promptMessage)
+    {
+        int parsedString = 0;
+        String scIn = new String();
+
+        while ( true )
+        {
+            System.out.print(promptMessage);
+
+            scIn = sc.nextLine();
+
+            try {
+                parsedString = Integer.parseInt(scIn);
+            } catch (NumberFormatException e) {
+                System.out.println("Input was not a number, try again.");
+            }
+
+            if (parsedString < 1 || parsedString > 65535)
+            {
+                System.out.println("Invalid delay, try again.");
+            }
+            else
+            {
+                return parsedString;
+            }
+        }
+    }
+
     /*** make a common menu method ***/
-    private void modifyPacket(Scanner sc)
+    private void modifyPacket (Scanner sc)
     {
         //loop "forever", this returns with user input
         while (true)
         {
             String scIn = new String();
             int packetToModify = 0;
-            int parsedString = 0;
             int delayAmount = 0;
             TFTPCommon.PacketType packetType = TFTPCommon.PacketType.INVALID;
             TFTPCommon.ModificationType modType = TFTPCommon.ModificationType.NONE;
@@ -318,36 +345,12 @@ class TFTPIntHostCommandLine extends Thread
 
                 if ( scIn.equalsIgnoreCase("delay") )
                 {
-                    while ( delayAmount == 0 )
-                    {
-                        System.out.print("Enter delay amount (ms): ");
-
-                        scIn = sc.nextLine();
-
-                        if ( scIn.equalsIgnoreCase("r") )
-                        {
-                            return;
-                        }
-
-                        try {
-                            parsedString = Integer.parseInt(scIn);
-                        } catch (NumberFormatException e) {
-                            System.out.println("Input was not a number, try again.");
-                        }
-
-                        if (parsedString < 1 || parsedString > 65535)
-                        {
-                            System.out.println("Invalid delay, try again.");
-                        }
-                        else
-                        {
-                            delayAmount = parsedString;
-                        }
-                    }
+                    delayAmount = getIntMenu(sc, "Enter amount to delay packet (ms): ");
                     modType = TFTPCommon.ModificationType.DELAY;                
                 }
                 else if ( scIn.equalsIgnoreCase("dup") )
                 {
+                    delayAmount = getIntMenu(sc, "Enter amount of time to wait between duplicated packets (ms): ");
                     modType = TFTPCommon.ModificationType.DUPLICATE;
                 }
                 else if ( scIn.equalsIgnoreCase("lose") )
@@ -392,32 +395,7 @@ class TFTPIntHostCommandLine extends Thread
                 }
             }
 
-            while ( packetToModify == 0 )
-            {
-                System.out.print("Enter packet # to modify (or r to return): ");
-
-                scIn = sc.nextLine();
-
-                if ( scIn.equalsIgnoreCase("r") )
-                {
-                    return;
-                }
-
-                try {
-                    parsedString = Integer.parseInt(scIn);
-                } catch (NumberFormatException e) {
-                    System.out.println("Input was not a number, try again.");
-                }
-
-                if (parsedString < 1 || parsedString > 65535)
-                {
-                    System.out.println("Invalid packet number, try again.");
-                }
-                else
-                {
-                    packetToModify = parsedString;
-                }
-            }
+            packetToModify = getIntMenu(sc, "Enter packet number: ");
 
             if ( modType == TFTPCommon.ModificationType.DELAY )
             {
