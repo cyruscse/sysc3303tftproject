@@ -85,7 +85,7 @@ public class TFTPCommon {
 		}
 	}
 
-	public static void sendDataWTimeout (DatagramPacket sendPacket, DatagramPacket receivePacket, DatagramSocket sendReceiveSocket, InetAddress address, int timeout, int maxTimeout, int port, FileOperation fileOp, Verbosity verbose, String consolePrefix)
+	public static void sendDataWTimeout (DatagramPacket send, DatagramPacket receive, DatagramSocket sendReceiveSocket, InetAddress address, int timeout, int maxTimeout, int port, FileOperation fileOp, Verbosity verbose, String consolePrefix)
 	{
 		int timeoutCount = 0;
 		int blockNum = 0;
@@ -106,14 +106,14 @@ public class TFTPCommon {
 				System.out.println(consolePrefix + "Sending DATA " + blockNum + "/" + (fileOp.getNumTFTPBlocks() - 1));
 			}
 
-			sendPacket = new DatagramPacket(dataMsg, len, address, port);
+			send = new DatagramPacket(dataMsg, len, address, port);
 			
-			printPacketDetails(sendPacket, verbose, false);
-			sendPacket(sendPacket, sendReceiveSocket);
+			printPacketDetails(send, verbose, false);
+			sendPacket(send, sendReceiveSocket);
 
 			// Receive the client response for the data packet we just sent
 			ackMsg = new byte[4];
-			receivePacket = new DatagramPacket(ackMsg, ackMsg.length);
+			receive = new DatagramPacket(ackMsg, ackMsg.length);
 
 			if (timeoutCount < maxTimeout) 
 			{	
@@ -123,7 +123,7 @@ public class TFTPCommon {
 				}
 				
 				try {
-					receivePacketWTimeout(receivePacket, sendReceiveSocket, timeout);
+					receivePacketWTimeout(receive, sendReceiveSocket, timeout);
 				} catch (SocketTimeoutException e) {
 					timeoutCount++;
 					System.out.println(consolePrefix + "Receive timed out after " + timeout + " ms");
@@ -136,13 +136,14 @@ public class TFTPCommon {
 				break;
 			}
 
-			if (receivePacket.getPort() != -1)
+			if (receive.getPort() != -1)
 			{ 
 				if (validACKPacket(ackMsg, blockNum)) 
 				{
 					if (verbose != Verbosity.NONE)
 					{
 						System.out.println(consolePrefix + "ACK valid!");
+						printPacketDetails(receive, verbose, false);
 						if (verbose == Verbosity.ALL)
 							System.out.println(consolePrefix + "done Block " + blockNum);
 					}
@@ -157,7 +158,7 @@ public class TFTPCommon {
 				else 
 				{
 					System.out.println(consolePrefix + "Invalid packet received, ignoring" + " " + blockNum);
-					printPacketDetails(receivePacket, verbose, false);
+					printPacketDetails(receive, verbose, false);
 				}
 			}			
 		}

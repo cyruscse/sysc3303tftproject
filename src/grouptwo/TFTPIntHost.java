@@ -97,6 +97,7 @@ class ErrorSimulator extends Thread
     {
         clientAddress = firstPacket.getAddress();
         clientPort = firstPacket.getPort();
+        serverPort = 0;
         len = firstPacket.getLength();
         data = firstPacket.getData();
         verbosity = verbose;
@@ -213,153 +214,53 @@ class ErrorSimulator extends Thread
 
     public void passOnTFTP()
     {
-        int j = 0;
+        int port = TFTPCommon.TFTPListenPort;
 
-        //TODO might have to move request code to loop (?)
-        sendPacket = new DatagramPacket(data, len, clientAddress, TFTPCommon.TFTPListenPort); //TODO define 69 somewhere
-
-        len = sendPacket.getLength();
-        
-        if (verbosity != TFTPCommon.Verbosity.NONE)
-        {
-            System.out.println("Simulator: sending request packet.");
-            System.out.println("To host: " + sendPacket.getAddress());
-            System.out.println("Destination host port: " + sendPacket.getPort());
-            System.out.println("Length: " + len);
-            if (verbosity == TFTPCommon.Verbosity.ALL)
-            {
-                System.out.println("Containing: ");
-                for (j = 0; j < len; j++) 
-                {
-                    System.out.println("byte " + j + " " + data[j]);
-                }
-            }
-        }
-
-        errorSimulateSend(); 
-        
         while (true) 
         {
-            // receive from server
-            data = new byte[516];
-            receivePacket = new DatagramPacket(data, data.length);
-
-            if (verbosity != TFTPCommon.Verbosity.NONE)
-            {
-                System.out.println("Simulator: Waiting for packet from server.");
-            }
-
-            try {
-                sendReceiveSocket.receive(receivePacket);
-            } catch(IOException e) {
-                e.printStackTrace();
-                System.exit(1);
-            }
-
-            serverPort = receivePacket.getPort();
-            len = receivePacket.getLength();
-
-            if (verbosity != TFTPCommon.Verbosity.NONE)
-            {
-                System.out.println("Simulator: Packet received from server:");
-                System.out.println("From host: " + receivePacket.getAddress());
-                System.out.println("Host port: " + receivePacket.getPort());
-                System.out.println("Length: " + len);
-                if (verbosity == TFTPCommon.Verbosity.ALL)
-                {
-                    System.out.println("Containing: ");
-                    for (j=0;j<len;j++) {
-                        System.out.println("byte " + j + " " + data[j]);
-                    }
-                }
-            }
-            
-            // send to client
-            sendPacket = new DatagramPacket(data, receivePacket.getLength(),
-                               receivePacket.getAddress(), clientPort);
-
+            //Assume that server and client are on same machine by using clientAddress for both
+            //Will have to be changed for Iteration 5
+            sendPacket = new DatagramPacket(data, len, clientAddress, port);
             len = sendPacket.getLength();
-            
-            if (verbosity != TFTPCommon.Verbosity.NONE)
-            {
-                System.out.println("Simulator: Sending packet to client:");
-                System.out.println("To host: " + sendPacket.getAddress());
-                System.out.println("Destination host port: " + sendPacket.getPort());
-                System.out.println("Length: " + len);
-                if (verbosity == TFTPCommon.Verbosity.ALL)
-                {
-                    System.out.println("Containing: ");
-                    for (j=0;j<len;j++) 
-                    {
-                       System.out.println("byte " + j + " " + data[j]);
-                    }   
-                }
-            }   
+            TFTPCommon.printPacketDetails(sendPacket, verbosity, false);
 
             errorSimulateSend();
 
-            // receive from client
             data = new byte[516];
+                
             receivePacket = new DatagramPacket(data, data.length);
 
-            if (verbosity != TFTPCommon.Verbosity.NONE)
-            {
-                System.out.println("Simulator: Waiting for packet from client.");
-            }
-
             try {
-                // Block until a datagram is received via sendReceiveSocket.
                 sendReceiveSocket.receive(receivePacket);
-            } catch(IOException e) {
+            } catch (IOException e) {
                 e.printStackTrace();
-                System.exit(1);
+                return;
             }
 
+            //Set server port if receivePacket is the first packet from the server
+            if (serverPort == 0 && receivePacket.getPort() != clientPort)
+            {
+                serverPort = receivePacket.getPort();
+            }
+
+            //Setup variables to forward packet
+            if (receivePacket.getPort() == serverPort)
+            {
+                port = clientPort;
+            }
+            else if (receivePacket.getPort() == clientPort)
+            {
+                port = serverPort;
+            }
+            else
+            {
+                System.out.println("Received packet from unknown port! Error Sim Instance dying");
+                return;
+            }
+
+            data = receivePacket.getData();
             len = receivePacket.getLength();
-            // Process the received datagram.
-            if (verbosity != TFTPCommon.Verbosity.NONE)
-            {
-                System.out.println("Simulator: Packet received from client:");
-                System.out.println("From host: " + receivePacket.getAddress());
-                System.out.println("Host port: " + receivePacket.getPort());
-                System.out.println("Length: " + len);
-                if (verbosity == TFTPCommon.Verbosity.ALL)
-                {
-                    System.out.println("Containing: ");
-                    for (j=0;j<len;j++) 
-                    {
-                        System.out.println("byte " + j + " " + data[j]);
-                    }
-                }
-            }
-         
-            sendPacket = new DatagramPacket(data, len, receivePacket.getAddress(), serverPort);
-        
-            if (verbosity != TFTPCommon.Verbosity.NONE)
-            {
-                System.out.println("Simulator: sending packet to server.");
-            }
-
-            len = sendPacket.getLength();
-            if (verbosity != TFTPCommon.Verbosity.NONE)
-            {
-                System.out.println("To host: " + sendPacket.getAddress());
-                System.out.println("Destination host port: " + sendPacket.getPort());
-                System.out.println("Length: " + len);
-                if (verbosity == TFTPCommon.Verbosity.ALL)
-                {
-                    System.out.println("Containing: ");
-                    for (j=0;j<len;j++) 
-                    {
-                        System.out.println("byte " + j + " " + data[j]);
-                    }
-                }
-            }
-
-            // Send to server.
-            errorSimulateSend();
-         
-        } // end of loop
+        }
     }
 
     public void run()
