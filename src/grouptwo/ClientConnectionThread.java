@@ -159,7 +159,7 @@ public class ClientConnectionThread implements Runnable {
 
 			System.out.println(consolePrefix + "Beginning file transfer");
 
-			sendReceiveStatus = TFTPCommon.receiveDataWTimeout(sendPacket, receivePacket, sendReceiveSocket, hardTimeout, fileOp, verbose, consolePrefix);
+			sendReceiveStatus = TFTPCommon.receiveDataWTimeout(sendPacket, receivePacket, sendReceiveSocket, false, hardTimeout, fileOp, verbose, consolePrefix);
 		} 
 		else 
 		{

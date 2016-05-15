@@ -177,10 +177,11 @@ public class TFTPCommon {
 		return true;
 	}
 
-	public static Boolean receiveDataWTimeout (DatagramPacket send, DatagramPacket receive, DatagramSocket sendReceiveSocket, int hardTimeout, FileOperation fileOp, Verbosity verbose, String consolePrefix)
+	public static Boolean receiveDataWTimeout (DatagramPacket send, DatagramPacket receive, DatagramSocket sendReceiveSocket, Boolean client, int hardTimeout, FileOperation fileOp, Verbosity verbose, String consolePrefix)
 	{
 		Boolean writingFile = true;
 		Boolean willExit = false;
+		Boolean receiveSet = client;
 		byte[] dataMsg, ackMsg;
 		int blockNum = 0;
 		int len = 0;
@@ -188,18 +189,27 @@ public class TFTPCommon {
 		while (writingFile)
 		{
 			dataMsg = new byte[516];
-			receive = new DatagramPacket(dataMsg, dataMsg.length);
-
-			if (verbose != Verbosity.NONE)
+			
+			if (!receiveSet)
 			{
-				System.out.println(consolePrefix + "Waiting for next data packet");
-			}
+				receive = new DatagramPacket(dataMsg, dataMsg.length);
 
-			try {
-				receivePacketWTimeout(receive, sendReceiveSocket, hardTimeout);
-			} catch (SocketTimeoutException e) {
-				System.out.println(consolePrefix + "Haven't received packet in " + hardTimeout + "ms, giving up");
-				return false;
+				if (verbose != Verbosity.NONE)
+				{
+					System.out.println(consolePrefix + "Waiting for next data packet");
+				}
+
+				try {
+					receivePacketWTimeout(receive, sendReceiveSocket, hardTimeout);
+				} catch (SocketTimeoutException e) {
+					System.out.println(consolePrefix + "Haven't received packet in " + hardTimeout + "ms, giving up");
+					return false;
+				}
+			}
+			else
+			{
+				dataMsg = receive.getData();
+				receiveSet = false;
 			}
 
 			len = receive.getLength();

@@ -436,7 +436,7 @@ class TFTPClientTransfer extends Thread
 
 	    else if ( requestType == TFTPCommon.Request.READ ) 
 		{
-			sendReceiveStatus = TFTPCommon.receiveDataWTimeout(sendPacket, receivePacket, sendReceiveSocket, hardTimeout, fileOp, verbose, consolePrefix);
+			sendReceiveStatus = TFTPCommon.receiveDataWTimeout(sendPacket, receivePacket, sendReceiveSocket, true, hardTimeout, fileOp, verbose, consolePrefix);
 		}
 		
 		if (sendReceiveStatus)
