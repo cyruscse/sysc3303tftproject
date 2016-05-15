@@ -141,6 +141,7 @@ public class TFTPCommon {
 					timeoutCount++;
 					System.out.println(consolePrefix + "Receive timed out after " + timeout + " ms");
 					System.out.println(consolePrefix + "Resending DATA " + blockNum  + ": Attempt " + timeoutCount);
+					sendData = true;
 				}
 			}
 			else
