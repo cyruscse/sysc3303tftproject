@@ -104,24 +104,24 @@ public class TFTPCommon {
 
 		while (blockNum < fileOp.getNumTFTPBlocks())
 		{
-            if (blockNumToPacket(dataMsg) < blockNum || blockNum == 0)
-            {
-    			if (timeoutCount == 0)
-    			{
-    				dataMsg = new byte[516];
-    				len = constructDataPacket(dataMsg, blockNum, fileOp);
-    			}
+			if (blockNumToPacket(dataMsg) < blockNum || blockNum == 0)
+			{
+				if (timeoutCount == 0)
+				{
+					dataMsg = new byte[516];
+					len = constructDataPacket(dataMsg, blockNum, fileOp);
+				}
 
-    			if (verbose != Verbosity.NONE)
-    			{
-    				System.out.println(consolePrefix + "Sending DATA " + blockNum + "/" + (fileOp.getNumTFTPBlocks() - 1));
-    			}
+				if (verbose != Verbosity.NONE)
+				{
+					System.out.println(consolePrefix + "Sending DATA " + blockNum + "/" + (fileOp.getNumTFTPBlocks() - 1));
+				}
 
-    			send = new DatagramPacket(dataMsg, len, address, port);
-    			
-    			printPacketDetails(send, verbose, false);
-    			sendPacket(send, sendReceiveSocket);
-            }
+				send = new DatagramPacket(dataMsg, len, address, port);
+
+				printPacketDetails(send, verbose, false);
+				sendPacket(send, sendReceiveSocket);
+			}
 
 			// Receive the client response for the data packet we just sent
 			ackMsg = new byte[4];
