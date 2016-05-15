@@ -85,7 +85,16 @@ public class TFTPCommon {
 		}
 	}
 
-	public static void sendDataWTimeout (DatagramPacket send, DatagramPacket receive, DatagramSocket sendReceiveSocket, InetAddress address, int timeout, int maxTimeout, int port, FileOperation fileOp, Verbosity verbose, String consolePrefix)
+	public static void sendACKPacket(int blockNum, DatagramPacket send, DatagramPacket receive, DatagramSocket socket, Verbosity verbose)
+	{
+		byte[] msg = new byte[4];
+		constructAckPacket(msg, blockNum);
+		send = new DatagramPacket(msg, msg.length, receive.getAddress(), receive.getPort());
+		printPacketDetails(send, verbose, false);
+		sendPacket(send, socket);
+	}
+
+	public static Boolean sendDataWTimeout (DatagramPacket send, DatagramPacket receive, DatagramSocket sendReceiveSocket, InetAddress address, int timeout, int maxTimeout, int port, FileOperation fileOp, Verbosity verbose, String consolePrefix)
 	{
 		int timeoutCount = 0;
 		int blockNum = 0;
@@ -133,7 +142,7 @@ public class TFTPCommon {
 			else
 			{
 				System.out.println(consolePrefix + "Maximum timeouts reached for DATA " + blockNum + ". Thread returning.");
-				break;
+				return false;
 			}
 
 			if (receive.getPort() != -1)
@@ -145,7 +154,9 @@ public class TFTPCommon {
 						System.out.println(consolePrefix + "ACK valid!");
 						printPacketDetails(receive, verbose, false);
 						if (verbose == Verbosity.ALL)
+						{
 							System.out.println(consolePrefix + "done Block " + blockNum);
+						}
 					}
 
 					timeoutCount = 0; //Reset timeout count once a successful ACK is received
@@ -162,6 +173,88 @@ public class TFTPCommon {
 				}
 			}			
 		}
+
+		return true;
+	}
+
+	public static Boolean receiveDataWTimeout (DatagramPacket send, DatagramPacket receive, DatagramSocket sendReceiveSocket, int hardTimeout, FileOperation fileOp, Verbosity verbose, String consolePrefix)
+	{
+		Boolean writingFile = true;
+		Boolean willExit = false;
+		byte[] dataMsg, ackMsg;
+		int blockNum = 0;
+		int len = 0;
+
+		while (writingFile)
+		{
+			dataMsg = new byte[516];
+			receive = new DatagramPacket(dataMsg, dataMsg.length);
+
+			if (verbose != Verbosity.NONE)
+			{
+				System.out.println(consolePrefix + "Waiting for next data packet");
+			}
+
+			try {
+				receivePacketWTimeout(receive, sendReceiveSocket, hardTimeout);
+			} catch (SocketTimeoutException e) {
+				System.out.println(consolePrefix + "Haven't received packet in " + hardTimeout + "ms, giving up");
+				return false;
+			}
+
+			len = receive.getLength();
+			
+			printPacketDetails(receive, verbose, false);
+
+			if (verbose != Verbosity.NONE)
+			{
+				System.out.println(consolePrefix + "Received DATA " + blockNum);
+			}
+
+			//We received a DATA packet but it is not the block number we were expecting (i.e. delayed/lost DATA)
+			if (getPacketType(dataMsg) == PacketType.DATA) 
+			{
+				//Duplicate DATA received (i.e. block number has already been acknowledged)
+				if (blockNumToPacket(dataMsg) < (blockNum - 1))
+				{	
+					System.out.println(consolePrefix + "Duplicate DATA " + blockNumToPacket(dataMsg) + " received, not writing to file");
+				}
+				//Delayed response to our last ACK, we need to resend the last ACK
+				else if (blockNumToPacket(dataMsg) == (blockNum - 1))
+				{
+					blockNum--;
+				}		
+				//We received the DATA packet we were expecting, look for next DATA
+				else if (blockNumToPacket(dataMsg) == blockNum)
+				{
+					try {
+						willExit = writeDataPacket(dataMsg, len, fileOp, verbose);
+					} catch (Exception e) {
+						return false;
+					}
+				}
+
+				sendACKPacket(blockNum, send, receive, sendReceiveSocket, verbose);
+
+				if (blockNumToPacket(dataMsg) == blockNum)
+				{
+					blockNum++;
+				}
+			}
+			else
+			{
+				System.out.println(consolePrefix + "Non-DATA packet received, ignoring");
+			}
+			
+			//Can't exit right after we receive the last data packet,
+			//we have to acknowledge the data first
+			if (willExit)
+			{
+				break;
+			}
+		}
+
+		return true;
 	}
 
 	/**

@@ -36,8 +36,12 @@ public class ClientConnectionThread implements Runnable {
 	private int port;
 	private InetAddress address;
 	private int threadNumber;
+	//hardTimeout - timeout when waiting for DATA
+	private int hardTimeout;
+	//timeout - timeout when sending DATA
 	private int timeout;
-	private int maxTimeout; // number of timeouts before quiting
+	//maxTimeout - number of timeouts to wait before giving up
+	private int maxTimeout;
 	private final String consolePrefix = ("Server Thread " + (threadNumber + 1) + ": ");
 
 	public ClientConnectionThread(DatagramPacket receivePckt, TFTPServer parent, TFTPCommon.Verbosity verbosity, int threadNumber) 
@@ -49,6 +53,7 @@ public class ClientConnectionThread implements Runnable {
 		address = receivePckt.getAddress();
 		verbose = verbosity;
 		mode = new String();
+		hardTimeout = 60000;
 		timeout = 1000;
 		maxTimeout = 10;
 
@@ -60,19 +65,11 @@ public class ClientConnectionThread implements Runnable {
 		}
 	}
 
-	private void sendACKPacket(int blockNum)
-	{
-		byte[] msg = new byte[4];
-		TFTPCommon.constructAckPacket(msg, blockNum);
-		sendPacket = new DatagramPacket(msg, msg.length, receivePacket.getAddress(), receivePacket.getPort());
-		TFTPCommon.printPacketDetails(sendPacket, verbose, false);
-		TFTPCommon.sendPacket(sendPacket, sendReceiveSocket);
-	}
-
 	public void run() 
 	{
 		byte[] data, msg, response;
-		int blockNum, len, j = 0, k = 0, timeoutCount;
+		int len, j = 0, k = 0;
+		Boolean sendReceiveStatus = false;
 
 		if (verbose == TFTPCommon.Verbosity.ALL)
 		{
@@ -135,10 +132,13 @@ public class ClientConnectionThread implements Runnable {
 				return;
 			}
 
-			TFTPCommon.sendDataWTimeout(sendPacket, receivePacket, sendReceiveSocket, address, timeout, maxTimeout, port, fileOp, verbose, consolePrefix);
+			sendReceiveStatus = TFTPCommon.sendDataWTimeout(sendPacket, receivePacket, sendReceiveSocket, address, timeout, maxTimeout, port, fileOp, verbose, consolePrefix);
 
 			//Close file now that we are done sending it to client
-			fileOp.closeFileRead();
+			if (sendReceiveStatus)
+			{
+				fileOp.closeFileRead();
+			}
 		} 
 
 		else if (requestType == TFTPCommon.Request.WRITE)
@@ -155,73 +155,11 @@ public class ClientConnectionThread implements Runnable {
 				return;
 			}
 
-			Boolean writingFile = true;
-			Boolean willExit = false;
-			blockNum = 0;
-
-			sendACKPacket(blockNum); //Respond to WRQ
+			TFTPCommon.sendACKPacket(0, sendPacket, receivePacket, sendReceiveSocket, verbose); //Respond to WRQ
 
 			System.out.println(consolePrefix + "Beginning file transfer");
 
-			while (writingFile)
-			{
-				msg = new byte[516];
-				receivePacket = new DatagramPacket(msg, msg.length);
-
-				if (verbose != TFTPCommon.Verbosity.NONE)
-				{
-					System.out.println(consolePrefix + "Waiting for next data packet");
-				}
-
-				try {
-					TFTPCommon.receivePacketWTimeout(receivePacket,sendReceiveSocket, 60000);
-				} catch (SocketTimeoutException e1) {
-					// packet not received within time
-					// dont resend ack just die 
-					// time here must be longer than time for write requests
-					System.out.println(consolePrefix + "conection must have been lost havent recieved any data packets in 60000ms");
-					System.out.println(consolePrefix + "Killing Thread");
-					parent.threadDone(Thread.currentThread());
-					return;
-				}
-
-				len = receivePacket.getLength();
-				
-				TFTPCommon.printPacketDetails(receivePacket, verbose, false);
-
-				//Process data packet, writeDataPacket will determine if its the last data packet
-				if (TFTPCommon.validDATAPacket(msg, blockNum)) 
-				{
-					// we received the correct data block with the right number
-					try {
-						willExit = TFTPCommon.writeDataPacket(msg, len, fileOp, verbose);
-					} catch (Exception e) {
-						parent.threadDone(Thread.currentThread());
-						return;
-					}
-					
-					if (verbose != TFTPCommon.Verbosity.NONE)
-					{
-						System.out.println(consolePrefix + "Received DATA " + blockNum);
-					}
-
-					sendACKPacket(blockNum);
-					blockNum++;
-				} 
-				else if (TFTPCommon.getPacketType(msg) == TFTPCommon.PacketType.DATA && TFTPCommon.blockNumToPacket(msg) < blockNum) 
-				{
-					System.out.println(consolePrefix + "Duplicate DATA " + TFTPCommon.blockNumToPacket(msg) + " received, not writing to file");
-
-					sendACKPacket(blockNum);
-				} 
-				
-				//Can't exit right after we receive the last data packet,
-				//we have to acknowledge the data first
-				if (willExit)
-				{
-					writingFile = false;
-				}
-			}
+			sendReceiveStatus = TFTPCommon.receiveDataWTimeout(sendPacket, receivePacket, sendReceiveSocket, hardTimeout, fileOp, verbose, consolePrefix);
 		} 
 		else 
 		{
@@ -229,11 +167,17 @@ public class ClientConnectionThread implements Runnable {
 			return;
 		}
 
-		System.out.println(consolePrefix + "File transfer complete");	//if for this as well (when maxtimeouts have been reached)
+		if (sendReceiveStatus)
+		{
+			System.out.println(consolePrefix + "File transfer complete");
+		}
+		else
+		{
+			System.out.println(consolePrefix + "Error occurred, transfer incomplete");
+		}
 
 		// We're finished with this socket, so close it.
 		sendReceiveSocket.close();
 		parent.threadDone(Thread.currentThread());
-		// done the thread will die automatically
 	}
 }
