@@ -262,8 +262,7 @@ class ErrorSimulator extends Thread
             }
             else
             {
-                System.out.println("Received packet from unknown port! Error Sim Instance dying");
-                return;
+                System.out.println("Received packet from unknown port! This can happen with a delayed or duplicated request");
             }
 
             data = receivePacket.getData();
@@ -315,7 +314,7 @@ class TFTPIntHostCommandLine extends Thread
                 System.out.println("Input was not a number, try again.");
             }
 
-            if (parsedString < 1 || parsedString > 65535)
+            if (parsedString < 0 || parsedString > 65535)
             {
                 System.out.println("Invalid delay, try again.");
             }
@@ -412,7 +411,7 @@ class TFTPIntHostCommandLine extends Thread
                 packetToModify = getIntMenu(sc, "Enter packet number: ");
             }
 
-            if ( modType == TFTPCommon.ModificationType.DELAY )
+            if ( modType == TFTPCommon.ModificationType.DELAY || modType == TFTPCommon.ModificationType.DUPLICATE )
             {
                 nextSet.add(new SimulatePacketInfo(modType, packetToModify, packetType, delayAmount));
             }
@@ -562,6 +561,18 @@ class SimulatePacketInfo
 
     public String toString() 
     {
-        return ("Packet: " + TFTPCommon.packetTypeToString(pType) + " " + pNum + " Error Type: " + TFTPCommon.errorSimulateToString(loseDuplicateDelay));
+        String returnString = new String ("Packet: " + TFTPCommon.packetTypeToString(pType) + " " + pNum + " Error Type: " + TFTPCommon.errorSimulateToString(loseDuplicateDelay));
+        
+        if (getModType() == TFTPCommon.ModificationType.DELAY)
+        {
+            returnString = returnString + " Delay Amount: " + getDelayAmount() + " ms";
+        }
+
+        if (getModType() == TFTPCommon.ModificationType.DUPLICATE)
+        {
+            returnString = returnString + " Duplicate Gap: " + getDuplicateGap() + " ms";
+        }
+
+        return returnString;
     }
 }
