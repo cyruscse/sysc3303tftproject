@@ -52,6 +52,14 @@ public class TFTPIntHost
         System.out.println("Packet modifications commited");
     }
 
+    public void printSimulateSet()
+    {
+        for (SimulatePacketInfo s : toModify)
+        {
+            System.out.println(s);
+        }
+    }
+
     private void processClients()
     {
         cliThread.start();
@@ -357,6 +365,10 @@ class TFTPIntHostCommandLine extends Thread
                 {
                     modType = TFTPCommon.ModificationType.LOSE;
                 }
+                else if ( scIn.equalsIgnoreCase("p") )
+                {
+                    printModifyDetails();
+                }
                 else if ( scIn.equalsIgnoreCase("r") )
                 {
                     return;
@@ -432,11 +444,12 @@ class TFTPIntHostCommandLine extends Thread
 
         while (cliRunning)
         {
+            //need remove method to cancel commited mod
             System.out.println("TFTP Error Simulator");
             System.out.println("--------------------");
-            System.out.println("c: Commit errors for next client"); //dont call this commit
+            System.out.println("c: Commit modifications for next client");
             System.out.println("m: Modify packet(s)");
-            System.out.println("p: List packets that will be modified");
+            System.out.println("p: Print commited modifications");
             System.out.println("v: Set verbosity (current: " + TFTPCommon.verbosityToString(verbosity) + ")");
             System.out.println("q: Quit");
             
@@ -452,11 +465,7 @@ class TFTPIntHostCommandLine extends Thread
             }
             else if ( scIn.equalsIgnoreCase("p") )
             {
-                if ( !nextSet.isEmpty() )
-                {
-                    System.out.println("Note: These modifications haven't been commited for the next client connnection");
-                }
-                printModifyDetails();
+                parentSimulator.printSimulateSet();
             }
             else if ( scIn.equalsIgnoreCase("v") ) 
             {
