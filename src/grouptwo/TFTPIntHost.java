@@ -46,10 +46,14 @@ public class TFTPIntHost
         this.verbosity = v;
     }
 
-    public void nextSimulateList(List<SimulatePacketInfo> nextList)
+    public void nextSimulateList(List<SimulatePacketInfo> nextList, Boolean quiet)
     {
         toModify.addAll(nextList);
-        System.out.println("Packet modifications commited");
+
+        if (!quiet)
+        {
+            System.out.println("Packet modifications commited");
+        }
     }
 
     public void printSimulateList()
@@ -77,7 +81,7 @@ public class TFTPIntHost
                 System.exit(1);
             }
 
-            Thread client = new Thread(new ErrorSimulator(receivePacket, verbosity, toModify));
+            Thread client = new Thread(new ErrorSimulator(receivePacket, verbosity, toModify, this));
             client.start();
             toModify = new ArrayList<SimulatePacketInfo>();
         }
@@ -100,8 +104,9 @@ class ErrorSimulator extends Thread
     private byte [] data;
     private SimulatePacketInfo simCompare;
     private List<SimulatePacketInfo> simulateList;
+    private TFTPIntHost parent;
 
-    public ErrorSimulator(DatagramPacket firstPacket, TFTPCommon.Verbosity verbose, List<SimulatePacketInfo> simulateList)
+    public ErrorSimulator(DatagramPacket firstPacket, TFTPCommon.Verbosity verbose, List<SimulatePacketInfo> simulateList, TFTPIntHost intHost)
     {
         clientAddress = firstPacket.getAddress();
         clientPort = firstPacket.getPort();
@@ -111,6 +116,7 @@ class ErrorSimulator extends Thread
         receivePacket = firstPacket;
         verbosity = verbose;
         this.simulateList = simulateList;
+        parent = intHost;
         
         try {
             sendReceiveSocket = new DatagramSocket();
@@ -119,7 +125,6 @@ class ErrorSimulator extends Thread
             System.exit(1);
         }
     }
-    
     
 	//Decides whether to simulate error or send normally
     
@@ -133,14 +138,23 @@ class ErrorSimulator extends Thread
     			if (check.getModType() == TFTPCommon.ModificationType.LOSE) 
                 {
     				losePacket(check);
+                    simulateList.remove(check);
+                    //If we lose a request, the client will send another request which will spawn a new error sim thread
+                    //The new thread won't have the list of modifications, so pass those now
+                    if (check.getPacketType() == TFTPCommon.PacketType.REQUEST)
+                    {
+                        parent.nextSimulateList(simulateList, true);
+                    }
     			} 
                 else if (check.getModType() == TFTPCommon.ModificationType.DUPLICATE) 
                 {
     				duplicatePacket(check);
+                    simulateList.remove(check);
     			} 
                 else if (check.getModType() == TFTPCommon.ModificationType.DELAY) 
                 {
     				delayPacket(check);
+                    simulateList.remove(check);
     			} 
                 else 
                 {
@@ -278,7 +292,6 @@ class TFTPIntHostCommandLine extends Thread
     private TFTPCommon.Verbosity verbosity;
     private TFTPIntHost parentSimulator;
     private Boolean cliRunning;
-    private Boolean requestModified; //support multiple mods to request later (?)
     private List<SimulatePacketInfo> nextList;
 
     public TFTPIntHostCommandLine(TFTPIntHost parent)
@@ -286,21 +299,12 @@ class TFTPIntHostCommandLine extends Thread
         parentSimulator = parent;
         verbosity = TFTPCommon.Verbosity.NONE;
         cliRunning = true;
-        requestModified = false;
         nextList = new ArrayList<SimulatePacketInfo>();
     }
 
     private void commitNextList()
     {
-        requestModified = false; //if support for multiple request mods added, remove loop and requestModified
-        for (SimulatePacketInfo s : nextList)
-        {
-            if (s.getPacketType() == TFTPCommon.PacketType.REQUEST)
-            {
-                requestModified = true;
-            }
-        }
-        parentSimulator.nextSimulateList(nextList);
+        parentSimulator.nextSimulateList(nextList, false);
         nextList = new ArrayList<SimulatePacketInfo>();
     }
 
@@ -392,16 +396,8 @@ class TFTPIntHostCommandLine extends Thread
 
                 if ( scIn.equalsIgnoreCase("request") )
                 {
-                    if (!requestModified)
-                    {
-                        packetType = TFTPCommon.PacketType.REQUEST;
-                        packetToModify = 1;
-                        requestModified = true;
-                    }
-                    else
-                    {
-                        System.out.println("Multiple modifications to request packet not allowed");
-                    }
+                    packetType = TFTPCommon.PacketType.REQUEST;
+                    packetToModify = 1;
                 }
                 else if ( scIn.equalsIgnoreCase("data") )
                 {

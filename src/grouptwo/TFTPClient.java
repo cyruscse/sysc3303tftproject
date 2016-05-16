@@ -141,10 +141,10 @@ public class TFTPClient
 			}
 
 			else if ( scIn.equalsIgnoreCase("m") ) {
-				System.out.println("Enter mode (inthost, normal): ");
+				System.out.println("Enter mode (test, normal): ");
 				strMode = sc.nextLine();
 
-				if ( strMode.equalsIgnoreCase("inthost") ) 
+				if ( strMode.equalsIgnoreCase("test") ) 
 				{
 					mode = TFTPCommon.Mode.TEST;
 				}

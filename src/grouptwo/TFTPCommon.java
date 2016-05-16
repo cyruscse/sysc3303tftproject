@@ -299,7 +299,7 @@ public class TFTPCommon {
 				System.out.println("Containing: ");
 				for (j = 0; j < packet.getLength(); j++) 
 				{
-					System.out.println("byte " + j + " " + (packet.getData()[j] & 0xFF));
+					System.out.print((packet.getData()[j] & 0xFF) + " ");
 				}
 			}
 		}
@@ -396,15 +396,15 @@ public class TFTPCommon {
 	{
 		if ( ver == Verbosity.NONE )
 		{
-			return "normal";
+			return "none";
 		}
 		else if ( ver == Verbosity.SOME )
 		{
-			return "basic packet details";
+			return "some (basic packet details)";
 		}
 		else if ( ver == Verbosity.ALL )
 		{
-			return "full packet details (including data contents)";
+			return "all (full packet details, including data contents)";
 		}
 		return "";
 	}
