@@ -85,11 +85,12 @@ public class TFTPCommon {
 		}
 	}
 
-	public static void sendACKPacket(int blockNum, DatagramPacket send, DatagramPacket receive, DatagramSocket socket, Verbosity verbose)
+	public static void sendACKPacket(int blockNum, DatagramPacket send, DatagramPacket receive, DatagramSocket socket, Verbosity verbose, String consolePrefix)
 	{
 		byte[] msg = new byte[4];
 		constructAckPacket(msg, blockNum);
 		send = new DatagramPacket(msg, msg.length, receive.getAddress(), receive.getPort());
+		System.out.println(consolePrefix + "Sending ACK " + blockNum);
 		printPacketDetails(send, verbose, false);
 		sendPacket(send, socket);
 	}
@@ -133,7 +134,7 @@ public class TFTPCommon {
 				}
 				
 				try {
-					receivePacketWTimeout(receive, sendReceiveSocket, timeout);
+					receivePacketWTimeout(receive, sendReceiveSocket, timeout + 150);
 				} catch (SocketTimeoutException e) {
 					timeoutCount++;
 					System.out.println(consolePrefix + "Receive timed out after " + timeout + " ms");
@@ -221,15 +222,11 @@ public class TFTPCommon {
 			if (getPacketType(dataMsg) == PacketType.DATA) 
 			{
 				//Duplicate DATA received (i.e. block number has already been acknowledged)
-				if (blockNumToPacket(dataMsg) < (blockNum - 1))
+				if (blockNumToPacket(dataMsg) < blockNum)
 				{	
-					System.out.println(consolePrefix + "Duplicate DATA " + blockNumToPacket(dataMsg) + " received, not writing to file");
-				}
-				//Delayed response to our last ACK, we need to resend the last ACK
-				else if (blockNumToPacket(dataMsg) == (blockNum - 1))
-				{
-					blockNum--;
-				}		
+					System.out.println(consolePrefix + "Duplicate or delayed DATA " + blockNumToPacket(dataMsg) + " received, not writing to file");
+					sendACKPacket(blockNumToPacket(dataMsg), send, receive, sendReceiveSocket, verbose, consolePrefix);
+				}	
 				//We received the DATA packet we were expecting, look for next DATA
 				else if (blockNumToPacket(dataMsg) == blockNum)
 				{
@@ -238,14 +235,8 @@ public class TFTPCommon {
 					} catch (Exception e) {
 						return false;
 					}
-				}
 
-				sendACKPacket(blockNum, send, receive, sendReceiveSocket, verbose);
-				
-				System.out.println(consolePrefix + "Sending ACK " + blockNum);
-
-				if (blockNumToPacket(dataMsg) == blockNum)
-				{
+					sendACKPacket(blockNum, send, receive, sendReceiveSocket, verbose, consolePrefix);					
 					blockNum++;
 				}
 			}

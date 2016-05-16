@@ -183,7 +183,7 @@ class ErrorSimulator extends Thread
     //Send the packet normally, wait a certain amount of time, then send again
     public void duplicatePacket (SimulatePacketInfo check)
     {
-        System.out.println("Duplicate " + TFTPCommon.packetTypeAndNumber(sendPacket.getData()));
+        System.out.println("Duplicate " + TFTPCommon.packetTypeAndNumber(sendPacket.getData()) + ", sending first instance");
         
         try {
             sendReceiveSocket.send(sendPacket);
@@ -192,7 +192,7 @@ class ErrorSimulator extends Thread
             System.exit(1);
         }
 
-        System.out.println("Wait " + check.getDuplicateGap() + " ms");
+        System.out.println("Waiting " + check.getDuplicateGap() + " ms");
         
         try {
             Thread.sleep(check.getDuplicateGap());  //we can't use sleep (probably), error sim will be asleep when first packet gets a response
@@ -201,6 +201,7 @@ class ErrorSimulator extends Thread
             e1.printStackTrace();
         }
 
+        System.out.println("Duplicate " + TFTPCommon.packetTypeAndNumber(sendPacket.getData()) + ", sending second instance");
         try {
             sendReceiveSocket.send(sendPacket);
         } catch (IOException e) {

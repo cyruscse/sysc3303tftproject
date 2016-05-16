@@ -427,7 +427,7 @@ class TFTPClientTransfer extends Thread
 		{		
 			sendReceiveStatus = TFTPCommon.sendDataWTimeout(sendPacket, receivePacket, sendReceiveSocket, serverAddress, timeout, maxTimeout, sendPort, fileOp, verbose, consolePrefix);
 
-			//Close file now that we are done sending it to client
+			//Close file now that we are done sending it to server
 			if (sendReceiveStatus)
 			{
 				fileOp.closeFileRead();
@@ -437,6 +437,11 @@ class TFTPClientTransfer extends Thread
 	    else if ( requestType == TFTPCommon.Request.READ ) 
 		{
 			sendReceiveStatus = TFTPCommon.receiveDataWTimeout(sendPacket, receivePacket, sendReceiveSocket, true, hardTimeout, fileOp, verbose, consolePrefix);
+
+			if (sendReceiveStatus)
+			{
+				fileOp.finalizeFileWrite();
+			}
 		}
 		
 		if (sendReceiveStatus)
