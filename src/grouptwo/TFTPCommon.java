@@ -113,10 +113,7 @@ public class TFTPCommon {
 					len = constructDataPacket(dataMsg, blockNum, fileOp);
 				}
 
-				if (verbose != Verbosity.NONE)
-				{
-					System.out.println(consolePrefix + "Sending DATA " + blockNum + "/" + (fileOp.getNumTFTPBlocks()));
-				}
+				System.out.println(consolePrefix + "Sending DATA " + blockNum + "/" + (fileOp.getNumTFTPBlocks()));
 
 				send = new DatagramPacket(dataMsg, len, address, port);
 
@@ -154,11 +151,8 @@ public class TFTPCommon {
 			{ 
 				if (validACKPacket(ackMsg, blockNum)) 
 				{
-					if (verbose != Verbosity.NONE)
-					{
-						System.out.println(consolePrefix + "Received valid ACK " + blockNum);
-						printPacketDetails(receive, verbose, false);
-					}
+					System.out.println(consolePrefix + "Received valid ACK " + blockNum);
+					printPacketDetails(receive, verbose, false);
 
 					timeoutCount = 0; //Reset timeout count once a successful ACK is received
 					blockNum++;
@@ -166,7 +160,7 @@ public class TFTPCommon {
 				}
 				else if (getPacketType(ackMsg) == PacketType.ACK && blockNumToPacket(ackMsg) < blockNum) 
 				{
-					System.out.println(consolePrefix + "Duplicate ACK " + blockNumToPacket(ackMsg) " received, ignoring");
+					System.out.println(consolePrefix + "Duplicate ACK " + blockNumToPacket(ackMsg) + " received, ignoring");
 					sendData = false;
 				} 
 				else 
@@ -220,10 +214,8 @@ public class TFTPCommon {
 			
 			printPacketDetails(receive, verbose, false);
 
-			if (verbose != Verbosity.NONE)
-			{
-				System.out.println(consolePrefix + "Received DATA " + blockNum);
-			}
+			System.out.println(consolePrefix + "Received DATA " + blockNum);
+
 
 			//We received a DATA packet but it is not the block number we were expecting (i.e. delayed/lost DATA)
 			if (getPacketType(dataMsg) == PacketType.DATA) 
@@ -249,6 +241,7 @@ public class TFTPCommon {
 				}
 
 				sendACKPacket(blockNum, send, receive, sendReceiveSocket, verbose);
+				
 				System.out.println(consolePrefix + "Sending ACK " + blockNum);
 
 				if (blockNumToPacket(dataMsg) == blockNum)
