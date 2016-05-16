@@ -156,12 +156,8 @@ public class TFTPCommon {
 				{
 					if (verbose != Verbosity.NONE)
 					{
-						System.out.println(consolePrefix + "ACK valid!");
+						System.out.println(consolePrefix + "Received valid ACK " + blockNum);
 						printPacketDetails(receive, verbose, false);
-						if (verbose == Verbosity.ALL)
-						{
-							System.out.println(consolePrefix + "done Block " + blockNum);
-						}
 					}
 
 					timeoutCount = 0; //Reset timeout count once a successful ACK is received
@@ -170,12 +166,12 @@ public class TFTPCommon {
 				}
 				else if (getPacketType(ackMsg) == PacketType.ACK && blockNumToPacket(ackMsg) < blockNum) 
 				{
-					System.out.println(consolePrefix + "Duplicate ACK received, ignoring");
+					System.out.println(consolePrefix + "Duplicate ACK " + blockNumToPacket(ackMsg) " received, ignoring");
 					sendData = false;
 				} 
 				else 
 				{
-					System.out.println(consolePrefix + "Invalid packet received, ignoring" + " " + blockNum);
+					System.out.println(consolePrefix + "Invalid packet received, ignoring");
 					printPacketDetails(receive, verbose, false);
 					sendData = false;
 				}
@@ -253,6 +249,7 @@ public class TFTPCommon {
 				}
 
 				sendACKPacket(blockNum, send, receive, sendReceiveSocket, verbose);
+				System.out.println(consolePrefix + "Sending ACK " + blockNum);
 
 				if (blockNumToPacket(dataMsg) == blockNum)
 				{
