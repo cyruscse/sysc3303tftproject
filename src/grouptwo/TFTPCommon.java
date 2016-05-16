@@ -134,7 +134,7 @@ public class TFTPCommon {
 				}
 				
 				try {
-					receivePacketWTimeout(receive, sendReceiveSocket, timeout + 150);
+					receivePacketWTimeout(receive, sendReceiveSocket, timeout);
 				} catch (SocketTimeoutException e) {
 					timeoutCount++;
 					System.out.println(consolePrefix + "Receive timed out after " + timeout + " ms");

@@ -148,12 +148,16 @@ class ErrorSimulator extends Thread
     			} 
                 else if (check.getModType() == TFTPCommon.ModificationType.DUPLICATE) 
                 {
-    				duplicatePacket(check);
+                    Thread duplicateThread = new Thread(new DelayDuplicatePacket(sendPacket, sendReceiveSocket, check.getModType(), check.getDuplicateGap()));
+    				duplicateThread.start();
+                    //duplicatePacket(check);
                     simulateList.remove(check);
     			} 
                 else if (check.getModType() == TFTPCommon.ModificationType.DELAY) 
                 {
-    				delayPacket(check);
+                    Thread delayThread = new Thread(new DelayDuplicatePacket(sendPacket, sendReceiveSocket, check.getModType(), check.getDelayAmount()));
+    		  		delayThread.start();
+                    //delayPacket(check);
                     simulateList.remove(check);
     			} 
                 else 
@@ -178,59 +182,7 @@ class ErrorSimulator extends Thread
     public void losePacket (SimulatePacketInfo check)
     {
         System.out.println("Lose " + TFTPCommon.packetTypeAndNumber(sendPacket.getData()));
-    }
-    
-    //Send the packet normally, wait a certain amount of time, then send again
-    public void duplicatePacket (SimulatePacketInfo check)
-    {
-        System.out.println("Duplicate " + TFTPCommon.packetTypeAndNumber(sendPacket.getData()) + ", sending first instance");
-        
-        try {
-            sendReceiveSocket.send(sendPacket);
-        } catch (IOException e) {
-            e.printStackTrace();
-            System.exit(1);
-        }
-
-        System.out.println("Waiting " + check.getDuplicateGap() + " ms");
-        
-        try {
-            Thread.sleep(check.getDuplicateGap());  //we can't use sleep (probably), error sim will be asleep when first packet gets a response
-        } catch (InterruptedException e1) {
-            // TODO Auto-generated catch block
-            e1.printStackTrace();
-        }
-
-        System.out.println("Duplicate " + TFTPCommon.packetTypeAndNumber(sendPacket.getData()) + ", sending second instance");
-        try {
-            sendReceiveSocket.send(sendPacket);
-        } catch (IOException e) {
-            e.printStackTrace();
-            System.exit(1);
-        }   
-    }
-    
-    
-    //Wait a certain amount of time then send packet
-    public void delayPacket (SimulatePacketInfo check)
-    {
-    	System.out.println("Delay " + TFTPCommon.packetTypeAndNumber(sendPacket.getData()) + " by " + check.getDelayAmount() + "ms ");
-    	
-    	try {
-			Thread.sleep(check.getDelayAmount());
-		} catch (InterruptedException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-    	 
-        try {
-            sendReceiveSocket.send(sendPacket);
-        } catch (IOException e) {
-            e.printStackTrace();
-            System.exit(1);
-        } 
-    }
-    
+    }    
 
     public void passOnTFTP()
     {
@@ -285,6 +237,92 @@ class ErrorSimulator extends Thread
     public void run()
     {
         this.passOnTFTP();
+    }
+}
+
+class DelayDuplicatePacket extends Thread
+{
+    private TFTPCommon.Verbosity verbosity;
+    private DatagramPacket send;
+    private DatagramSocket socket;
+    private TFTPCommon.ModificationType modType;
+    private Integer delayAmount;
+
+    public DelayDuplicatePacket(DatagramPacket sendPacket, DatagramSocket sendReceiveSocket, TFTPCommon.ModificationType mod, Integer delayDuplicateAmount)
+    {
+        if (mod != TFTPCommon.ModificationType.DUPLICATE && mod != TFTPCommon.ModificationType.DELAY)
+        {
+            System.out.println("Invalid modification!");
+            return;
+        }
+
+        send = sendPacket;
+        socket =  sendReceiveSocket;
+        delayAmount = delayDuplicateAmount;
+        modType = mod;
+    }
+
+    //Send the packet normally, wait a certain amount of time, then send again
+    public void duplicatePacket ()
+    {
+        System.out.println("Duplicate " + TFTPCommon.packetTypeAndNumber(send.getData()) + ", sending first instance");
+        
+        try {
+            socket.send(send);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return;
+        }
+
+        System.out.println("Waiting " + delayAmount + " ms");
+        
+        try {
+            Thread.sleep(delayAmount);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        System.out.println("Duplicate " + TFTPCommon.packetTypeAndNumber(send.getData()) + ", sending second instance");
+        
+        try {
+            socket.send(send);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return;
+        }   
+    }
+    
+    
+    //Wait a certain amount of time then send packet
+    public void delayPacket ()
+    {
+        System.out.println("Delay " + TFTPCommon.packetTypeAndNumber(send.getData()) + " by " + delayAmount + "ms");
+        
+        try {
+            Thread.sleep(delayAmount);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            return;
+        }
+         
+        try {
+            socket.send(send);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return;
+        } 
+    }
+
+    public void run()
+    {
+        if (modType == TFTPCommon.ModificationType.DUPLICATE)
+        {
+            duplicatePacket();
+        }
+        else if (modType == TFTPCommon.ModificationType.DELAY)
+        {
+            delayPacket();
+        }
     }
 }
 

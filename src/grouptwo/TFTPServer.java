@@ -54,8 +54,10 @@ public class TFTPServer
 	 */
 	public void threadDone(Thread t)
 	{
-		clients.remove(t);
+		System.out.println("rcc " + runningClientCount);
+		System.out.println(clients.remove(t) + " " + clients.size());
 		runningClientCount = clients.size();
+		System.out.println(runningClientCount + " " + clients.size());
 	}
 
 	/**
