@@ -97,13 +97,13 @@ public class TFTPCommon {
 	public static Boolean sendDataWTimeout (DatagramPacket send, DatagramPacket receive, DatagramSocket sendReceiveSocket, InetAddress address, int timeout, int maxTimeout, int port, FileOperation fileOp, Verbosity verbose, String consolePrefix)
 	{
 		int timeoutCount = 0;
-		int blockNum = 0;
+		int blockNum = 1;  ///CHANGED from 0
 		int len = 0;
 		Boolean sendData = true;
 		byte[] dataMsg = new byte[516];
 		byte[] ackMsg = new byte[4];
 
-		while (blockNum < fileOp.getNumTFTPBlocks())
+		while (blockNum-1 < fileOp.getNumTFTPBlocks())
 		{
 			if (sendData)
 			{
@@ -115,7 +115,7 @@ public class TFTPCommon {
 
 				if (verbose != Verbosity.NONE)
 				{
-					System.out.println(consolePrefix + "Sending DATA " + blockNum + "/" + (fileOp.getNumTFTPBlocks() - 1));
+					System.out.println(consolePrefix + "Sending DATA " + blockNum + "/" + (fileOp.getNumTFTPBlocks()));
 				}
 
 				send = new DatagramPacket(dataMsg, len, address, port);
@@ -191,7 +191,7 @@ public class TFTPCommon {
 		Boolean willExit = false;
 		Boolean receiveSet = client;
 		byte[] dataMsg, ackMsg;
-		int blockNum = 0;
+		int blockNum = 1; //Changed from 0
 		int len = 0;
 
 		while (writingFile)
