@@ -375,6 +375,58 @@ class TFTPIntHostCommandLine extends Thread
         }
     }
 
+    private void deletePendingMod (Scanner sc)
+    {
+
+        String scIn;
+        int modToDelete;
+
+        while ( true )
+        {
+            if (nextList.size() == 0)
+            {
+                return;
+            }
+            
+            scIn = new String();
+            modToDelete = 0;
+
+            System.out.println("List of Pending Modifications");
+
+            for (int i = 0; i < nextList.size(); i++)
+            {
+                System.out.println((i + 1) + ". " + nextList.get(i));
+            }
+
+            while (modToDelete <= 0)
+            {
+                System.out.print("Please enter a number (or r to return): ");
+
+                scIn = sc.nextLine();
+
+                if (scIn.equalsIgnoreCase("r"))
+                {
+                    return;
+                }
+                else
+                {
+                    try {
+                        modToDelete = Integer.parseInt(scIn);
+                    } catch (NumberFormatException e) {
+                        System.out.println("Input wasn't a number, try again.");
+                    }
+                }
+            }
+
+            modToDelete--;
+
+            if (modToDelete <= nextList.size())
+            {
+                nextList.remove(modToDelete);
+            }
+        }
+    }
+
     /*** make a common menu method ***/
     private void modifyPacket (Scanner sc)
     {
@@ -391,6 +443,7 @@ class TFTPIntHostCommandLine extends Thread
             System.out.println("delay: Delay packet");
             System.out.println("dup: Duplicate packet");
             System.out.println("lose: Lose packet");
+            System.out.println("d: Delete pending modification");
             System.out.println("p: Print pending modifications");
             System.out.println("r: Return to Main Menu");
 
@@ -413,6 +466,10 @@ class TFTPIntHostCommandLine extends Thread
                 else if ( scIn.equalsIgnoreCase("lose") )
                 {
                     modType = TFTPCommon.ModificationType.LOSE;
+                }
+                else if ( scIn.equalsIgnoreCase("d") )
+                {
+                    deletePendingMod(sc);
                 }
                 else if ( scIn.equalsIgnoreCase("p") )
                 {
