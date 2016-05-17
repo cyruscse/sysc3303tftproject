@@ -86,7 +86,7 @@ public class TFTPServer
 		while (runningClientCount > 0 || acceptConnections)
 		{
 			runningClientCount = clients.size();
-
+			
 			if (acceptConnections)
 			{
 				data = new byte[100];

@@ -15,12 +15,12 @@ import grouptwo.FileOperation;
 public class TFTPClient 
 {
 	private String localFile, remoteFile, strRequestType, strVerbosity, strMode;
+	private String[] scInArr;
 	private Boolean cliRunning, clientReady, clientTransferring;
 	private Thread tftpTransfer;
 	private TFTPCommon.Request requestType;
 	private TFTPCommon.Verbosity verbosity;
 	private TFTPCommon.Mode mode;
-	private boolean TESTING = true;
 
 	/**
 	 *   Constructor for TFTPClient, initializes data that will be used in CLI
@@ -35,7 +35,8 @@ public class TFTPClient
 		clientTransferring = false;
 		verbosity = TFTPCommon.Verbosity.NONE;
 		mode = TFTPCommon.Mode.TEST;
-		requestType = TFTPCommon.Request.READ;
+		requestType = TFTPCommon.Request.ERROR;
+		tftpTransfer = new Thread();
 
 		localFile = new String();
 		remoteFile = new String();
@@ -59,88 +60,78 @@ public class TFTPClient
 	{
 		Scanner sc = new Scanner(System.in);
 		String scIn = new String();
-
-		if (TESTING == true){
-			Testvalues();
-		}
+		Boolean printMenu = true;
 
 		while ( cliRunning ) 
 		{
-			if ( !remoteFile.isEmpty() && !localFile.isEmpty() && !clientTransferring ) 
+			scInArr = new String[100];
+
+			if (printMenu)
 			{
-				clientReady = true;
-			}
-			else
-			{
-				clientReady = false;
+				System.out.println("");
+				System.out.println("TFTP Client");
+				System.out.println("-----------");
+				System.out.println("Enter transfer as string");
+				System.out.println("(i.e. read readFile.txt to dest.txt, write writeFile.txt to dest2.txt");
+				System.out.println("");
+				System.out.println("--Options--");								
+				System.out.println("m: Set mode (current: " + TFTPCommon.modeToString(mode) + ")");
+				System.out.println("v: Set verbosity (current: " + TFTPCommon.verbosityToString(verbosity) + ")");
+				System.out.println("q: Quit (once transfers are complete)");
 			}
 
-			System.out.println("TFTP Client");
-			System.out.println("-----------");
-			
-			if (requestType == TFTPCommon.Request.WRITE)
-			{
-				System.out.println("1: File to write to on server (current: " + remoteFile + ")");
-				System.out.println("2. File to read from on client (current: " + localFile + ")");
-			}
-			else
-			{
-				System.out.println("1: File to read from on server (current: " + remoteFile + ")");
-				System.out.println("2. File to write to on client (current: " + localFile + ")");
-			}
-			
-			System.out.println("3: Read Request or Write Request (current: " + TFTPCommon.requestToString(requestType) + ")");
-			
-			if ( clientReady == true )
-			{
-				System.out.println("4: Start transfer");
-			
-			}
-			System.out.println("m: Set mode (current: " + TFTPCommon.modeToString(mode) + ")");
-			System.out.println("v: Set verbosity (current: " + TFTPCommon.verbosityToString(verbosity) + ")");
-			System.out.println("q: Quit (once transfers are complete)");
+			printMenu = true;
 
 			scIn = sc.nextLine();
+			scIn = scIn.toLowerCase();
 
-			if ( scIn.equalsIgnoreCase("1") ) 
+			if (scIn.length() > 1 && !clientTransferring)
 			{
-				System.out.print("Enter filename: ");
-				remoteFile = sc.nextLine();
-			}
+				scInArr = scIn.split(" ");
 
-			else if ( scIn.equalsIgnoreCase("2") )
-			{
-				System.out.print("Enter filename: ");
-				localFile = sc.nextLine();
-			}
-
-			else if ( scIn.equalsIgnoreCase("3") ) 
-			{
-				System.out.print("Enter request type (read or write): ");
-				strRequestType = sc.nextLine();
-
-				if ( strRequestType.equalsIgnoreCase("write") ) 
-				{
-					requestType = TFTPCommon.Request.WRITE;
-				}
-				else if ( strRequestType.equalsIgnoreCase("read") ) 
+				if (scInArr[0].equals("read"))
 				{
 					requestType = TFTPCommon.Request.READ;
+					remoteFile = scInArr[1];
 				}
-				else 
+				else if (scInArr[0].equals("write"))
 				{
-					System.out.println("Invalid request type");
+					requestType = TFTPCommon.Request.WRITE;
+					localFile = scInArr[1];
+				}
+				else
+				{
+					System.out.println("Invalid TFTP Operation");
+					requestType = TFTPCommon.Request.ERROR;
+				}
+
+				if (scInArr[2].equals("to"))
+				{
+					if (requestType == TFTPCommon.Request.READ)
+					{
+						localFile = scInArr[3];
+					}
+					else if (requestType == TFTPCommon.Request.WRITE)
+					{
+						remoteFile = scInArr[3];
+					}
+				}
+
+				if (remoteFile.length() > 0 && localFile.length() > 0 && requestType != TFTPCommon.Request.ERROR)
+				{
+					tftpTransfer = new TFTPClientTransfer("clientTransfer", remoteFile, localFile, this, requestType, mode, verbosity);
+					tftpTransfer.start();
+					printMenu = false;
 				}
 			}
 
-			else if ( scIn.equalsIgnoreCase("4") && clientReady == true ) 
+			else if (clientTransferring)
 			{
-				tftpTransfer = new TFTPClientTransfer("clientTransfer", remoteFile, localFile, this, requestType, mode, verbosity);
-				tftpTransfer.start();
-				clientTransferring = true;
+				System.out.println("Multiple transmissions through one client is not supported");
 			}
 
-			else if ( scIn.equalsIgnoreCase("m") ) {
+			else if ( scIn.equalsIgnoreCase("m") ) 
+			{
 				System.out.println("Enter mode (test, normal): ");
 				strMode = sc.nextLine();
 
@@ -191,25 +182,11 @@ public class TFTPClient
 				System.out.println("Can't exit during a TFTP transfer!");
 			}
 
-			else if ( scIn.equalsIgnoreCase("") == false ) 
+			else if ( !scIn.equalsIgnoreCase("") ) 
 			{
 				System.out.println("Invalid option");
 			}
 		}
-	}
-
-	/**
-	 *   Sets up test values for CLI to save time
-	 *
-	 *   @param  none
-	 *   @return none
-	 */
-	public void Testvalues() {
-		localFile = "/Users/cyrus/Downloads/TFTPServer.java";
-		remoteFile = "/Users/cyrus/test2.out";
-		requestType = TFTPCommon.Request.WRITE;
-		mode = TFTPCommon.Mode.TEST;
-		verbosity = TFTPCommon.Verbosity.ALL;
 	}
 
 	public static void main(String args[]) 
