@@ -65,6 +65,9 @@ public class TFTPClient
 		while ( cliRunning ) 
 		{
 			scInArr = new String[100];
+			localFile = new String();
+			remoteFile = new String();
+			requestType = TFTPCommon.Request.ERROR;
 
 			if (printMenu)
 			{
@@ -84,11 +87,10 @@ public class TFTPClient
 
 			scIn = sc.nextLine();
 			scIn = scIn.toLowerCase();
+			scInArr = scIn.split(" ");
 
-			if (scIn.length() > 1 && !clientTransferring)
+			if (scInArr.length == 4 && !clientTransferring)
 			{
-				scInArr = scIn.split(" ");
-
 				if (scInArr[0].equals("read"))
 				{
 					requestType = TFTPCommon.Request.READ;
