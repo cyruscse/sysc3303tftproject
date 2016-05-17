@@ -125,11 +125,6 @@ public class TFTPClient
 				}
 			}
 
-			else if (clientTransferring)
-			{
-				System.out.println("Multiple transmissions through one client is not supported");
-			}
-
 			else if ( scIn.equalsIgnoreCase("m") ) 
 			{
 				System.out.println("Enter mode (test, normal): ");
