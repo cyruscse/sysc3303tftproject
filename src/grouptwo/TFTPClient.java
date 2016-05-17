@@ -88,18 +88,37 @@ public class TFTPClient
 			scIn = sc.nextLine();
 			scIn = scIn.toLowerCase();
 			scInArr = scIn.split(" ");
-
-			if (scInArr.length == 4 && !clientTransferring)
+			int i = 1;
+			if (scInArr.length >= 4 && !clientTransferring)
 			{
 				if (scInArr[0].equals("read"))
 				{
 					requestType = TFTPCommon.Request.READ;
-					remoteFile = scInArr[1];
+					while(i < scInArr.length)
+					{	if (scInArr[i].equals("to")){
+						break;
+						}	
+						remoteFile += scInArr[i];
+						remoteFile += " ";
+						i++;
+					}
+					remoteFile.trim();
+					System.out.println("file" + remoteFile);
 				}
 				else if (scInArr[0].equals("write"))
 				{
 					requestType = TFTPCommon.Request.WRITE;
-					localFile = scInArr[1];
+					while(i < scInArr.length)
+					{	if (scInArr[i].equals("to")){
+						break;
+						}	
+						localFile += scInArr[i];
+						localFile += " ";
+						i++;
+					}
+					localFile.trim();
+					System.out.println("file" + localFile);
+					
 				}
 				else
 				{
@@ -107,15 +126,26 @@ public class TFTPClient
 					requestType = TFTPCommon.Request.ERROR;
 				}
 
-				if (scInArr[2].equals("to"))
-				{
+				if (scInArr[i].equals("to"))
+				{	i++;
 					if (requestType == TFTPCommon.Request.READ)
 					{
-						localFile = scInArr[3];
+						while(i < scInArr.length){
+							localFile += scInArr[i];
+							localFile +=  " ";
+							i++;
+						}
+						localFile.trim();
 					}
 					else if (requestType == TFTPCommon.Request.WRITE)
 					{
-						remoteFile = scInArr[3];
+						while(i < scInArr.length){
+							remoteFile += scInArr[i];
+							remoteFile += " ";
+							i++;
+						}
+						remoteFile.trim();
+						System.out.println("file" + remoteFile);
 					}
 				}
 
