@@ -114,7 +114,7 @@ public class TFTPCommon {
 					len = constructDataPacket(dataMsg, blockNum, fileOp);
 				}
 
-				//System.out.println(consolePrefix + "Sending DATA " + blockNum + "/" + (fileOp.getNumTFTPBlocks()));
+				System.out.println(consolePrefix + "Sending DATA " + blockNum + "/" + (fileOp.getNumTFTPBlocks()));
 
 				send = new DatagramPacket(dataMsg, len, address, port);
 
@@ -152,7 +152,7 @@ public class TFTPCommon {
 			{ 
 				if (validACKPacket(ackMsg, blockNum)) 
 				{
-					//System.out.println(consolePrefix + "Received valid ACK " + blockNum);
+					System.out.println(consolePrefix + "Received valid ACK " + blockNum);
 					printPacketDetails(receive, verbose, false);
 
 					timeoutCount = 0; //Reset timeout count once a successful ACK is received
