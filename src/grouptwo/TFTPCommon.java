@@ -637,7 +637,7 @@ public class TFTPCommon {
 			msg[2] = 0;
 			msg[3] = 4;
 		}
-		else if (errCode == ErrorCode.UNKOWNTID) 
+		else if (errCode == ErrorCode.UNKNOWNTID) 
 		{
 			msg[2] = 0;
 			msg[3] = 5;
