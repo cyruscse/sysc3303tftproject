@@ -123,6 +123,13 @@ public class TFTPServer
 		this.verbosity = v;
 	}
 
+	/**
+	 *   Called by CLI thread, sets the timeout for new ClientConnectionThreads
+	 *   Note: This doesn't change the timeout for ongoing transfers
+	 *
+	 *   @param  int timeout to set to
+	 *   @return none
+	 */
 	public void setTimeout(int newTimeout)
 	{
 		timeout = newTimeout;
@@ -165,7 +172,7 @@ class TFTPServerCommandLine extends Thread {
 	}
 
 	/**
-	 *   CLI for TFTPServer, allows user to set verbosity and initiate server shutdown
+	 *   CLI for TFTPServer, allows user to set verbosity, timeout and initiate server shutdown
 	 *
 	 *   @param  none
 	 *   @return none

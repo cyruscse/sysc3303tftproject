@@ -92,7 +92,6 @@ public class TFTPClient
 			scIn = scIn.toLowerCase();
 			scInArr = scIn.split("\"");
 			
-			//need to check thread state
 			if (scInArr.length == 4 && !clientTransferring)
 			{
 				if (scInArr[0].trim().equals("read"))
