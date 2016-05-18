@@ -44,7 +44,7 @@ public class ClientConnectionThread implements Runnable {
 	private int maxTimeout;
 	private final String consolePrefix = ("Server Thread " + (threadNumber + 1) + ": ");
 
-	public ClientConnectionThread(DatagramPacket receivePckt, TFTPServer parent, TFTPCommon.Verbosity verbosity, int threadNumber) 
+	public ClientConnectionThread(DatagramPacket receivePckt, TFTPServer parent, TFTPCommon.Verbosity verbosity, int threadNumber, int reTimeout) 
 	{
 		this.threadNumber = threadNumber;
 		receivePacket = receivePckt;
@@ -54,7 +54,7 @@ public class ClientConnectionThread implements Runnable {
 		verbose = verbosity;
 		mode = new String();
 		hardTimeout = 60000;
-		timeout = 1000;
+		timeout = reTimeout;
 		maxTimeout = 10;
 
 		try {

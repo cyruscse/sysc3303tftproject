@@ -14,13 +14,14 @@ import grouptwo.FileOperation;
  */
 public class TFTPClient 
 {
-	private String localFile, remoteFile, strRequestType, strVerbosity, strMode;
+	private String localFile, remoteFile, strRequestType, strVerbosity, strMode, strTimeout;
 	private String[] scInArr;
 	private Boolean cliRunning, clientReady, clientTransferring;
 	private Thread tftpTransfer;
 	private TFTPCommon.Request requestType;
 	private TFTPCommon.Verbosity verbosity;
 	private TFTPCommon.Mode mode;
+	private int timeout;
 
 	/**
 	 *   Constructor for TFTPClient, initializes data that will be used in CLI
@@ -33,6 +34,7 @@ public class TFTPClient
 		cliRunning = true;
 		clientReady = false;
 		clientTransferring = false;
+		timeout = 1000;
 		verbosity = TFTPCommon.Verbosity.NONE;
 		mode = TFTPCommon.Mode.TEST;
 		requestType = TFTPCommon.Request.ERROR;
@@ -61,7 +63,6 @@ public class TFTPClient
 		Scanner sc = new Scanner(System.in);
 		String scIn = new String();
 		Boolean printMenu = true;
-		Boolean readName = false;
 
 		while ( cliRunning ) 
 		{
@@ -80,6 +81,7 @@ public class TFTPClient
 				System.out.println("");
 				System.out.println("--Options--");								
 				System.out.println("m: Set mode (current: " + TFTPCommon.modeToString(mode) + ")");
+				System.out.println("t: Set retransmission timeout (current: " + timeout + ")");
 				System.out.println("v: Set verbosity (current: " + TFTPCommon.verbosityToString(verbosity) + ")");
 				System.out.println("q: Quit (once transfers are complete)");
 			}
@@ -97,13 +99,11 @@ public class TFTPClient
 				{
 					requestType = TFTPCommon.Request.READ;	
 					remoteFile = scInArr[1].replaceAll("\"", "");
-					System.out.println("remote read " + remoteFile);
 				}
 				else if (scInArr[0].trim().equals("write"))
 				{
 					requestType = TFTPCommon.Request.WRITE;
 					localFile = scInArr[1].replaceAll("\"", "");
-					System.out.println("local write " + localFile);					
 				}
 				else
 				{
@@ -116,18 +116,16 @@ public class TFTPClient
 					if (requestType == TFTPCommon.Request.READ)
 					{
 						localFile = scInArr[3].replaceAll("\"", "");
-						System.out.println("local read " + localFile);
 					}
 					else if (requestType == TFTPCommon.Request.WRITE)
 					{
 						remoteFile = scInArr[3].replaceAll("\"", "");
-						System.out.println("remote write " + remoteFile);
 					}
 				}
 
 				if (remoteFile.length() > 0 && localFile.length() > 0 && requestType != TFTPCommon.Request.ERROR)
 				{
-					tftpTransfer = new TFTPClientTransfer("clientTransfer", remoteFile, localFile, this, requestType, mode, verbosity);
+					tftpTransfer = new TFTPClientTransfer("clientTransfer", remoteFile, localFile, this, requestType, mode, verbosity, timeout);
 					tftpTransfer.start();
 					printMenu = false;
 				}
@@ -135,7 +133,7 @@ public class TFTPClient
 
 			else if ( scIn.equalsIgnoreCase("m") ) 
 			{
-				System.out.println("Enter mode (test, normal): ");
+				System.out.print("Enter mode (test, normal): ");
 				strMode = sc.nextLine();
 
 				if ( strMode.equalsIgnoreCase("test") ) 
@@ -152,9 +150,21 @@ public class TFTPClient
 				}
 			}
 
+			else if ( scIn.equalsIgnoreCase("t") )
+			{
+				System.out.print("Enter timeout (integer): ");
+				strTimeout = sc.nextLine();
+
+				try {
+					timeout = Integer.parseInt(strTimeout);
+				} catch (NumberFormatException e) {
+					System.out.println("Input was not a number, not changing timeout");
+				}
+			}
+
 			else if ( scIn.equalsIgnoreCase("v") ) 
 			{
-				System.out.println("Enter verbosity (none, some, all): ");
+				System.out.print("Enter verbosity (none, some, all): ");
 				strVerbosity = sc.nextLine();
 
 				if ( strVerbosity.equalsIgnoreCase("none") ) 
@@ -241,7 +251,7 @@ class TFTPClientTransfer extends Thread
 	 *   @param  Verbosity verbosity of info (ranging from none to full packet details)
 	 *   @return TFTPClientTransfer
 	 */
-	public TFTPClientTransfer(String threadName, String remoteFile, String localFile, TFTPClient cliThread, TFTPCommon.Request transferType, TFTPCommon.Mode runMode, TFTPCommon.Verbosity verMode)
+	public TFTPClientTransfer(String threadName, String remoteFile, String localFile, TFTPClient cliThread, TFTPCommon.Request transferType, TFTPCommon.Mode runMode, TFTPCommon.Verbosity verMode, int reTimeout)
 	{
 		super(threadName);
 
@@ -252,7 +262,7 @@ class TFTPClientTransfer extends Thread
 		run = runMode;
 		verbose = verMode;
 		parent = cliThread;
-		timeout = 1000;
+		timeout = reTimeout;
 		maxTimeout = 10;
 		hardTimeout = 60000;
 		

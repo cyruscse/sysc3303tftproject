@@ -240,7 +240,7 @@ public class TFTPCommon {
 		Boolean willExit = false;
 		Boolean receiveSet = client;
 		byte[] dataMsg, ackMsg;
-		int blockNum = 1; //Changed from 0
+		int blockNum = 1;
 		int len = 0;
 
 		while (writingFile)

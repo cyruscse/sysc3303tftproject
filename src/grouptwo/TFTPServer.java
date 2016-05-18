@@ -21,6 +21,7 @@ public class TFTPServer
 	private TFTPCommon.Verbosity verbosity;
 	private Boolean acceptConnections;
 	private byte [] data;
+	private int timeout;
 
 	/**
 	 *   Constructor for TFTPServer, initializes data that will be used to manage client transfer threads
@@ -39,6 +40,7 @@ public class TFTPServer
 
 		clients = new ArrayList<Thread>();
 		runningClientCount = 0;
+		timeout = 1000;
 		acceptConnections = true;
 		verbosity = TFTPCommon.Verbosity.NONE;
 		cliThread = new TFTPServerCommandLine(this);
@@ -100,7 +102,7 @@ public class TFTPServer
 
 					if (!receiveSocket.isClosed())
 					{
-						Thread client = new Thread(new ClientConnectionThread(receivePacket, this, verbosity, clients.size() + 1));
+						Thread client = new Thread(new ClientConnectionThread(receivePacket, this, verbosity, clients.size() + 1, timeout));
 						client.start();
 						clients.add(client);
 					}
@@ -119,6 +121,11 @@ public class TFTPServer
 	public void setVerbosity(TFTPCommon.Verbosity v) 
 	{
 		this.verbosity = v;
+	}
+
+	public void setTimeout(int newTimeout)
+	{
+		timeout = newTimeout;
 	}
 
 	public static void main(String[] args) 
@@ -140,6 +147,7 @@ class TFTPServerCommandLine extends Thread {
 	private TFTPCommon.Verbosity verbosity;
 	private TFTPServer parentServer;
 	private Boolean cliRunning;
+	private int timeout;
 
 	/**
 	 *   Constructor for TFTPServerCommandLine, gets reference to TFTPServer object
@@ -153,6 +161,7 @@ class TFTPServerCommandLine extends Thread {
 		parentServer = parent;
 		verbosity = TFTPCommon.Verbosity.NONE;
 		cliRunning = true;
+		timeout = 1000;
 	}
 
 	/**
@@ -170,6 +179,7 @@ class TFTPServerCommandLine extends Thread {
 		{
 			System.out.println("TFTP Server");
 			System.out.println("-----------");
+			System.out.println("t: Set retransmission timeout (current: " + timeout + ")");
 			System.out.println("v: Set verbosity (current: " + TFTPCommon.verbosityToString(verbosity) + ")");
 			System.out.println("q: Quit (finishes current transfer before quitting)");
 
@@ -199,6 +209,20 @@ class TFTPServerCommandLine extends Thread {
 				{
 					System.out.println("Invalid verbosity");
 				}
+			}
+
+			else if ( scIn.equalsIgnoreCase("t") )
+			{
+				System.out.print("Enter timeout (integer): ");
+				scIn = sc.nextLine();
+
+				try {
+					timeout = Integer.parseInt(scIn);
+				} catch (NumberFormatException e) {
+					System.out.println("Input was not a number, not changing timeout");
+				}
+
+				parentServer.setTimeout(timeout);
 			}
 
 			else if ( scIn.equalsIgnoreCase("q") ) 
