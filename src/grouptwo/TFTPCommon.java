@@ -28,10 +28,13 @@ public class TFTPCommon {
 	public static enum Verbosity { NONE, SOME, ALL };
 
 	//TFTP packet types
-	public static enum PacketType { INVALID, ACK, DATA, REQUEST };
+	public static enum PacketType { INVALID, ACK, DATA, REQUEST, ERROR };
 
 	//Error Simulator modes
 	public static enum ModificationType { NONE, LOSE, DUPLICATE, DELAY };
+
+	//TFTP Error Codes (Iteration 3 only uses ILLEGAL and UTID)
+	public static enum ErrorCode { INVALID, FILENOTFOUND, ACCESSV, DISKF, ILLEGAL, UTID, FILEF };
 
 	//Server Listen Port
 	public static int TFTPListenPort = 69;
@@ -395,6 +398,10 @@ public class TFTPCommon {
         {
             return PacketType.ACK;
         }
+        else if (data[1] == 5)
+        {
+        	return PacketType.ERROR;
+        }
 
         return PacketType.INVALID;
     }
@@ -489,6 +496,10 @@ public class TFTPCommon {
 		{
 			return "ACK";
 		}
+		else if (data[1] == 5)
+		{
+			return "ERROR";
+		}
 
 		return "invalid";
 	}
@@ -513,6 +524,10 @@ public class TFTPCommon {
 		else if (type == PacketType.REQUEST)
 		{
 			return "WRQ/RRQ";
+		}
+		else if (type == PacketType.ERROR)
+		{
+			return "ERROR";
 		}
 
 		return "invalid";
@@ -542,7 +557,7 @@ public class TFTPCommon {
 
         return "invalid";
     }
-
+    
 	/**
 	 *   Constructs ACK packet, converts int blockNumber to byte representation
 	 *
