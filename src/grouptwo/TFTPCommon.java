@@ -217,7 +217,6 @@ public class TFTPCommon {
 
 			System.out.println(consolePrefix + "Received DATA " + blockNum);
 
-
 			//We received a DATA packet but it is not the block number we were expecting (i.e. delayed/lost DATA)
 			if (getPacketType(dataMsg) == PacketType.DATA) 
 			{
