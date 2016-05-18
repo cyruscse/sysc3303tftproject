@@ -92,7 +92,7 @@ public class TFTPClient
 			scIn = scIn.toLowerCase();
 			scInArr = scIn.split("\"");
 			
-			if (scInArr.length == 4 && !clientTransferring)
+			if ( scInArr.length == 4 && !clientTransferring)
 			{
 				if (scInArr[0].trim().equals("read"))
 				{

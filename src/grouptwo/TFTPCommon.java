@@ -555,8 +555,30 @@ public class TFTPCommon {
         {
             return "delay";
         }
+        else if (error == ModificationType.CONTENTS)
+        {
+        	return "contents";
+        }
 
         return "invalid";
+    }
+
+    public static int packetTypeToPacketSize (PacketType type)
+    {
+    	if (type == PacketType.ACK)
+    	{
+    		return 4;
+    	}
+    	else if (type == PacketType.DATA)
+    	{
+    		return 516;
+    	}
+    	else if (type == PacketType.REQUEST || type == PacketType.ERROR)
+    	{
+    		return 100;
+    	}
+
+  		return 100;
     }
 
 	/**
