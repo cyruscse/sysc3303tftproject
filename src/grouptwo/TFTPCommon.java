@@ -34,7 +34,7 @@ public class TFTPCommon {
 	public static enum ModificationType { NONE, LOSE, DUPLICATE, DELAY };
 
 	//TFTP Error Codes (Iteration 3 only uses ILLEGAL and UTID)
-	public static enum ErrorCode { INVALID, FILENOTFOUND, ACCESSV, DISKF, ILLEGAL, UTID, FILEF };
+	public static enum ErrorCode { INVALID, FILENOTFOUND, ACCESSVIOLATE, DISKFULL, ILLEGAL, UNKTID, FILEEXISTS };
 
 	//Server Listen Port
 	public static int TFTPListenPort = 69;
@@ -557,7 +557,7 @@ public class TFTPCommon {
 
         return "invalid";
     }
-    
+
 	/**
 	 *   Constructs ACK packet, converts int blockNumber to byte representation
 	 *
