@@ -61,6 +61,7 @@ public class TFTPClient
 		Scanner sc = new Scanner(System.in);
 		String scIn = new String();
 		Boolean printMenu = true;
+		Boolean readName = false;
 
 		while ( cliRunning ) 
 		{
@@ -74,8 +75,8 @@ public class TFTPClient
 				System.out.println("");
 				System.out.println("TFTP Client");
 				System.out.println("-----------");
-				System.out.println("Enter transfer as string");
-				System.out.println("(i.e. read readFile.txt to dest.txt, write writeFile.txt to dest2.txt");
+				System.out.println("Enter transfer as string, with file names in quotes");
+				System.out.println("(i.e. read \"readFile.txt\" to \"dest.txt\", write \"writeFile.txt\" to \"dest2.txt\"");
 				System.out.println("");
 				System.out.println("--Options--");								
 				System.out.println("m: Set mode (current: " + TFTPCommon.modeToString(mode) + ")");
@@ -87,40 +88,22 @@ public class TFTPClient
 
 			scIn = sc.nextLine();
 			scIn = scIn.toLowerCase();
-			scInArr = scIn.split(" ");
-
+			scInArr = scIn.split("\"");
+			
 			//need to check thread state
-			int i = 1;
-			if (scInArr.length >= 4 && !clientTransferring)
+			if (scInArr.length == 4 && !clientTransferring)
 			{
-				if (scInArr[0].equals("read"))
+				if (scInArr[0].trim().equals("read"))
 				{
-					requestType = TFTPCommon.Request.READ;
-					while(i < scInArr.length)
-					{	if (scInArr[i].equals("to")){
-						break;
-						}	
-						remoteFile += scInArr[i];
-						remoteFile += " ";
-						i++;
-					}
-					remoteFile.trim();
-					System.out.println("file" + remoteFile);
+					requestType = TFTPCommon.Request.READ;	
+					remoteFile = scInArr[1].replaceAll("\"", "");
+					System.out.println("remote read " + remoteFile);
 				}
-				else if (scInArr[0].equals("write"))
+				else if (scInArr[0].trim().equals("write"))
 				{
 					requestType = TFTPCommon.Request.WRITE;
-					while(i < scInArr.length)
-					{	if (scInArr[i].equals("to")){
-						break;
-						}	
-						localFile += scInArr[i];
-						localFile += " ";
-						i++;
-					}
-					localFile.trim();
-					System.out.println("file" + localFile);
-					
+					localFile = scInArr[1].replaceAll("\"", "");
+					System.out.println("local write " + localFile);					
 				}
 				else
 				{
@@ -128,26 +111,17 @@ public class TFTPClient
 					requestType = TFTPCommon.Request.ERROR;
 				}
 
-				if (scInArr[i].equals("to"))
-				{	i++;
+				if (scInArr[2].trim().equals("to"))
+				{	
 					if (requestType == TFTPCommon.Request.READ)
 					{
-						while(i < scInArr.length){
-							localFile += scInArr[i];
-							localFile +=  " ";
-							i++;
-						}
-						localFile.trim();
+						localFile = scInArr[3].replaceAll("\"", "");
+						System.out.println("local read " + localFile);
 					}
 					else if (requestType == TFTPCommon.Request.WRITE)
 					{
-						while(i < scInArr.length){
-							remoteFile += scInArr[i];
-							remoteFile += " ";
-							i++;
-						}
-						remoteFile.trim();
-						System.out.println("file" + remoteFile);
+						remoteFile = scInArr[3].replaceAll("\"", "");
+						System.out.println("remote write " + remoteFile);
 					}
 				}
 
