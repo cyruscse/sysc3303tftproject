@@ -12,6 +12,7 @@ import java.net.*;
  * @author        Cyrus Sadeghi
  * @author        Eliab Woldeyes
  * @author        Kenan El-Gaouny
+ * @author        Majeed Mirza
  * @author        Rishabh Singh
  */
 public class TFTPCommon {
@@ -605,7 +606,7 @@ public class TFTPCommon {
 	 *   @param  String error message
 	 *   @return none
 	 */
-	private void constructErrorPacket (byte[] msg, ErrorCode errCode, String errorMsg)
+	public static void constructErrorPacket (byte[] msg, ErrorCode errCode, String errorMsg)
 	{
 		byte[] em;
 		em = errorMsg.getBytes();
