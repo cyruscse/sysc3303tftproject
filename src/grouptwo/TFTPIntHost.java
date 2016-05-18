@@ -47,14 +47,14 @@ public class TFTPIntHost
         this.verbosity = v;
     }
 
-    public void nextSimulateList(List<SimulatePacketInfo> nextList, Boolean quiet)
+    public Boolean appendMod(SimulatePacketInfo modification)
     {
-        toModify.addAll(nextList);
+        return toModify.add(modification);
+    }
 
-        if (!quiet)
-        {
-            System.out.println("Packet modifications commited");
-        }
+    public Boolean removeMod(SimulatePacketInfo toRemove)
+    {
+        return toModify.remove(toRemove);
     }
 
     public void printSimulateList()
@@ -145,25 +145,20 @@ class ErrorSimulator extends Thread
                 {
     				losePacket(check);
                     simulateList.remove(check);
+                    
+                    //TODO - need to fix below for new menu system
+
                     //If we lose a request, the client will send another request which will spawn a new error sim thread
                     //The new thread won't have the list of modifications, so pass those now
-                    if (check.getPacketType() == TFTPCommon.PacketType.REQUEST)
+                    /*if (check.getPacketType() == TFTPCommon.PacketType.REQUEST)
                     {
                         parent.nextSimulateList(simulateList, true);
-                    }
+                    }*/
     			} 
-                else if (check.getModType() == TFTPCommon.ModificationType.DUPLICATE) 
+                else if (check.getModType() == TFTPCommon.ModificationType.DUPLICATE || check.getModType() == TFTPCommon.ModificationType.DELAY) 
                 {
-                    Thread duplicateThread = new Thread(new DelayDuplicatePacket(sendPacket, sendReceiveSocket, check.getModType(), check.getDuplicateGap()));
-    				duplicateThread.start();
-                    //duplicatePacket(check);
-                    simulateList.remove(check);
-    			} 
-                else if (check.getModType() == TFTPCommon.ModificationType.DELAY) 
-                {
-                    Thread delayThread = new Thread(new DelayDuplicatePacket(sendPacket, sendReceiveSocket, check.getModType(), check.getDelayAmount()));
-    		  		delayThread.start();
-                    //delayPacket(check);
+                    Thread delayDuplicateThread = new Thread(new DelayDuplicatePacket(sendPacket, sendReceiveSocket, check.getModType(), check.getDelayDuplicateGap()));
+    				delayDuplicateThread.start();
                     simulateList.remove(check);
     			} 
                 else 
@@ -352,6 +347,7 @@ class TFTPIntHostCommandLine extends Thread
     private TFTPIntHost parentSimulator;
     private Boolean cliRunning;
     private List<SimulatePacketInfo> nextList;
+    private String scIn;
 
     public TFTPIntHostCommandLine(TFTPIntHost parent)
     {
@@ -359,12 +355,7 @@ class TFTPIntHostCommandLine extends Thread
         verbosity = TFTPCommon.Verbosity.NONE;
         cliRunning = true;
         nextList = new ArrayList<SimulatePacketInfo>();
-    }
-
-    private void commitNextList()
-    {
-        parentSimulator.nextSimulateList(nextList, false);
-        nextList = new ArrayList<SimulatePacketInfo>();
+        scIn = new String();
     }
 
     private int getIntMenu (Scanner sc, String promptMessage)
@@ -386,7 +377,7 @@ class TFTPIntHostCommandLine extends Thread
 
             if (parsedString < 0 || parsedString > 65535)
             {
-                System.out.println("Invalid delay, try again.");
+                System.out.println("Input out of range, try again.");
             }
             else
             {
@@ -397,7 +388,6 @@ class TFTPIntHostCommandLine extends Thread
 
     private void deletePendingMod (Scanner sc)
     {
-
         String scIn;
         int modToDelete;
 
@@ -447,113 +437,92 @@ class TFTPIntHostCommandLine extends Thread
         }
     }
 
-    /*** make a common menu method ***/
-    private void modifyPacket (Scanner sc)
+    private SimulatePacketInfo selectPacket(Scanner sc)
     {
-        //loop "forever", this returns with user input
-        while (true)
+        TFTPCommon.PacketType pType = TFTPCommon.PacketType.INVALID;
+        int pNum = -1;
+
+        while (pType == TFTPCommon.PacketType.INVALID)
         {
-            String scIn = new String();
-            int packetToModify = 0;
-            int delayAmount = 0;
-            TFTPCommon.PacketType packetType = TFTPCommon.PacketType.INVALID;
-            TFTPCommon.ModificationType modType = TFTPCommon.ModificationType.NONE;
+            System.out.print("What packet type should be modified? (request, data, ack, error, or r to return): ");
+            scIn = sc.nextLine();
 
-            System.out.println("Modification Menu");
-            System.out.println("delay: Delay packet");
-            System.out.println("dup: Duplicate packet");
-            System.out.println("lose: Lose packet");
-            System.out.println("d: Delete pending modification");
-            System.out.println("p: Print pending modifications");
-            System.out.println("r: Return to Main Menu");
-
-            while ( modType == TFTPCommon.ModificationType.NONE )
+            if ( scIn.equalsIgnoreCase("request") )
             {
-                System.out.print("Enter modification type: ");
+                pType = TFTPCommon.PacketType.REQUEST;
+                pNum = 1;
 
-                scIn = sc.nextLine();
-
-                if ( scIn.equalsIgnoreCase("delay") )
-                {
-                    delayAmount = getIntMenu(sc, "Enter amount to delay packet (ms): ");
-                    modType = TFTPCommon.ModificationType.DELAY;                
-                }
-                else if ( scIn.equalsIgnoreCase("dup") )
-                {
-                    delayAmount = getIntMenu(sc, "Enter amount of time to wait between duplicated packets (ms): ");
-                    modType = TFTPCommon.ModificationType.DUPLICATE;
-                }
-                else if ( scIn.equalsIgnoreCase("lose") )
-                {
-                    modType = TFTPCommon.ModificationType.LOSE;
-                }
-                else if ( scIn.equalsIgnoreCase("d") )
-                {
-                    deletePendingMod(sc);
-                }
-                else if ( scIn.equalsIgnoreCase("p") )
-                {
-                    printModifyDetails();
-                }
-                else if ( scIn.equalsIgnoreCase("r") )
-                {
-                    return;
-                }
-                else if ( !scIn.equalsIgnoreCase("") )
-                {
-                    System.out.println("Invalid option");
-                }
+                return new SimulatePacketInfo(pNum, pType);
             }
-
-            while ( packetType == TFTPCommon.PacketType.INVALID ) 
+            else if ( scIn.equalsIgnoreCase("data") )
             {
-                System.out.print("What packet type should be modified? (request, data, ack, or r to return): ");
-                scIn = sc.nextLine();
-
-                if ( scIn.equalsIgnoreCase("request") )
-                {
-                    packetType = TFTPCommon.PacketType.REQUEST;
-                    packetToModify = 1;
-                }
-                else if ( scIn.equalsIgnoreCase("data") )
-                {
-                    packetType = TFTPCommon.PacketType.DATA;
-                }
-                else if ( scIn.equalsIgnoreCase("ack") )
-                {
-                    packetType = TFTPCommon.PacketType.ACK;
-                }
-                else if ( scIn.equalsIgnoreCase("r") )
-                {
-                    return;
-                }
-                else if ( !scIn.equalsIgnoreCase("") )
-                {
-                    System.out.println("Invalid packet type, try again.");
-                }
+                pType = TFTPCommon.PacketType.DATA;
             }
-
-            if (packetType != TFTPCommon.PacketType.REQUEST)
+            else if ( scIn.equalsIgnoreCase("ack") )
             {
-                packetToModify = getIntMenu(sc, "Enter packet number: ");
+                pType = TFTPCommon.PacketType.ACK;
             }
+            else if ( scIn.equalsIgnoreCase("error") )
+            {
+                pType = TFTPCommon.PacketType.ERROR;
+            }
+            else if ( scIn.equalsIgnoreCase("r") )
+            {
+                return null;        //can't do this, need another way of cancelling mod creation
+            }
+            else if ( !scIn.equalsIgnoreCase("") )
+            {
+                System.out.println("Invalid packet type, try again.");
+            }
+        }
 
-            if ( modType == TFTPCommon.ModificationType.DELAY || modType == TFTPCommon.ModificationType.DUPLICATE )
-            {
-                nextList.add(new SimulatePacketInfo(modType, packetToModify, packetType, delayAmount));
-            }
-            else
-            {
-                nextList.add(new SimulatePacketInfo(modType, packetToModify, packetType));
-            }
+        pNum = getIntMenu(sc, "Enter packet number: ");
+
+        return new SimulatePacketInfo(pNum, pType);
+    }
+
+    private void modifyContents(Scanner sc)
+    {
+        System.out.println("This isn't implemented yet");
+    }
+
+    private void delayPacket(Scanner sc)
+    {
+        SimulatePacketInfo delayPacket = selectPacket(sc);
+        int delayAmount = getIntMenu(sc, "Enter amount to delay packet (ms): ");
+        
+        delayPacket.setModType(TFTPCommon.ModificationType.DELAY);
+        delayPacket.setDelayDuplicateGap(delayAmount);
+
+        if (!parentSimulator.appendMod(delayPacket))
+        {
+            System.out.println("Failed to add modification!");
         }
     }
 
-    private void printModifyDetails()
+    private void duplicatePacket(Scanner sc)
     {
-        for (SimulatePacketInfo s : nextList)
+        SimulatePacketInfo duplicatePacket = selectPacket(sc);
+        int duplicateGap = getIntMenu(sc, "Enter gap between duplicated packets (ms): ");
+        
+        duplicatePacket.setModType(TFTPCommon.ModificationType.DUPLICATE);
+        duplicatePacket.setDelayDuplicateGap(duplicateGap);
+
+        if (!parentSimulator.appendMod(duplicatePacket))
         {
-            System.out.println(s.toString());
+            System.out.println("Failed to add modification!");
+        }
+    }
+
+    private void losePacket(Scanner sc)
+    {
+        SimulatePacketInfo losePacket = selectPacket(sc);
+        
+        losePacket.setModType(TFTPCommon.ModificationType.LOSE);
+        
+        if (!parentSimulator.appendMod(losePacket))
+        {
+            System.out.println("Failed to add modification!");
         }
     }
 
@@ -570,24 +539,38 @@ class TFTPIntHostCommandLine extends Thread
 
         while (cliRunning)
         {
-            //need remove method to cancel commited mod
             System.out.println("TFTP Error Simulator");
             System.out.println("--------------------");
-            System.out.println("c: Commit modifications for next client");
-            System.out.println("m: Modify packet(s)");
-            System.out.println("p: Print commited modifications");
+            System.out.println("contents: Modify packet contents");
+            System.out.println("delay: Delay packet");
+            System.out.println("dup: Duplicate packet");
+            System.out.println("lose: Lose packet");
+            System.out.println("c: Cancel pending modification");
+            System.out.println("p: Print modifications");
             System.out.println("v: Set verbosity (current: " + TFTPCommon.verbosityToString(verbosity) + ")");
             System.out.println("q: Quit");
             
             scIn = sc.nextLine();
 
-            if ( scIn.equalsIgnoreCase("c") )
+            if ( scIn.equalsIgnoreCase("contents") )
             {
-                commitNextList();
+                modifyContents(sc);
             }
-            else if ( scIn.equalsIgnoreCase("m") )
+            else if ( scIn.equalsIgnoreCase("delay") )
             {
-                modifyPacket(sc);
+                delayPacket(sc);              
+            }
+            else if ( scIn.equalsIgnoreCase("dup") )
+            {
+                duplicatePacket(sc);
+            }
+            else if ( scIn.equalsIgnoreCase("lose") )
+            {
+                losePacket(sc);
+            }
+            else if ( scIn.equalsIgnoreCase("c") )
+            {
+                deletePendingMod(sc);
             }
             else if ( scIn.equalsIgnoreCase("p") )
             {
@@ -638,32 +621,43 @@ class TFTPIntHostCommandLine extends Thread
  * type, modification type and modification details
  *
  * @author        Majeed Mirza
+ * @author        Cyrus Sadeghi
  */
 class SimulatePacketInfo 
 {
 	private TFTPCommon.PacketType pType;
-	private int pNum, delayAmount, duplicateGap;
-	private TFTPCommon.ModificationType loseDuplicateDelay;
+	private int pNum, delayDuplicateGap;
+	private TFTPCommon.ModificationType modType;
+    private int[] positions;
+    private byte[] newData;
 
-	public SimulatePacketInfo (TFTPCommon.ModificationType loseDuplicateDelay, int pNum, TFTPCommon.PacketType pType) 
+    //Constructor used by CLI to initialize basic details (also called by below constructor)
+    public SimulatePacketInfo (int pNum, TFTPCommon.PacketType pType)
     {
-		this.pType = pType;
-		this.pNum = pNum;
-        this.loseDuplicateDelay = loseDuplicateDelay;
+        this.pNum = pNum;
+        this.pType = pType;
+    }
+
+    //Constructor for losing packet (also called by below constructors)
+	public SimulatePacketInfo (TFTPCommon.ModificationType modType, int pNum, TFTPCommon.PacketType pType) 
+    {
+		this(pNum, pType);
+        this.modType = modType;
 	}
 
-    public SimulatePacketInfo (TFTPCommon.ModificationType loseDuplicateDelay, int pNum, TFTPCommon.PacketType pType, int amount)
+    //Constructor for delaying or duplicating packet
+    public SimulatePacketInfo (TFTPCommon.ModificationType modType, int pNum, TFTPCommon.PacketType pType, int amount)
     {
-        this(loseDuplicateDelay, pNum, pType);
+        this(modType, pNum, pType);
+        delayDuplicateGap = amount;
+    }
 
-        if ( loseDuplicateDelay == TFTPCommon.ModificationType.DELAY )
-        {
-            delayAmount = amount;
-        }
-        else if ( loseDuplicateDelay == TFTPCommon.ModificationType.DUPLICATE )
-        {
-            duplicateGap = amount;
-        }
+    //Constructor for modifying packet contents
+    public SimulatePacketInfo (TFTPCommon.ModificationType modType, int pNum, TFTPCommon.PacketType pType, byte[] newData, int[] positions)
+    {
+        this(modType, pNum, pType);
+        this.positions = positions;
+        this.newData = newData;
     }
 
     public TFTPCommon.PacketType getPacketType()
@@ -678,31 +672,38 @@ class SimulatePacketInfo
 
     public TFTPCommon.ModificationType getModType()
     {
-        return loseDuplicateDelay;
+        return modType;
     }
 
-    public int getDelayAmount()
+    public int getDelayDuplicateGap()
     {
-        return delayAmount;
+        return delayDuplicateGap;
     }
 
-    public int getDuplicateGap()
+    public void setModType(TFTPCommon.ModificationType modType)
     {
-        return duplicateGap;
+        this.modType = modType;
     }
+
+    public void setDelayDuplicateGap(int delayDuplicateGap)
+    {
+        this.delayDuplicateGap = delayDuplicateGap;
+    }
+
+    //datamod to string method needed?
 
     public String toString() 
     {
-        String returnString = new String ("Packet: " + TFTPCommon.packetTypeToString(pType) + " " + pNum + " Error Type: " + TFTPCommon.errorSimulateToString(loseDuplicateDelay));
+        String returnString = new String ("Packet: " + TFTPCommon.packetTypeToString(pType) + " " + pNum + " Error Type: " + TFTPCommon.errorSimulateToString(modType));
         
         if (getModType() == TFTPCommon.ModificationType.DELAY)
         {
-            returnString = returnString + " Delay Amount: " + getDelayAmount() + " ms";
+            returnString = returnString + " Delay Amount: " + getDelayDuplicateGap() + " ms";
         }
 
         if (getModType() == TFTPCommon.ModificationType.DUPLICATE)
         {
-            returnString = returnString + " Duplicate Gap: " + getDuplicateGap() + " ms";
+            returnString = returnString + " Duplicate Gap: " + getDelayDuplicateGap() + " ms";
         }
 
         return returnString;

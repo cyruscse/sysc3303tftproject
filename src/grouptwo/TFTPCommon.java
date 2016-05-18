@@ -31,7 +31,7 @@ public class TFTPCommon {
 	public static enum PacketType { INVALID, ACK, DATA, REQUEST, ERROR };
 
 	//Error Simulator modes
-	public static enum ModificationType { NONE, LOSE, DUPLICATE, DELAY };
+	public static enum ModificationType { NONE, LOSE, DUPLICATE, DELAY, CONTENTS };
 
 	//TFTP Error Codes (Iteration 3 only uses ILLEGAL and UTID)
 	public static enum ErrorCode { INVALID, FILENOTFOUND, ACCESSVIOLATE, DISKFULL, ILLEGAL, UNKTID, FILEEXISTS };
