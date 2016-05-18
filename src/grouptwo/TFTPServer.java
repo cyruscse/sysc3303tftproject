@@ -1,9 +1,7 @@
 package grouptwo;
 
-//import java.io.*;
 import java.net.*;
 import java.util.*;
-//import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * TFTPServer is the main class for the server, it creates an instance of the CLI class

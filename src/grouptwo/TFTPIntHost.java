@@ -11,6 +11,14 @@ import java.io.*;
 import java.net.*;
 import java.util.*;
 
+/**
+ * TFTPIntHost spawns the CLI thread and a new ErrorSimulator thread for each
+ * new client. Its behaviour is similar to TFTPServer in that the CLI thread
+ * uses set methods in this class to create a list of modifications for the next
+ * client thread. 
+ *
+ * @author        Cyrus Sadeghi
+ */
 public class TFTPIntHost 
 { 
     private DatagramSocket receiveSocket;
@@ -94,6 +102,13 @@ public class TFTPIntHost
     }
 }
 
+/**
+ * ErrorSimulator handles modifiying packets, each client connection gets an ErrorSimulator thread spawned
+ * by TFTPIntHost. ErrorSimulator can delay, duplicate, lose or not modify packets that received from the server
+ * or client.
+ *
+ * @author        Majeed Mirza
+ */
 class ErrorSimulator extends Thread
 {
     private DatagramSocket sendReceiveSocket;
@@ -126,9 +141,7 @@ class ErrorSimulator extends Thread
         }
     }
     
-	//Decides whether to simulate error or send normally
-    
-    //this needs logging with different verbosities
+
 	public void errorSimulateSend() 
     {   
         for (SimulatePacketInfo check : simulateList)
@@ -240,6 +253,13 @@ class ErrorSimulator extends Thread
     }
 }
 
+/**
+ * DelayDuplicatePacket threads are spawned everytime a delay or duplicate needs to occur.
+ * A new thread is required as delaying or duplicating packets causes the thread to go to sleep,
+ * which would block any incoming packets from arriving.
+ *
+ * @author        Cyrus Sadeghi
+ */
 class DelayDuplicatePacket extends Thread
 {
     private TFTPCommon.Verbosity verbosity;
@@ -326,6 +346,13 @@ class DelayDuplicatePacket extends Thread
     }
 }
 
+/**
+ * TFTPIntHostCommandLine is the command line for error simulator. It allows you to select packets to modify
+ * and the type of modification (delaying, duplicating or losing) to apply to the packet. Multiple packets
+ * can be modified for each client connection and modifications can be cancelled before they occur
+ *
+ * @author        Cyrus Sadeghi
+ */
 class TFTPIntHostCommandLine extends Thread
 {
     private TFTPCommon.Verbosity verbosity;
@@ -387,7 +414,7 @@ class TFTPIntHostCommandLine extends Thread
             {
                 return;
             }
-            
+
             scIn = new String();
             modToDelete = 0;
 
@@ -613,7 +640,12 @@ class TFTPIntHostCommandLine extends Thread
     }
 }
 
-//Packet type, packet number, and error to simulate stored
+/**
+ * SimulatePacketInfo contains information of a packet modification, including packet number,
+ * type, modification type and modification details
+ *
+ * @author        Majeed Mirza
+ */
 class SimulatePacketInfo 
 {
 	private TFTPCommon.PacketType pType;

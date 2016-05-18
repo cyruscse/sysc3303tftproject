@@ -3,6 +3,17 @@ package grouptwo;
 import java.io.*;
 import java.net.*;
 
+/**
+ * TFTPCommon contains methods and enums that are used in all the components of this project.
+ * The methods that handles sending and receiving DATA and ACK packets are located here.
+ * Various toString methods for each enum are also stored here. This common class
+ * allowed us to remove a significant amount of duplicate code from the client and server.
+ *
+ * @author        Cyrus Sadeghi
+ * @author        Eliab Woldeyes
+ * @author        Kenan El-Gaouny
+ * @author        Rishabh Singh
+ */
 public class TFTPCommon {
 
 	//Normal Mode: Skip error simulator
@@ -22,12 +33,15 @@ public class TFTPCommon {
 	//Error Simulator modes
 	public static enum ModificationType { NONE, LOSE, DUPLICATE, DELAY };
 
+	//Server Listen Port
 	public static int TFTPListenPort = 69;
 
+	//Error Sim Listen Port
 	public static int TFTPErrorSimPort = 23;
 
 	/**
 	 *   Send a DatagramPacket through a DatagramSocket.
+	 *
 	 *   @param  DatagramPacket to send
 	 *   @param  DatagramSocket to send from
 	 *   @return none
@@ -44,6 +58,7 @@ public class TFTPCommon {
 
 	/**
 	 *   Receive a DatagramPacket through a DatagramSocket.
+	 *
 	 *   @param  DatagramPacket instance to receive
 	 *   @param  DatagramSocket to receive from
 	 *   @return none
@@ -63,6 +78,7 @@ public class TFTPCommon {
 
 	/**
 	 *   Receive a DatagramPacket through a DatagramSocket with a timeout.
+	 *
 	 *   @param  DatagramPacket instance to receive
 	 *   @param  DatagramSocket to receive from
 	 *   @param timeout time before timeout in milliseconds
@@ -85,6 +101,18 @@ public class TFTPCommon {
 		}
 	}
 
+	/**
+	 *   Send an ACK packet with the specified block number
+	 *
+	 *   @param  int block number to send ACK for
+	 *   @param  DatagramPacket to send
+	 *   @param  DatagramPacket to get destination details
+	 *   @param  DatagramSocket to send ACK with
+	 *   @param  Verbosity verbosity of caller
+	 *   @param  String console prefix of caller
+	 *   @return none
+	 * 
+	 */
 	public static void sendACKPacket(int blockNum, DatagramPacket send, DatagramPacket receive, DatagramSocket socket, Verbosity verbose, String consolePrefix)
 	{
 		byte[] msg = new byte[4];
@@ -95,6 +123,22 @@ public class TFTPCommon {
 		sendPacket(send, socket);
 	}
 
+	/**
+	 *   Send a file with timeouts and retransmits
+	 *
+	 *   @param  DatagramPacket to send with
+	 *   @param  DatagramPacket to receive with
+	 *   @param  DatagramSocket to send and receive packets with
+	 *   @param  InetAddress of packet destination
+	 *   @param  int timeout per packet sent, before sending packet again
+	 *   @param  int number of timeouts to wait before giving up
+	 *   @param  int port to send packet to
+	 *   @param  FileOperation file to read from
+	 *   @param  Verbosity verbosity of caller
+	 *   @param  String console prefix of caller
+	 *   @return Boolean true if file was sent successfully
+	 * 
+	 */
 	public static Boolean sendDataWTimeout (DatagramPacket send, DatagramPacket receive, DatagramSocket sendReceiveSocket, InetAddress address, int timeout, int maxTimeout, int port, FileOperation fileOp, Verbosity verbose, String consolePrefix)
 	{
 		int timeoutCount = 0;
@@ -176,6 +220,20 @@ public class TFTPCommon {
 		return true;
 	}
 
+	/**
+	 *   Receive a file with timeouts and retransmits
+	 *
+	 *   @param  DatagramPacket to send with
+	 *   @param  DatagramPacket to receive with
+	 *   @param  DatagramSocket to send and receive packets with
+	 *   @param  Boolean true if client is calling, allows us to resend request packets
+	 *   @param  int timeout to stop waiting (i.e. side sending DATA packets is gone)
+	 *   @param  FileOperation file to read from
+	 *   @param  Verbosity verbosity of caller
+	 *   @param  String console prefix of caller
+	 *   @return Boolean true if file was received successfully
+	 * 
+	 */
 	public static Boolean receiveDataWTimeout (DatagramPacket send, DatagramPacket receive, DatagramSocket sendReceiveSocket, Boolean client, int hardTimeout, FileOperation fileOp, Verbosity verbose, String consolePrefix)
 	{
 		Boolean writingFile = true;
@@ -256,10 +314,10 @@ public class TFTPCommon {
 	}
 
 	/**
-	 *   Prints basic packet details based on the verbosity of the host
+	 *   Prints basic packet details based on the verbosity of the caller
 	 *
 	 *   @param  DatagramPacket to print details of
-	 *   @param	 Verbosity level of the host
+	 *   @param	 Verbosity level of the caller
 	 *   @param	 Boolean to decide to print the packet data as a string or not
 	 *   @return none
 	 */
@@ -286,7 +344,6 @@ public class TFTPCommon {
 
 		if (printAsString)
 		{
-			// Form a String from the byte array, and print the string.
 			String sending = new String(packet.getData(), 0, packet.getLength());
 
 			if (verbosity == TFTPCommon.Verbosity.ALL)
@@ -296,6 +353,13 @@ public class TFTPCommon {
 		}		
 	}
 
+	/**
+	 *   Convert DatagramPacket data contents to TFTP packet type and number
+	 *
+	 *   @param  byte[] data from DatagramPacket
+	 *   @return String
+	 * 
+	 */
 	public static String packetTypeAndNumber (byte[] data)
 	{
 		if ( getPacketType(data) == PacketType.REQUEST)
@@ -305,6 +369,13 @@ public class TFTPCommon {
 		return (opcodeToString(data) + " packet " + blockNumToPacket(data));
 	}
 
+	/**
+	 *   Convert opcode from DatagramPacket data contents to PacketType enum
+	 *
+	 *   @param  byte[] data from DatagramPacket
+	 *   @return PacketType
+	 * 
+	 */
     public static PacketType getPacketType(byte[] data)
     {
         if (data[0] != 0)
@@ -422,8 +493,14 @@ public class TFTPCommon {
 		return "invalid";
 	}
 
-	//find way to merge this with opcodeToString
-	public static String packetTypeToString(PacketType type)
+	/**
+	 *   Convert PacketType to String
+	 *
+	 *   @param  PacketType to convert to String
+	 *   @return String
+	 * 
+	 */
+	public static String packetTypeToString (PacketType type)
 	{
 		if (type == PacketType.ACK)
 		{
@@ -441,6 +518,13 @@ public class TFTPCommon {
 		return "invalid";
 	}
 
+	/**
+	 *   Convert ModificationType to String
+	 *
+	 *   @param  ModificationType to convert to String
+	 *   @return String
+	 * 
+	 */
     public static String errorSimulateToString (ModificationType error)
     {
         if (error == ModificationType.LOSE)
