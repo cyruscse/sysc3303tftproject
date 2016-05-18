@@ -34,7 +34,7 @@ public class TFTPCommon {
 	public static enum ModificationType { NONE, LOSE, DUPLICATE, DELAY };
 
 	//TFTP Error Codes (Iteration 3 only uses ILLEGAL and UTID)
-	public static enum ErrorCode { INVALID, FILENOTFOUND, ACCESSVIOLATE, DISKFULL, ILLEGAL, UNKTID, FILEEXISTS };
+	public static enum ErrorCode { INVALID, FILENOTFOUND, ACCESSVIOLATE, DISKFULL, ILLEGAL, UNKOWNTID, FILEEXISTS };
 
 	//Server Listen Port
 	public static int TFTPListenPort = 69;
@@ -595,6 +595,62 @@ public class TFTPCommon {
 			System.exit(1);
 			return -1;   							//Need this return for compilation (even though it's after exit)
 		}
+	}
+	
+	/**
+	 *   Constructs an ERROR packet
+	 *
+	 *   @param  byte[] array to store packet data in
+	 *   @param  ErrorCode specifying which error
+	 *   @param  String error message
+	 *   @return none
+	 */
+	private void constructErrorPacket (byte[] msg, ErrorCode errCode, String errorMsg)
+	{
+		byte[] em;
+		em = errorMsg.getBytes();
+		System.arraycopy(em, 0, msg, 4, em.length);
+		msg[em.length + 4] = 0;
+		
+		
+		msg[0] = 0;
+		msg[1] = 5;
+
+		if (errCode == ErrorCode.FILENOTFOUND) 
+		{
+			msg[2] = 0;
+			msg[3] = 1;
+		}
+		else if (errCode == ErrorCode.ACCESSVIOLATE) 
+		{
+			msg[2] = 0;
+			msg[3] = 2;
+		}
+		else if (errCode == ErrorCode.DISKFULL) 
+		{
+			msg[2] = 0;
+			msg[3] = 3;
+		}
+		else if (errCode == ErrorCode.ILLEGAL) 
+		{
+			msg[2] = 0;
+			msg[3] = 4;
+		}
+		else if (errCode == ErrorCode.UNKOWNTID) 
+		{
+			msg[2] = 0;
+			msg[3] = 5;
+		}
+		else if (errCode == ErrorCode.FILEEXISTS) 
+		{
+			msg[2] = 0;
+			msg[3] = 6;
+		}
+		else{
+			msg[2] = 0;
+			msg[3] = 0;
+		}
+		
 	}
 
 	/**
