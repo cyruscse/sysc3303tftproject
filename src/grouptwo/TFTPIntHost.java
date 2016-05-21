@@ -52,17 +52,26 @@ public class TFTPIntHost
         return toModify.add(modification);
     }
 
-    public Boolean removeMod(SimulatePacketInfo toRemove)
+    public void removeMod(int toRemove) throws IndexOutOfBoundsException
     {
-        return toModify.remove(toRemove);
+        toModify.remove(toRemove);
     }
 
-    public void printSimulateList()
+    public int simulateListLength()
     {
+        return toModify.size();
+    }
+
+    public String simulateListToString()
+    {
+        String returnString = new String();
+
         for (SimulatePacketInfo s : toModify)
         {
-            System.out.println(s);
+            returnString = returnString + s + System.lineSeparator();
         }
+
+        return returnString;
     }
 
     private void processClients()
@@ -438,7 +447,66 @@ class TFTPIntHostCommandLine extends Thread
 
     private void deletePendingMod (Scanner sc)
     {
-        System.out.println("This is not yet implemented");
+        int modToDelete, simulateListSize;
+        Scanner simulateListSc;
+
+        while ( true )
+        {
+            simulateListSize = parentSimulator.simulateListLength();
+            simulateListSc = new Scanner(parentSimulator.simulateListToString());
+
+            if (simulateListSize == 0)
+            {
+                System.out.println("There are no pending modifications");
+                simulateListSc.close();
+                return;
+            }
+
+            scIn = new String();
+            modToDelete = 0;
+
+            System.out.println("List of Pending Modifications");
+
+            for (int i = 0; i < simulateListSize; i++)
+            {
+                if (simulateListSc.hasNextLine())
+                {
+                    System.out.println((i + 1) + ". " + simulateListSc.nextLine());
+                }
+            }
+
+            while (modToDelete <= 0)
+            {
+                System.out.print("Please enter a number (or r to return): ");
+
+                scIn = sc.nextLine();
+
+                if (scIn.equalsIgnoreCase("r"))
+                {
+                    simulateListSc.close();
+                    return;
+                }
+                else
+                {
+                    try {
+                        modToDelete = Integer.parseInt(scIn);
+                    } catch (NumberFormatException e) {
+                        System.out.println("Input wasn't a number, try again.");
+                    }
+                }
+            }
+
+            modToDelete--;
+
+            if (modToDelete <= simulateListSize && simulateListSize == parentSimulator.simulateListLength())
+            {
+                try {
+                    parentSimulator.removeMod(modToDelete);
+                } catch (IndexOutOfBoundsException e) {
+                    System.out.println("Failed to remove mod!");
+                }
+            }
+        }
     }
 
     private SimulatePacketInfo selectPacket(Scanner sc)
@@ -660,7 +728,7 @@ class TFTPIntHostCommandLine extends Thread
             }
             else if ( scIn.equalsIgnoreCase("p") )
             {
-                parentSimulator.printSimulateList();
+                System.out.println(parentSimulator.simulateListToString());
             }
             else if ( scIn.equalsIgnoreCase("v") ) 
             {
