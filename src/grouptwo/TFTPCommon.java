@@ -32,7 +32,7 @@ public class TFTPCommon {
 	public static enum PacketType { INVALID, ACK, DATA, REQUEST, ERROR };
 
 	//Error Simulator modes
-	public static enum ModificationType { NONE, LOSE, DUPLICATE, DELAY, CONTENTS };
+	public static enum ModificationType { NONE, LOSE, DUPLICATE, DELAY, CONTENTS, INVALIDTID };
 
 	//TFTP Error Codes (Iteration 3 only uses ILLEGAL and UTID)
 	public static enum ErrorCode { INVALID, FILENOTFOUND, ACCESSVIOLATE, DISKFULL, ILLEGAL, UNKNOWNTID, FILEEXISTS };
@@ -559,6 +559,10 @@ public class TFTPCommon {
         {
         	return "contents";
         }
+        else if (error == ModificationType.INVALIDTID)
+        {
+        	return "invalid TID";
+        }
 
         return "invalid";
     }
@@ -669,11 +673,11 @@ public class TFTPCommon {
 			msg[2] = 0;
 			msg[3] = 6;
 		}
-		else{
+		else
+		{
 			msg[2] = 0;
 			msg[3] = 0;
 		}
-		
 	}
 
 	/**

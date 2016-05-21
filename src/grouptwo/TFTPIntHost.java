@@ -101,6 +101,7 @@ public class TFTPIntHost
  * or client.
  *
  * @author        Majeed Mirza
+ * @author        Cyrus Sadeghi
  */
 class ErrorSimulator extends Thread
 {
@@ -134,7 +135,7 @@ class ErrorSimulator extends Thread
         }
     }
     
-	public void errorSimulateSend() 
+	private void errorSimulateSend() 
     {   
         for (SimulatePacketInfo check : simulateList)
         {   
@@ -162,11 +163,25 @@ class ErrorSimulator extends Thread
                     Thread delayDuplicateThread = new Thread(new DelayDuplicatePacket(sendPacket, sendReceiveSocket, check.getModType(), check.getDelayDuplicateGap()));
     				delayDuplicateThread.start();
                     simulateList.remove(check);
-    			} 
+    			}
+
+                else if (check.getModType() == TFTPCommon.ModificationType.CONTENTS)
+                {
+                    modifyContents(check);
+                    simulateList.remove(check);
+                }
+
+                else if (check.getModType() == TFTPCommon.ModificationType.INVALIDTID)
+                {
+                    invalidForward(check);
+                    simulateList.remove(check);
+                }
+
                 else 
                 {
     				System.out.println("Error on " + check.getPacketNum());
     			}
+
     			return;
             }
         }
@@ -182,12 +197,48 @@ class ErrorSimulator extends Thread
 	}
 
 	//Do nothing with packet
-    public void losePacket (SimulatePacketInfo check)
+    private void losePacket (SimulatePacketInfo check)
     {
         System.out.println("Lose " + TFTPCommon.packetTypeAndNumber(sendPacket.getData()));
-    }    
+    }
 
-    public void passOnTFTP()
+    private void modifyContents (SimulatePacketInfo check)
+    {
+        data = sendPacket.getData();
+
+        for (ModifyByte mod : check.getModByteList())
+        {
+            System.out.println("Changing byte " + mod.getPosition() + " of " + TFTPCommon.packetTypeAndNumber(sendPacket.getData()) + " from " + data[mod.getPosition()] + " to " + mod.getValue());
+            data[mod.getPosition()] = mod.getValue();
+        }
+
+        sendPacket.setData(data);
+    }
+
+    private void invalidForward (SimulatePacketInfo check)
+    {
+        //Temporarily set to sendReceiveSocket in order to avoid
+        //initialization compiler warnings
+        DatagramSocket invalidSocket = sendReceiveSocket;
+
+        try {
+            invalidSocket = new DatagramSocket();
+        } catch (SocketException e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
+
+        System.out.println("Sending " + TFTPCommon.packetTypeAndNumber(sendPacket.getData()) + " on new socket (port " + invalidSocket.getPort() + ") to simulate invalid TID");
+
+        try {
+            invalidSocket.send(sendPacket);
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
+    }
+
+    private void passOnTFTP()
     {
         int port = TFTPCommon.TFTPListenPort;
 
@@ -463,7 +514,7 @@ class TFTPIntHostCommandLine extends Thread
 
         if ( scIn.equalsIgnoreCase("opcode") )
         {
-            opcode = getIntMenu(sc, 0, 512, "Enter new opcode: ");
+            opcode = getIntMenu(sc, 0, 512, "Enter new opcode (as bytes, i.e. 02, 03, etc.): ");
             dataModPacket.setOpcode(opcode);
         }
         
@@ -483,7 +534,7 @@ class TFTPIntHostCommandLine extends Thread
 
         else if ( scIn.equalsIgnoreCase("block") )
         {
-            blockNum = getIntMenu(sc, 0, 512, "Enter new block number: ");
+            blockNum = getIntMenu(sc, 0, 512, "Enter new block number (as integer): ");
             dataModPacket.setBlockNum(blockNum);
         }
 
@@ -495,7 +546,7 @@ class TFTPIntHostCommandLine extends Thread
                 Integer value = getIntMenu(sc, 0, 255, "Enter new value for byte: ");
 
                 ModifyByte modByte = new ModifyByte(position, value.byteValue());
-                dataModPacket.setModByte(modByte);
+                dataModPacket.addModByte(modByte);
             }
         }
 
@@ -545,6 +596,18 @@ class TFTPIntHostCommandLine extends Thread
         }
     }
 
+    private void invalidTID(Scanner sc)
+    {
+        SimulatePacketInfo invalidTID = selectPacket(sc);
+
+        invalidTID.setModType(TFTPCommon.ModificationType.INVALIDTID);
+
+        if (!parentSimulator.appendMod(invalidTID))
+        {
+            System.out.println("Failed to add modification!");
+        }
+    }
+
     /**
     *   CLI for TFTPIntHost, allows user to set verbosity and exit (non-graceful)
     *
@@ -563,6 +626,7 @@ class TFTPIntHostCommandLine extends Thread
             System.out.println("delay: Delay packet");
             System.out.println("dup: Duplicate packet");
             System.out.println("lose: Lose packet");
+            System.out.println("tid: Send packet with invalid TID");
             System.out.println("c: Cancel pending modification");
             System.out.println("p: Print modifications");
             System.out.println("v: Set verbosity (current: " + TFTPCommon.verbosityToString(verbosity) + ")");
@@ -585,6 +649,10 @@ class TFTPIntHostCommandLine extends Thread
             else if ( scIn.equalsIgnoreCase("lose") )
             {
                 losePacket(sc);
+            }
+            else if ( scIn.equalsIgnoreCase("tid") )
+            {
+                invalidTID(sc);
             }
             else if ( scIn.equalsIgnoreCase("c") )
             {
@@ -647,12 +715,13 @@ class SimulatePacketInfo
 	private int pNum, delayDuplicateGap, opcode, blockNum;
     private String fileName, fileMode;
 	private TFTPCommon.ModificationType modType;
-    private ModifyByte modByte;
+    private List<ModifyByte> modByte;
 
     public SimulatePacketInfo (int pNum, TFTPCommon.PacketType pType)
     {
         this.pNum = pNum;
         this.pType = pType;
+        modByte = new ArrayList<ModifyByte>();
     }
 
     public TFTPCommon.PacketType getPacketType ()
@@ -675,6 +744,11 @@ class SimulatePacketInfo
         return delayDuplicateGap;
     }
 
+    public List<ModifyByte> getModByteList ()
+    {
+        return modByte;
+    }
+
     public void setModType (TFTPCommon.ModificationType modType)
     {
         this.modType = modType;
@@ -688,6 +762,8 @@ class SimulatePacketInfo
     public void setOpcode (int opcode)
     {
         this.opcode = opcode;
+        modByte.add(new ModifyByte(0, (byte) (opcode / 10)));
+        modByte.add(new ModifyByte(1, (byte) (opcode % 10)));
     }
 
     public void setFileName (String fileName)
@@ -703,14 +779,14 @@ class SimulatePacketInfo
     public void setBlockNum (int blockNum)
     {
         this.blockNum = blockNum;
+        modByte.add(new ModifyByte(2, (byte) (blockNum / 256)));
+        modByte.add(new ModifyByte(3, (byte) (blockNum % 256)));
     }
 
-    public void setModByte (ModifyByte modByte)
+    public void addModByte (ModifyByte modByte)
     {
-        this.modByte = modByte;
+        this.modByte.add(modByte);
     }
-
-    //datamod to string method needed?
 
     public String toString () 
     {
@@ -721,9 +797,18 @@ class SimulatePacketInfo
             returnString = returnString + " Delay Amount: " + getDelayDuplicateGap() + " ms";
         }
 
-        if (getModType() == TFTPCommon.ModificationType.DUPLICATE)
+        else if (getModType() == TFTPCommon.ModificationType.DUPLICATE)
         {
             returnString = returnString + " Duplicate Gap: " + getDelayDuplicateGap() + " ms";
+        }
+
+        else if (getModType() == TFTPCommon.ModificationType.CONTENTS)
+        {
+
+            for (ModifyByte m : modByte)
+            {
+                returnString = returnString + System.lineSeparator() + "Packet Contents: " + m.toString();
+            }
         }
 
         return returnString;
@@ -749,5 +834,10 @@ class ModifyByte
     public byte getValue ()
     {
         return value;
+    }
+
+    public String toString ()
+    {
+       return (new String ("Change value of byte " + position + " to " + Byte.toUnsignedInt(value)) + " (unsigned int value)");
     }
 }
