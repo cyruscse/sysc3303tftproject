@@ -593,7 +593,7 @@ public class TFTPCommon {
     	msg[1] = (byte) (opcode % 10);
 
     	fn = fileName.getBytes();
-    	System.arraycopy(fn, 0, msg, fn.length);
+    	System.arraycopy(fn, 0, msg, 2, fn.length);
     	msg[fn.length+2] = 0;
     	md = fileMode.getBytes();
     	System.arraycopy(md, 0, msg, fn.length+3, md.length);
