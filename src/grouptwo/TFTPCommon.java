@@ -146,7 +146,7 @@ public class TFTPCommon {
 	public static Boolean sendDataWTimeout (DatagramPacket send, DatagramPacket receive, DatagramSocket sendReceiveSocket, InetAddress address, int timeout, int maxTimeout, int port, FileOperation fileOp, Verbosity verbose, String consolePrefix)
 	{
 		int timeoutCount = 0;
-		int blockNum = 1;  ///CHANGED from 0
+		int blockNum = 1;
 		int len = 0;
 		Boolean sendData = true;
 		byte[] dataMsg = new byte[516];
@@ -583,6 +583,23 @@ public class TFTPCommon {
     	}
 
   		return 100;
+    }
+
+    public static int constructReqPacket(byte[] msg, int opcode, String fileName, String fileMode)
+    {
+    	byte[] fn, md;
+
+    	msg[0] = (byte) (opcode / 10);
+    	msg[1] = (byte) (opcode % 10);
+
+    	fn = fileName.getBytes();
+    	System.arraycopy(fn, 0, msg, fn.length);
+    	msg[fn.length+2] = 0;
+    	md = fileMode.getBytes();
+    	System.arraycopy(md, 0, msg, fn.length+3, md.length);
+    	msg[fn.length+md.length+3] = 0;
+
+    	return (fn.length + md.length + 4);
     }
 
 	/**

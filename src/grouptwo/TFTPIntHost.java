@@ -155,17 +155,17 @@ class ErrorSimulator extends Thread
     				losePacket(check);
                     simulateList.remove(check);
                     
-                    //TODO - need to fix below for new menu system - need to test multiple clients
+                    //TODO - need to test losing request packets (as well as multiple clients)
 
                     //If we lose a request, the client will send another request which will spawn a new error sim thread
                     //The new thread won't have the list of modifications, so pass those now
-                    /* if (check.getPacketType() == TFTPCommon.PacketType.REQUEST)
+                    if (check.getPacketType() == TFTPCommon.PacketType.REQUEST)
                     {
                         for (SimulatePacketInfo prop : simulateList)
                         {
                             parent.appendMod(prop);
                         }
-                    } */
+                    }
     			} 
                 else if (check.getModType() == TFTPCommon.ModificationType.DUPLICATE || check.getModType() == TFTPCommon.ModificationType.DELAY) 
                 {
@@ -215,6 +215,12 @@ class ErrorSimulator extends Thread
     {
         data = sendPacket.getData();
 
+        //todo....
+        /*if (check.getPacketType() == TFTPCommon.PacketType.REQUEST)
+        {
+            String fName = check.
+        }
+*/
         for (ModifyByte mod : check.getModByteList())
         {
             System.out.println("Changing byte " + mod.getPosition() + " of " + TFTPCommon.packetTypeAndNumber(sendPacket.getData()) + " from " + data[mod.getPosition()] + " to " + mod.getValue());
@@ -562,65 +568,77 @@ class TFTPIntHostCommandLine extends Thread
 
         dataModPacket.setModType(TFTPCommon.ModificationType.CONTENTS);
 
-        System.out.println("Packet Content Modifications");
-        System.out.println("----------------------------");
-        System.out.println("opcode: Modify opcode");
-        
-        if (dataModPacket.getPacketType() == TFTPCommon.PacketType.REQUEST)
+        while (true)
         {
-            System.out.println("fname: Modify file name");
-            System.out.println("mode: Modify file mode");
-        }
-        else
-        {
-            System.out.println("block: Modify block number");
-        }
-
-        System.out.println("manual: Manually modify packet contents");
-
-        scIn = sc.nextLine();
-
-        if ( scIn.equalsIgnoreCase("opcode") )
-        {
-            opcode = getIntMenu(sc, 0, 512, "Enter new opcode (as bytes, i.e. 02, 03, etc.): ");
-            dataModPacket.setOpcode(opcode);
-        }
-        
-        if (dataModPacket.getPacketType() == TFTPCommon.PacketType.REQUEST)
-        {
-            if ( scIn.equalsIgnoreCase("fname") )
+            System.out.println("Packet Content Modifications");
+            System.out.println("----------------------------");
+            System.out.println("opcode: Modify opcode");
+            
+            if (dataModPacket.getPacketType() == TFTPCommon.PacketType.REQUEST)
             {
-                System.out.print("Enter new file name: ");
-                dataModPacket.setFileName(sc.nextLine());
+                System.out.println("fname: Modify file name");
+                System.out.println("mode: Modify file mode");
             }
-            else if ( scIn.equalsIgnoreCase("mode") )
+            else
             {
-                System.out.print("Enter new file mode: ");
-                dataModPacket.setFileMode(sc.nextLine());
+                System.out.println("block: Modify block number");
             }
-        }
 
-        else if ( scIn.equalsIgnoreCase("block") )
-        {
-            blockNum = getIntMenu(sc, 0, 512, "Enter new block number (as integer): ");
-            dataModPacket.setBlockNum(blockNum);
-        }
+            System.out.println("manual: Manually modify packet contents");
+            System.out.println("r: return to main menu");
 
-        if ( scIn.equalsIgnoreCase("manual") )
-        {
-            while (true)
+            scIn = sc.nextLine();
+
+            if ( scIn.equalsIgnoreCase("opcode") )
             {
-                Integer position = getIntMenu(sc, 0, 516, "Enter byte position to modify: ");
-                Integer value = getIntMenu(sc, 0, 255, "Enter new value for byte: ");
-
-                ModifyByte modByte = new ModifyByte(position, value.byteValue());
-                dataModPacket.addModByte(modByte);
+                opcode = getIntMenu(sc, 0, 512, "Enter new opcode (as bytes, i.e. 02, 03, etc.): ");
+                dataModPacket.setOpcode(opcode);
             }
-        }
+            
+            if (dataModPacket.getPacketType() == TFTPCommon.PacketType.REQUEST)
+            {
+                if ( scIn.equalsIgnoreCase("fname") )
+                {
+                    System.out.print("Enter new file name: ");
+                    dataModPacket.setFileName(sc.nextLine());
+                }
+                else if ( scIn.equalsIgnoreCase("mode") )
+                {
+                    System.out.print("Enter new file mode: ");
+                    dataModPacket.setFileMode(sc.nextLine());
+                }
+            }
 
-        if (!parentSimulator.appendMod(dataModPacket))
-        {
-            System.out.println("Failed to add modification!");
+            else if ( scIn.equalsIgnoreCase("block") )
+            {
+                blockNum = getIntMenu(sc, 0, 512, "Enter new block number (as integer): ");
+                dataModPacket.setBlockNum(blockNum);
+            }
+
+            if ( scIn.equalsIgnoreCase("manual") )
+            {
+                while (true)
+                {
+                    Integer position = getIntMenu(sc, 0, 516, "Enter byte position to modify: ");
+                    Integer value = getIntMenu(sc, 0, 255, "Enter new value for byte: ");
+
+                    ModifyByte modByte = new ModifyByte(position, value.byteValue());
+                    dataModPacket.addModByte(modByte);
+                }
+            }
+
+            if ( scIn.equalsIgnoreCase("r") )
+            {
+                if (dataModPacket.getModByteList().size() > 0 || dataModPacket.getFileName().length() > 0 || dataModPacket.getFileMode().length() > 0)
+                {
+                    if (!parentSimulator.appendMod(dataModPacket))
+                    {
+                        System.out.println("Failed to add modification!");
+                    }
+                }
+
+                return;
+            }
         }
     }
 
@@ -789,6 +807,8 @@ class SimulatePacketInfo
     {
         this.pNum = pNum;
         this.pType = pType;
+        fileName = new String();
+        fileMode = new String();
         modByte = new ArrayList<ModifyByte>();
     }
 
@@ -815,6 +835,16 @@ class SimulatePacketInfo
     public List<ModifyByte> getModByteList ()
     {
         return modByte;
+    }
+
+    public String getFileName ()
+    {
+        return fileName;
+    }
+
+    public String getFileMode ()
+    {
+        return fileMode;
     }
 
     public void setModType (TFTPCommon.ModificationType modType)

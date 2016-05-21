@@ -93,19 +93,16 @@ public class TFTPServer
 				System.out.println("Server: Waiting for clients.");
 
 				TFTPCommon.receivePacket(receivePacket, receiveSocket);
-				
-				if (TFTPCommon.getPacketType(receivePacket.getData()) != TFTPCommon.PacketType.INVALID)
+
+				System.out.println("Server: Packet received.");
+
+				TFTPCommon.printPacketDetails(receivePacket, verbosity, true);
+
+				if (!receiveSocket.isClosed())
 				{
-					System.out.println("Server: Packet received.");
-
-					TFTPCommon.printPacketDetails(receivePacket, verbosity, true);
-
-					if (!receiveSocket.isClosed())
-					{
-						Thread client = new Thread(new ClientConnectionThread(receivePacket, this, verbosity, clients.size() + 1, timeout));
-						client.start();
-						clients.add(client);
-					}
+					Thread client = new Thread(new ClientConnectionThread(receivePacket, this, verbosity, clients.size() + 1, timeout));
+					client.start();
+					clients.add(client);
 				}
 			}
 		}
