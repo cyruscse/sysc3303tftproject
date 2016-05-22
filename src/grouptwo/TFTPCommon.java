@@ -145,6 +145,7 @@ public class TFTPCommon {
 	 */
 	public static Boolean sendDataWTimeout (DatagramPacket send, DatagramPacket receive, DatagramSocket sendReceiveSocket, InetAddress address, int timeout, int maxTimeout, int port, FileOperation fileOp, Verbosity verbose, String consolePrefix)
 	{
+		
 		int timeoutCount = 0;
 		int blockNum = 1;
 		int len = 0;
@@ -198,14 +199,28 @@ public class TFTPCommon {
 
 			if (receive.getPort() != -1)
 			{ 
-				if (validACKPacket(ackMsg, blockNum)) 
-				{
+				if (validACKPacket(ackMsg, blockNum)) {
 					System.out.println(consolePrefix + "Received valid ACK " + blockNum);
 					printPacketDetails(receive, verbose, false);
 
-					timeoutCount = 0; //Reset timeout count once a successful ACK is received
+					timeoutCount = 0; // Reset timeout count once a successful
+										// ACK is received
 					blockNum++;
 					sendData = true;
+
+					if (receive.getPort() != port) {
+						byte[] errMsg = new byte[200];
+						String errString = "Received packet from unknown port: " + receive.getPort();
+						int errlen = constructErrorPacket(errMsg, ErrorCode.UNKNOWNTID, errString);
+
+						System.out.println(errString);
+						System.out.println("Sending ERROR packet to port " + receive.getPort());
+
+						DatagramPacket senderr = new DatagramPacket(errMsg, errlen, receive.getAddress(), receive.getPort());
+
+						printPacketDetails(senderr, verbose, false);
+						sendPacket(senderr, sendReceiveSocket);
+					}
 				}
 				else if (getPacketType(ackMsg) == PacketType.ACK && blockNumToPacket(ackMsg) < blockNum) 
 				{
@@ -214,11 +229,27 @@ public class TFTPCommon {
 				} 
 				else 
 				{
-					System.out.println(consolePrefix + "Invalid packet received, ignoring");
-					printPacketDetails(receive, verbose, false);
-					sendData = false;
+					String errString = "";
+					if(getPacketType(ackMsg) != PacketType.ACK){
+						 errString = "Expecting ACK, received invalid Opcode";
+					}
+					else if(blockNumToPacket(ackMsg) != blockNum){
+						 errString = "Expecting block number" + blockNum + " instead received " + blockNumToPacket(ackMsg);
+					}
+					byte[] errMsg = new byte[200];
+					
+					int errlen = constructErrorPacket(errMsg, ErrorCode.ILLEGAL, errString);
+
+					System.out.println(consolePrefix + errString);
+					
+					DatagramPacket senderr = new DatagramPacket(errMsg, errlen, receive.getAddress(), port);
+					System.out.println("Sending ERROR packet to port " + port);
+					printPacketDetails(senderr, verbose, false);
+					sendPacket(senderr, sendReceiveSocket);
+
+					return false;
 				}
-			}			
+			}
 		}
 
 		return true;
@@ -658,7 +689,7 @@ public class TFTPCommon {
 	 *   @param  String error message
 	 *   @return none
 	 */
-	public static void constructErrorPacket (byte[] msg, ErrorCode errCode, String errorMsg)
+	public static int constructErrorPacket (byte[] msg, ErrorCode errCode, String errorMsg)
 	{
 		byte[] em;
 		em = errorMsg.getBytes();
@@ -704,6 +735,7 @@ public class TFTPCommon {
 			msg[2] = 0;
 			msg[3] = 0;
 		}
+		return em.length + 5;
 	}
 
 	/**
