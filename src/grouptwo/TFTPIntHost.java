@@ -85,7 +85,7 @@ public class TFTPIntHost
             receivePacket = new DatagramPacket(data, data.length);
 
             try {
-                receiveSocket.receive(receivePacket); //TODO: need to print packet details
+                receiveSocket.receive(receivePacket);
             } catch (IOException e) {
                 e.printStackTrace();
                 System.exit(1);
@@ -214,19 +214,75 @@ class ErrorSimulator extends Thread
     private void modifyContents (SimulatePacketInfo check)
     {
         data = sendPacket.getData();
+        int len = sendPacket.getLength();
 
-       /* if (check.getPacketType() == TFTPCommon.PacketType.REQUEST)
+        if (check.getPacketType() == TFTPCommon.PacketType.REQUEST)
         {
-            String fName = sendPacket
-        } */
+            String fileName, fileMode;
+            int opcode, j, k;
+
+            for (j = 2; j < sendPacket.getLength(); j++) 
+            {
+                if (data[j] == 0) 
+                {
+                    break;
+                }
+            }
+
+            fileName = new String(data, 2, j - 2);
+            
+            for (k = j + 1; k < sendPacket.getLength(); k++)
+            {
+                if (data[k] == 0)
+                {
+                    break;
+                }
+            }
+
+            fileMode = new String(data, j + 1, k - j - 1);
+           
+            opcode = Byte.toUnsignedInt(data[0]) * 256 + Byte.toUnsignedInt(data[1]);
+
+            if (check.getFileName().length() > 0)
+            {
+                System.out.println("Changing file name in request from " + fileName + " to " + check.getFileName());
+                fileName = check.getFileName();
+            }
+
+            if (check.getFileMode().length() > 0)
+            {
+                System.out.println("Changing file mode in request from " + fileMode + " to " + check.getFileMode());
+                fileMode = check.getFileMode();
+            }
+
+            data = new byte[100];
+            len = TFTPCommon.constructReqPacket(data, opcode, fileName, fileMode);
+            
+            sendPacket.setData(data);
+            sendPacket.setLength(len);
+        }
 
         for (ModifyByte mod : check.getModByteList())
         {
-            System.out.println("Changing byte " + mod.getPosition() + " of " + TFTPCommon.packetTypeAndNumber(sendPacket.getData()) + " from " + data[mod.getPosition()] + " to " + mod.getValue());
-            data[mod.getPosition()] = mod.getValue();
+            if (mod.getPosition() < data.length)
+            {
+                System.out.println("Changing byte " + mod.getPosition() + " of " + TFTPCommon.packetTypeAndNumber(sendPacket.getData()) + " from " + data[mod.getPosition()] + " to " + mod.getValue());
+                data[mod.getPosition()] = mod.getValue();
+            }
+            else
+            {
+                System.out.println("Ignoring content modification: byte # " + mod.getPosition() + " value " + mod.getValue() + " as modification is out of bounds for this packet" );
+            }
         }
 
-        sendPacket.setData(data);
+        sendPacket.setData(data, 0, len);
+
+        try {
+            sendReceiveSocket.send(sendPacket);
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
     }
 
     private void invalidForward (SimulatePacketInfo check)
@@ -545,7 +601,7 @@ class TFTPIntHostCommandLine extends Thread
             }
             else if ( scIn.equalsIgnoreCase("r") )
             {
-                return null;        //can't do this, need another way of cancelling mod creation
+                return new SimulatePacketInfo(0, pType);
             }
             else if ( !scIn.equalsIgnoreCase("") )
             {
@@ -563,9 +619,13 @@ class TFTPIntHostCommandLine extends Thread
         SimulatePacketInfo dataModPacket = selectPacket(sc);
         int opcode = -1;
         int blockNum = -1;
-        List<Integer> positions = new ArrayList<Integer>();
 
         dataModPacket.setModType(TFTPCommon.ModificationType.CONTENTS);
+
+        if (dataModPacket.getPacketType() == TFTPCommon.PacketType.INVALID)
+        {
+            return;
+        }
 
         while (true)
         {
@@ -584,7 +644,8 @@ class TFTPIntHostCommandLine extends Thread
             }
 
             System.out.println("manual: Manually modify packet contents");
-            System.out.println("r: return to main menu");
+            System.out.println("r: return without saving");
+            System.out.println("s: save changes and return");
 
             scIn = sc.nextLine();
 
@@ -627,6 +688,11 @@ class TFTPIntHostCommandLine extends Thread
             }
 
             if ( scIn.equalsIgnoreCase("r") )
+            {
+                return;
+            }
+
+            if ( scIn.equalsIgnoreCase("s") )
             {
                 if (dataModPacket.getModByteList().size() > 0 || dataModPacket.getFileName().length() > 0 || dataModPacket.getFileMode().length() > 0)
                 {
@@ -901,6 +967,15 @@ class SimulatePacketInfo
 
         else if (getModType() == TFTPCommon.ModificationType.CONTENTS)
         {
+            if (fileName.length() > 0)
+            {
+                returnString = returnString + System.lineSeparator() + "Change filename to " + fileName;
+            }
+
+            if (fileMode.length() > 0)
+            {
+                returnString = returnString = System.lineSeparator() + "Change filemode to " + fileMode;
+            }
 
             for (ModifyByte m : modByte)
             {
