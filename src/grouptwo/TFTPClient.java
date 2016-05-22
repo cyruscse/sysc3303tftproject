@@ -296,27 +296,17 @@ class TFTPClientTransfer extends Thread
 	 */
 	private void sendRequestPacket (byte[] msg) throws SocketTimeoutException
 	{
-		byte[] fn, md, data;
+		byte[] data;
 		int    len;
-
-		msg[0] = 0;
 
 		if ( requestType == TFTPCommon.Request.READ ) 
 		{
-			msg[1] = 1;
+			len = TFTPCommon.constructReqPacket(msg, 1, remoteName, fileMode);
 		}
 		else 
 		{
-			msg[1] = 2;
+			len = TFTPCommon.constructReqPacket(msg, 2, remoteName, fileMode);
 		}
-
-		fn = remoteName.getBytes();
-		System.arraycopy(fn, 0, msg, 2, fn.length);
-		msg[fn.length+2] = 0;
-		md = fileMode.getBytes();
-		System.arraycopy(md, 0, msg, fn.length+3, md.length);
-		len = fn.length+md.length+4;
-		msg[len-1] = 0;
 
 		data = new byte[516];
 

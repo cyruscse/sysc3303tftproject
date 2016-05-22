@@ -215,12 +215,11 @@ class ErrorSimulator extends Thread
     {
         data = sendPacket.getData();
 
-        //todo....
-        /*if (check.getPacketType() == TFTPCommon.PacketType.REQUEST)
+       /* if (check.getPacketType() == TFTPCommon.PacketType.REQUEST)
         {
-            String fName = check.
-        }
-*/
+            String fName = sendPacket
+        } */
+
         for (ModifyByte mod : check.getModByteList())
         {
             System.out.println("Changing byte " + mod.getPosition() + " of " + TFTPCommon.packetTypeAndNumber(sendPacket.getData()) + " from " + data[mod.getPosition()] + " to " + mod.getValue());

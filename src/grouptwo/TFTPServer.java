@@ -90,8 +90,6 @@ public class TFTPServer
 				data = new byte[100];
 				receivePacket = new DatagramPacket(data, data.length);
 
-				System.out.println("Server: Waiting for clients.");
-
 				TFTPCommon.receivePacket(receivePacket, receiveSocket);
 
 				System.out.println("Server: Packet received.");

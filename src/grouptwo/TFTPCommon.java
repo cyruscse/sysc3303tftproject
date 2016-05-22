@@ -585,6 +585,15 @@ public class TFTPCommon {
   		return 100;
     }
 
+    /**
+	 *   Constructs WRQ or RRQ packet
+	 *
+	 *   @param  byte[] array to store packet data in
+	 *   @param  int opcode of packet
+	 *   @param  String filename for read or write
+	 *   @param  String filemode for read or write
+	 *   @return int length of packet
+	 */
     public static int constructReqPacket(byte[] msg, int opcode, String fileName, String fileMode)
     {
     	byte[] fn, md;
