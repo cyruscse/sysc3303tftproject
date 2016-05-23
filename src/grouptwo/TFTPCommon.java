@@ -284,90 +284,94 @@ public class TFTPCommon {
 		
 		int port = -1;
 	
-		
-		if (receive.getPort() == -1){
-			while (writingFile)
+		while (writingFile)
+		{
+			dataMsg = new byte[516];
+			
+			if (!receiveSet)
 			{
-				dataMsg = new byte[516];
-				
-				if (!receiveSet)
+				receive = new DatagramPacket(dataMsg, dataMsg.length);
+
+				if (verbose != Verbosity.NONE)
 				{
-					receive = new DatagramPacket(dataMsg, dataMsg.length);
-
-					if (verbose != Verbosity.NONE)
-					{
-						System.out.println(consolePrefix + "Waiting for next data packet");
-					}
-
-					try {
-						receivePacketWTimeout(receive, sendReceiveSocket, hardTimeout);
-					} catch (SocketTimeoutException e) {
-						System.out.println(consolePrefix + "Haven't received packet in " + hardTimeout + "ms, giving up");
-						return false;
-					}
-				}
-				else
-				{
-					dataMsg = receive.getData();
-					receiveSet = false;
+					System.out.println(consolePrefix + "Waiting for next data packet");
 				}
 
-				len = receive.getLength();
-				
-				printPacketDetails(receive, verbose, false);
-
-				System.out.println(consolePrefix + "Received DATA " + blockNum);
-				
-			     if (receive.getPort() != port) {
-					String errString = "Received packet from unknown port: " + receive.getPort();
-					sendErrorPacket(receive, sendReceiveSocket, errString, ErrorCode.UNKNOWNTID ,Verbosity.NONE);
-				}
-
-				//We received a DATA packet but it is not the block number we were expecting (i.e. delayed/lost DATA)
-				else if (getPacketType(dataMsg) == PacketType.DATA) 
-				{
-					//Duplicate DATA received (i.e. block number has already been acknowledged)
-					if (blockNumToPacket(dataMsg) < blockNum)
-					{	
-						System.out.println(consolePrefix + "Duplicate or delayed DATA " + blockNumToPacket(dataMsg) + " received, not writing to file");
-						sendACKPacket(blockNumToPacket(dataMsg), send, receive, sendReceiveSocket, verbose, consolePrefix);
-					}	
-					//We received the DATA packet we were expecting, look for next DATA
-					else if (blockNumToPacket(dataMsg) == blockNum)
-					{
-						try {
-							willExit = writeDataPacket(dataMsg, len, fileOp, verbose);
-						} catch (Exception e) {
-							return false;
-						}
-
-						sendACKPacket(blockNum, send, receive, sendReceiveSocket, verbose, consolePrefix);					
-						blockNum++;
-					}
-				}
-				
-				
-				else{
-					String errString = "";
-					if(getPacketType(dataMsg) != PacketType.DATA){
-						 errString = "Expecting DATA, received invalid Opcode";
-					}
-					else if(blockNumToPacket(dataMsg) != blockNum){
-						 errString = "Expecting block number " + blockNum + " instead received " + blockNumToPacket(dataMsg);
-					}
-					sendErrorPacket(receive, sendReceiveSocket, errString, ErrorCode.ILLEGAL ,Verbosity.NONE);
+				try {
+					receivePacketWTimeout(receive, sendReceiveSocket, hardTimeout);
+				} catch (SocketTimeoutException e) {
+					System.out.println(consolePrefix + "Haven't received packet in " + hardTimeout + "ms, giving up");
 					return false;
 				}
+			}
+			else
+			{
+				dataMsg = receive.getData();
+				receiveSet = false;
+			}
+
+			len = receive.getLength();
 			
-					//System.out.println(consolePrefix + "Non-DATA packet received, ignoring");
+			printPacketDetails(receive, verbose, false);
+
+			System.out.println(consolePrefix + "Received DATA " + blockNum);
+
+			if (port == -1)
+			{
+				port = receive.getPort();
+			}
 			
-				//// end if
-				//Can't exit right after we receive the last data packet,
-				//we have to acknowledge the data first
-				if (willExit)
+		    if (receive.getPort() != port) 
+		    {
+				String errString = "Received packet from unknown port: " + receive.getPort();
+				sendErrorPacket(receive, sendReceiveSocket, errString, ErrorCode.UNKNOWNTID ,Verbosity.NONE);
+			}
+
+			//We received a DATA packet but it is not the block number we were expecting (i.e. delayed/lost DATA)
+			else if (getPacketType(dataMsg) == PacketType.DATA) 
+			{
+				//Duplicate DATA received (i.e. block number has already been acknowledged)
+				if (blockNumToPacket(dataMsg) < blockNum)
+				{	
+					System.out.println(consolePrefix + "Duplicate or delayed DATA " + blockNumToPacket(dataMsg) + " received, not writing to file");
+					sendACKPacket(blockNumToPacket(dataMsg), send, receive, sendReceiveSocket, verbose, consolePrefix);
+				}	
+				//We received the DATA packet we were expecting, look for next DATA
+				else if (blockNumToPacket(dataMsg) == blockNum)
 				{
-					break;
+					try {
+						willExit = writeDataPacket(dataMsg, len, fileOp, verbose);
+					} catch (Exception e) {
+						return false;
+					}
+
+					sendACKPacket(blockNum, send, receive, sendReceiveSocket, verbose, consolePrefix);					
+					blockNum++;
 				}
+			}
+			
+			
+			else
+			{
+				String errString = "";
+				if(getPacketType(dataMsg) != PacketType.DATA){
+					 errString = "Expecting DATA, received invalid Opcode";
+				}
+				else if(blockNumToPacket(dataMsg) != blockNum){
+					 errString = "Expecting block number " + blockNum + " instead received " + blockNumToPacket(dataMsg);
+				}
+				sendErrorPacket(receive, sendReceiveSocket, errString, ErrorCode.ILLEGAL ,Verbosity.NONE);
+				return false;
+			}
+		
+				//System.out.println(consolePrefix + "Non-DATA packet received, ignoring");
+		
+			//// end if
+			//Can't exit right after we receive the last data packet,
+			//we have to acknowledge the data first
+			if (willExit)
+			{
+				break;
 			}
 		}
 
