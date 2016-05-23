@@ -146,7 +146,12 @@ public class TFTPCommon {
 		byte[] errMsg = new byte[200];
 		int errlen = constructErrorPacket(errMsg, errCode, errString);
 		System.out.println(consolePrefix + errString);
-		System.out.println(consolePrefix + "Sending ERROR packet to port " + receive.getPort());
+		if(verbose != Verbosity.NONE){
+			System.out.println(consolePrefix + "Sending ERROR packet to port " + receive.getPort());
+		}
+		else{
+			System.out.println(consolePrefix + "Sending ERROR packet");
+		}
 		DatagramPacket sendErr = new DatagramPacket(errMsg, errlen, receive.getAddress(), receive.getPort());
 		printPacketDetails(sendErr, verbose, false);
 		sendPacket(sendErr, socket);
@@ -198,7 +203,6 @@ public class TFTPCommon {
 			// Receive the client response for the data packet we just sent
 			ackMsg = new byte[516];
 			receive = new DatagramPacket(ackMsg, ackMsg.length);
-
 			if (timeoutCount < maxTimeout)
 			{	
 				if (verbose != Verbosity.NONE)
@@ -223,7 +227,7 @@ public class TFTPCommon {
 
 			if (receive.getPort() != -1)
 			{ 
-				if (validACKPacket(ackMsg, blockNum)) 
+				if (validACKPacket(ackMsg, blockNum) && receive.getLength() == 4) 
 				{
 					System.out.println(consolePrefix + "Received valid ACK " + blockNum);
 					printPacketDetails(receive, verbose, false);
@@ -258,6 +262,15 @@ public class TFTPCommon {
 					else if(blockNumToPacket(ackMsg) != blockNum)
 					{
 						errString = "Expecting block number " + blockNum + " instead received " + blockNumToPacket(ackMsg);
+					}
+					else if(receive.getLength() != 4 && getPacketType(ackMsg) == PacketType.ACK){
+						errString = "Expecting ACK packet of length 4 instead received packet with length " + receive.getLength();
+					}
+					else if(getPacketType(ackMsg) == PacketType.INVALID){
+						errString = "Received packet with Invalid type";
+					}
+					else{
+						errString = "An error occurred";
 					}
 
 					sendErrorPacket(receive, sendReceiveSocket, errString, ErrorCode.ILLEGAL, consolePrefix, Verbosity.NONE);
@@ -336,7 +349,7 @@ public class TFTPCommon {
 			}
 
 			//We received a DATA packet but it is not the block number we were expecting (i.e. delayed/lost DATA)
-			else if (getPacketType(dataMsg) == PacketType.DATA) 
+			else if (getPacketType(dataMsg) == PacketType.DATA && receive.getLength() >= 4) 
 			{
 				//Duplicate DATA received (i.e. block number has already been acknowledged)
 				if (blockNumToPacket(dataMsg) < blockNum)
@@ -363,7 +376,10 @@ public class TFTPCommon {
 			{
 				String errString = "";
 
-				if (getPacketType(dataMsg) == PacketType.ERROR)
+				if(receive.getLength() < 4){
+					errString = "The packet is too small";
+				}
+				else if (getPacketType(dataMsg) == PacketType.ERROR)
 				{
 					parseErrorPacket(dataMsg, consolePrefix);
 					return false;
@@ -375,6 +391,12 @@ public class TFTPCommon {
 				else if (blockNumToPacket(dataMsg) != blockNum)
 				{
 					errString = "Expecting block number " + blockNum + " instead received " + blockNumToPacket(dataMsg);
+				}
+				else if(getPacketType(dataMsg) == PacketType.INVALID){
+					errString = "Received packet with Invalid type";
+				}
+				else{
+					errString = "An error occurred";
 				}
 				
 				sendErrorPacket(receive, sendReceiveSocket, errString, ErrorCode.ILLEGAL, consolePrefix, Verbosity.NONE);
@@ -840,7 +862,7 @@ public class TFTPCommon {
 
 		String errorMessage = new String(data, 4, i - 2);
 
-		System.out.println("Received error " + errorOpcodeToString(data) + " with message " + errorMessage);
+		System.out.println("Received error " + errorOpcodeToString(data) + " with message \"" + errorMessage.trim() + "\"");
 	}
 	
 	public static ErrorCode getErrorType(byte[] data)
