@@ -233,7 +233,7 @@ public class TFTPCommon {
 					
 					if (receive.getPort() != port) {
 						String errString = "Received packet from unknown port: " + receive.getPort();
-						sendErrorPacket(receive, sendReceiveSocket, errString, ErrorCode.ILLEGAL ,Verbosity.NONE);
+						sendErrorPacket(receive, sendReceiveSocket, errString, ErrorCode.UNKNOWNTID ,Verbosity.NONE);
 					}
 				}
 				else if (getPacketType(ackMsg) == PacketType.ACK && blockNumToPacket(ackMsg) < blockNum) 
@@ -283,6 +283,7 @@ public class TFTPCommon {
 		int len = 0;
 		int port = -1;
 	
+		
 		while (writingFile)
 		{
 			dataMsg = new byte[516];
@@ -313,8 +314,6 @@ public class TFTPCommon {
 			
 			printPacketDetails(receive, verbose, false);
 
-			System.out.println(consolePrefix + "Received DATA " + blockNum);
-
 			if (port == -1)
 			{
 				port = receive.getPort();
@@ -328,7 +327,7 @@ public class TFTPCommon {
 
 			//We received a DATA packet but it is not the block number we were expecting (i.e. delayed/lost DATA)
 			else if (getPacketType(dataMsg) == PacketType.DATA) 
-			{
+			{	
 				//Duplicate DATA received (i.e. block number has already been acknowledged)
 				if (blockNumToPacket(dataMsg) < blockNum)
 				{	
@@ -338,6 +337,7 @@ public class TFTPCommon {
 				//We received the DATA packet we were expecting, look for next DATA
 				else if (blockNumToPacket(dataMsg) == blockNum)
 				{
+					System.out.println(consolePrefix + "Received DATA " + blockNum);
 					try {
 						willExit = writeDataPacket(dataMsg, len, fileOp, verbose);
 					} catch (Exception e) {
@@ -348,7 +348,7 @@ public class TFTPCommon {
 					blockNum++;
 				}
 			}
-			
+
 			else
 			{
 				String errString = "";
@@ -365,7 +365,7 @@ public class TFTPCommon {
 				sendErrorPacket(receive, sendReceiveSocket, errString, ErrorCode.ILLEGAL ,Verbosity.NONE);
 				return false;
 			}
-		
+
 			//Can't exit right after we receive the last data packet,
 			//we have to acknowledge the data first
 			if (willExit)
