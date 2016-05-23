@@ -34,11 +34,11 @@ public class TFTPCommon {
 	//Error Simulator modes
 	public static enum ModificationType { NONE, LOSE, DUPLICATE, DELAY, CONTENTS, INVALIDTID };
 
-	//CONTENTS ModificationType subtypes
-	public static enum ContentSubmod { INVALID, MANUAL, OPCODE, BLOCKNUM, LENGTH, FILENAME, FILEMODE };
-
 	//TFTP Error Codes (Iteration 3 only uses ILLEGAL and UTID)
 	public static enum ErrorCode { INVALID, FILENOTFOUND, ACCESSVIOLATE, DISKFULL, ILLEGAL, UNKNOWNTID, FILEEXISTS };
+	
+	//CONTENTS ModificationType subtypes
+		public static enum ContentSubmod { INVALID, MANUAL, OPCODE, BLOCKNUM, LENGTH, FILENAME, FILEMODE };
 
 	//Server Listen Port
 	public static int TFTPListenPort = 69;
@@ -129,7 +129,6 @@ public class TFTPCommon {
 		printPacketDetails(send, verbose, false);
 		sendPacket(send, socket);
 	}
-	
 	/**
 	 *   Send an Error Packet packet with the specified Error Code
 	 *
@@ -141,7 +140,6 @@ public class TFTPCommon {
 	 *   @return none
 	 * 
 	 */
-	
 	public static void sendErrorPacket(DatagramPacket receive, DatagramSocket socket, String errString, ErrorCode errCode ,Verbosity verbose)
 	{		
 		byte[] errMsg = new byte[200];
@@ -152,7 +150,7 @@ public class TFTPCommon {
 		printPacketDetails(sendErr, verbose, false);
 		sendPacket(sendErr, socket);
 	}
-
+	
 	/**
 	 *   Send a file with timeouts and retransmits
 	 *
@@ -171,7 +169,6 @@ public class TFTPCommon {
 	 */
 	public static Boolean sendDataWTimeout (DatagramPacket send, DatagramPacket receive, DatagramSocket sendReceiveSocket, InetAddress address, int timeout, int maxTimeout, int port, FileOperation fileOp, Verbosity verbose, String consolePrefix)
 	{
-		
 		int timeoutCount = 0;
 		int blockNum = 1;
 		int len = 0;
@@ -225,15 +222,15 @@ public class TFTPCommon {
 
 			if (receive.getPort() != -1)
 			{ 
-				if (validACKPacket(ackMsg, blockNum)) {
+				if (validACKPacket(ackMsg, blockNum)) 
+				{
 					System.out.println(consolePrefix + "Received valid ACK " + blockNum);
 					printPacketDetails(receive, verbose, false);
 
-					timeoutCount = 0; // Reset timeout count once a successful
-										// ACK is received
+					timeoutCount = 0; //Reset timeout count once a successful ACK is received
 					blockNum++;
 					sendData = true;
-
+					
 					if (receive.getPort() != port) {
 						String errString = "Received packet from unknown port: " + receive.getPort();
 						sendErrorPacket(receive, sendReceiveSocket, errString, ErrorCode.ILLEGAL ,Verbosity.NONE);
@@ -256,7 +253,7 @@ public class TFTPCommon {
 					sendErrorPacket(receive, sendReceiveSocket, errString, ErrorCode.ILLEGAL ,Verbosity.NONE);
 					return false;
 				}
-			}
+			}			
 		}
 
 		return true;
@@ -281,74 +278,96 @@ public class TFTPCommon {
 		Boolean writingFile = true;
 		Boolean willExit = false;
 		Boolean receiveSet = client;
-		byte[] dataMsg, ackMsg;
+		byte[] dataMsg;
 		int blockNum = 1;
 		int len = 0;
-
-		while (writingFile)
-		{
-			dataMsg = new byte[516];
-			
-			if (!receiveSet)
+		
+		int port = -1;
+	
+		
+		if (receive.getPort() == -1){
+			while (writingFile)
 			{
-				receive = new DatagramPacket(dataMsg, dataMsg.length);
-
-				if (verbose != Verbosity.NONE)
+				dataMsg = new byte[516];
+				
+				if (!receiveSet)
 				{
-					System.out.println(consolePrefix + "Waiting for next data packet");
-				}
+					receive = new DatagramPacket(dataMsg, dataMsg.length);
 
-				try {
-					receivePacketWTimeout(receive, sendReceiveSocket, hardTimeout);
-				} catch (SocketTimeoutException e) {
-					System.out.println(consolePrefix + "Haven't received packet in " + hardTimeout + "ms, giving up");
-					return false;
-				}
-			}
-			else
-			{
-				dataMsg = receive.getData();
-				receiveSet = false;
-			}
-
-			len = receive.getLength();
-			
-			printPacketDetails(receive, verbose, false);
-
-			System.out.println(consolePrefix + "Received DATA " + blockNum);
-
-			//We received a DATA packet but it is not the block number we were expecting (i.e. delayed/lost DATA)
-			if (getPacketType(dataMsg) == PacketType.DATA) 
-			{
-				//Duplicate DATA received (i.e. block number has already been acknowledged)
-				if (blockNumToPacket(dataMsg) < blockNum)
-				{	
-					System.out.println(consolePrefix + "Duplicate or delayed DATA " + blockNumToPacket(dataMsg) + " received, not writing to file");
-					sendACKPacket(blockNumToPacket(dataMsg), send, receive, sendReceiveSocket, verbose, consolePrefix);
-				}	
-				//We received the DATA packet we were expecting, look for next DATA
-				else if (blockNumToPacket(dataMsg) == blockNum)
-				{
-					try {
-						willExit = writeDataPacket(dataMsg, len, fileOp, verbose);
-					} catch (Exception e) {
-						return false;
+					if (verbose != Verbosity.NONE)
+					{
+						System.out.println(consolePrefix + "Waiting for next data packet");
 					}
 
-					sendACKPacket(blockNum, send, receive, sendReceiveSocket, verbose, consolePrefix);					
-					blockNum++;
+					try {
+						receivePacketWTimeout(receive, sendReceiveSocket, hardTimeout);
+					} catch (SocketTimeoutException e) {
+						System.out.println(consolePrefix + "Haven't received packet in " + hardTimeout + "ms, giving up");
+						return false;
+					}
 				}
-			}
-			else
-			{
-				System.out.println(consolePrefix + "Non-DATA packet received, ignoring");
-			}
+				else
+				{
+					dataMsg = receive.getData();
+					receiveSet = false;
+				}
+
+				len = receive.getLength();
+				
+				printPacketDetails(receive, verbose, false);
+
+				System.out.println(consolePrefix + "Received DATA " + blockNum);
+				
+			     if (receive.getPort() != port) {
+					String errString = "Received packet from unknown port: " + receive.getPort();
+					sendErrorPacket(receive, sendReceiveSocket, errString, ErrorCode.UNKNOWNTID ,Verbosity.NONE);
+				}
+
+				//We received a DATA packet but it is not the block number we were expecting (i.e. delayed/lost DATA)
+				else if (getPacketType(dataMsg) == PacketType.DATA) 
+				{
+					//Duplicate DATA received (i.e. block number has already been acknowledged)
+					if (blockNumToPacket(dataMsg) < blockNum)
+					{	
+						System.out.println(consolePrefix + "Duplicate or delayed DATA " + blockNumToPacket(dataMsg) + " received, not writing to file");
+						sendACKPacket(blockNumToPacket(dataMsg), send, receive, sendReceiveSocket, verbose, consolePrefix);
+					}	
+					//We received the DATA packet we were expecting, look for next DATA
+					else if (blockNumToPacket(dataMsg) == blockNum)
+					{
+						try {
+							willExit = writeDataPacket(dataMsg, len, fileOp, verbose);
+						} catch (Exception e) {
+							return false;
+						}
+
+						sendACKPacket(blockNum, send, receive, sendReceiveSocket, verbose, consolePrefix);					
+						blockNum++;
+					}
+				}
+				
+				
+				else{
+					String errString = "";
+					if(getPacketType(dataMsg) != PacketType.DATA){
+						 errString = "Expecting DATA, received invalid Opcode";
+					}
+					else if(blockNumToPacket(dataMsg) != blockNum){
+						 errString = "Expecting block number " + blockNum + " instead received " + blockNumToPacket(dataMsg);
+					}
+					sendErrorPacket(receive, sendReceiveSocket, errString, ErrorCode.ILLEGAL ,Verbosity.NONE);
+					return false;
+				}
 			
-			//Can't exit right after we receive the last data packet,
-			//we have to acknowledge the data first
-			if (willExit)
-			{
-				break;
+					//System.out.println(consolePrefix + "Non-DATA packet received, ignoring");
+			
+				//// end if
+				//Can't exit right after we receive the last data packet,
+				//we have to acknowledge the data first
+				if (willExit)
+				{
+					break;
+				}
 			}
 		}
 
@@ -571,6 +590,46 @@ public class TFTPCommon {
 
 		return "invalid";
 	}
+	
+	/**
+	 *   Convert PacketType to String
+	 *
+	 *   @param  PacketType to convert to String
+	 *   @return String
+	 * 
+	 */
+	public static String errorCodeToString (ErrorCode code)
+	{
+		if (code == ErrorCode.INVALID)
+		{
+			return "Not defined.";
+		}
+		else if (code == ErrorCode.FILENOTFOUND)
+		{
+			return "File not found.";
+		}
+		else if (code == ErrorCode.ACCESSVIOLATE)
+		{
+			return "Access violation.";
+		}
+		else if (code == ErrorCode.DISKFULL)
+		{
+			return "Disk full or allocation exceeded.";
+		}
+		else if (code == ErrorCode.ILLEGAL)
+		{
+			return "Illegal TFTP operation.";
+		}
+		else if (code == ErrorCode.UNKNOWNTID)
+		{
+			return "Unknown transfer ID.";
+		}
+		else if (code == ErrorCode.FILEEXISTS)
+		{
+			return "File already exists.";
+		}
+		return "Invalid";
+	}
 
 	/**
 	 *   Convert ModificationType to String
@@ -603,7 +662,7 @@ public class TFTPCommon {
         }
 
         return "invalid";
-	}	
+    }
 
     public static int packetTypeToPacketSize (PacketType type)
     {
@@ -744,6 +803,42 @@ public class TFTPCommon {
 		}
 		return em.length + 5;
 	}
+	
+	public static ErrorCode getErrorType(byte[] data)
+    {
+        if (data[3] == 1)
+        {
+            return ErrorCode.FILENOTFOUND;
+        }
+
+        if (data[3] == 2)
+        {
+            return ErrorCode.ACCESSVIOLATE;
+        }
+        else if (data[3] == 3)
+        {
+            return ErrorCode.DISKFULL;
+        }
+        else if (data[3] == 4)
+        {
+            return ErrorCode.ILLEGAL;
+        }
+        else if (data[3] == 5)
+        {
+        	return ErrorCode.UNKNOWNTID;
+        }
+        else if (data[3] == 6)
+        {
+        	return ErrorCode.FILEEXISTS;
+        }
+
+        return ErrorCode.INVALID;
+    }
+	
+	
+	
+	
+	
 
 	/**
 	 *   Convert 16 bit block number to int packet number

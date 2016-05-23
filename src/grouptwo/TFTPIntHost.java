@@ -270,7 +270,7 @@ class ErrorSimulator extends Thread
         {
             data = sendPacket.getData();
 
-            System.out.println("Changing " + TFTPCommon.packetTypeAndNumber(sendPacket) + " length from " + sendPacket.getLength() + " to " + check.getLength());
+            System.out.println("Changing " + TFTPCommon.packetTypeAndNumber(sendPacket.getData()) + " length from " + sendPacket.getLength() + " to " + check.getLength());
 
             //Packet's length is greater than new length, truncate packet
             if (sendPacket.getLength() > check.getLength())
