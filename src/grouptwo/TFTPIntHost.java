@@ -289,6 +289,8 @@ class ErrorSimulator extends Thread
                 sendPacket.setLength(check.getLength());
                 sendPacket.setData(paddedData);
             }
+
+            len = check.getLength();
         }
 
         for (ModifyByte mod : check.getModByteList())
