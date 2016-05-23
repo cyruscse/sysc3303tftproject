@@ -266,9 +266,6 @@ public class TFTPCommon {
 					else if(receive.getLength() != 4 && getPacketType(ackMsg) == PacketType.ACK){
 						errString = "Expecting ACK packet of length 4 instead received packet with length " + receive.getLength();
 					}
-					else if(getPacketType(ackMsg) == PacketType.INVALID){
-						errString = "Received packet with Invalid type";
-					}
 					else{
 						errString = "An error occurred";
 					}
@@ -391,9 +388,6 @@ public class TFTPCommon {
 				else if (blockNumToPacket(dataMsg) != blockNum)
 				{
 					errString = "Expecting block number " + blockNum + " instead received " + blockNumToPacket(dataMsg);
-				}
-				else if(getPacketType(dataMsg) == PacketType.INVALID){
-					errString = "Received packet with Invalid type";
 				}
 				else{
 					errString = "An error occurred";
