@@ -132,11 +132,12 @@ public class TFTPCommon {
 	/**
 	 *   Send an Error Packet packet with the specified Error Code
 	 *
-	 *   @param  DatagramPacket to send
 	 *   @param  DatagramPacket to get destination details
-	 *   @param  DatagramSocket to send ACK with
-	 *   @param  Verbosity verbosity of caller
+	 *   @param  DatagramSocket to send ERROR Packet with
+	 *   @param  String to be printed and inserted into the ERROR Packet
+	 *   @param  ErrorCode to be included in the ERROR packet
 	 *   @param  String console prefix of caller
+	 *   @param  Verbosity for printing details
 	 *   @return none
 	 * 
 	 */
