@@ -38,7 +38,7 @@ public class TFTPCommon {
 	public static enum ErrorCode { INVALID, FILENOTFOUND, ACCESSVIOLATE, DISKFULL, ILLEGAL, UNKNOWNTID, FILEEXISTS };
 	
 	//CONTENTS ModificationType subtypes
-		public static enum ContentSubmod { INVALID, MANUAL, OPCODE, BLOCKNUM, LENGTH, FILENAME, FILEMODE };
+	public static enum ContentSubmod { INVALID, MANUAL, OPCODE, BLOCKNUM, LENGTH, FILENAME, FILEMODE };
 
 	//Server Listen Port
 	public static int TFTPListenPort = 69;
@@ -352,12 +352,16 @@ public class TFTPCommon {
 			else
 			{
 				String errString = "";
-				if(getPacketType(dataMsg) != PacketType.DATA){
+
+				if(getPacketType(dataMsg) != PacketType.DATA)
+				{
 					 errString = "Expecting DATA, received invalid Opcode";
 				}
-				else if(blockNumToPacket(dataMsg) != blockNum){
+				else if(blockNumToPacket(dataMsg) != blockNum)
+				{
 					 errString = "Expecting block number " + blockNum + " instead received " + blockNumToPacket(dataMsg);
 				}
+				
 				sendErrorPacket(receive, sendReceiveSocket, errString, ErrorCode.ILLEGAL ,Verbosity.NONE);
 				return false;
 			}
