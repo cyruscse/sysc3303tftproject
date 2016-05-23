@@ -327,7 +327,7 @@ public class TFTPCommon {
 
 			//We received a DATA packet but it is not the block number we were expecting (i.e. delayed/lost DATA)
 			else if (getPacketType(dataMsg) == PacketType.DATA) 
-			{	
+			{
 				//Duplicate DATA received (i.e. block number has already been acknowledged)
 				if (blockNumToPacket(dataMsg) < blockNum)
 				{	
