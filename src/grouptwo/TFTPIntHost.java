@@ -219,6 +219,7 @@ class ErrorSimulator extends Thread
     {
         data = sendPacket.getData();
         int len = sendPacket.getLength();
+        String packetType = TFTPCommon.packetTypeAndNumber(sendPacket.getData());
 
         if (check.getContentModType() == TFTPCommon.ContentSubmod.FILENAME || check.getContentModType() == TFTPCommon.ContentSubmod.FILEMODE)
         {
@@ -294,7 +295,7 @@ class ErrorSimulator extends Thread
         {
             if (mod.getPosition() < data.length)
             {
-                System.out.println("Changing byte " + mod.getPosition() + " of " + TFTPCommon.packetTypeAndNumber(sendPacket.getData()) + " from " + data[mod.getPosition()] + " to " + mod.getValue());
+                System.out.println("Changing byte " + mod.getPosition() + " of " + packetType + " from " + data[mod.getPosition()] + " to " + mod.getValue());
                 data[mod.getPosition()] = mod.getValue();
             }
             else
@@ -442,12 +443,16 @@ class DelayDuplicatePacket extends Thread
         
         TFTPCommon.printPacketDetails(send, verbosity, false);
 
+        System.out.println("Waiting " + delayAmount + " ms");
+
         try {
             Thread.sleep(delayAmount);
         } catch (InterruptedException e) {
             e.printStackTrace();
             return;
         }
+
+        System.out.println("Delayed " + TFTPCommon.packetTypeAndNumber(send.getData()) + ", sending now");
          
         try {
             socket.send(send);

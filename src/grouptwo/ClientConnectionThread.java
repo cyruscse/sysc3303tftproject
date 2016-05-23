@@ -168,6 +168,9 @@ public class ClientConnectionThread implements Runnable {
 		} 
 		else 
 		{
+			System.out.println(consolePrefix + "Received invalid request, sending ERROR");
+			TFTPCommon.sendErrorPacket(receivePacket, sendReceiveSocket, "Bad request packet format", TFTPCommon.ErrorCode.ILLEGAL, consolePrefix, verbose);
+			System.out.println(consolePrefix + "Shutting down");
 			parent.threadDone(Thread.currentThread());
 			return;
 		}

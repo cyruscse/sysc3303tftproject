@@ -140,12 +140,12 @@ public class TFTPCommon {
 	 *   @return none
 	 * 
 	 */
-	public static void sendErrorPacket(DatagramPacket receive, DatagramSocket socket, String errString, ErrorCode errCode ,Verbosity verbose)
+	public static void sendErrorPacket(DatagramPacket receive, DatagramSocket socket, String errString, ErrorCode errCode, String consolePrefix, Verbosity verbose)
 	{		
 		byte[] errMsg = new byte[200];
 		int errlen = constructErrorPacket(errMsg, errCode, errString);
-		System.out.println(errString);
-		System.out.println("Sending ERROR packet to port " + receive.getPort());
+		System.out.println(consolePrefix + errString);
+		System.out.println(consolePrefix + "Sending ERROR packet to port " + receive.getPort());
 		DatagramPacket sendErr = new DatagramPacket(errMsg, errlen, receive.getAddress(), receive.getPort());
 		printPacketDetails(sendErr, verbose, false);
 		sendPacket(sendErr, socket);
@@ -174,7 +174,7 @@ public class TFTPCommon {
 		int len = 0;
 		Boolean sendData = true;
 		byte[] dataMsg = new byte[516];
-		byte[] ackMsg = new byte[4];
+		byte[] ackMsg = new byte[516];
 
 		while (blockNum-1 < fileOp.getNumTFTPBlocks())
 		{
@@ -195,7 +195,7 @@ public class TFTPCommon {
 			}
 
 			// Receive the client response for the data packet we just sent
-			ackMsg = new byte[4];
+			ackMsg = new byte[516];
 			receive = new DatagramPacket(ackMsg, ackMsg.length);
 
 			if (timeoutCount < maxTimeout)
@@ -233,7 +233,7 @@ public class TFTPCommon {
 					
 					if (receive.getPort() != port) {
 						String errString = "Received packet from unknown port: " + receive.getPort();
-						sendErrorPacket(receive, sendReceiveSocket, errString, ErrorCode.UNKNOWNTID ,Verbosity.NONE);
+						sendErrorPacket(receive, sendReceiveSocket, errString, ErrorCode.UNKNOWNTID, consolePrefix, Verbosity.NONE);
 					}
 				}
 				else if (getPacketType(ackMsg) == PacketType.ACK && blockNumToPacket(ackMsg) < blockNum) 
@@ -244,13 +244,22 @@ public class TFTPCommon {
 				else 
 				{
 					String errString = "";
-					if(getPacketType(ackMsg) != PacketType.ACK){
-						 errString = "Expecting ACK, received invalid Opcode";
+					
+					if (getPacketType(ackMsg) == PacketType.ERROR)
+					{
+						parseErrorPacket(ackMsg, consolePrefix);
+						return false;
 					}
-					else if(blockNumToPacket(ackMsg) != blockNum){
-						 errString = "Expecting block number " + blockNum + " instead received " + blockNumToPacket(ackMsg);
+					else if (getPacketType(ackMsg) != PacketType.ACK)
+					{
+						errString = "Expecting ACK, received invalid Opcode";
 					}
-					sendErrorPacket(receive, sendReceiveSocket, errString, ErrorCode.ILLEGAL ,Verbosity.NONE);
+					else if(blockNumToPacket(ackMsg) != blockNum)
+					{
+						errString = "Expecting block number " + blockNum + " instead received " + blockNumToPacket(ackMsg);
+					}
+
+					sendErrorPacket(receive, sendReceiveSocket, errString, ErrorCode.ILLEGAL, consolePrefix, Verbosity.NONE);
 					return false;
 				}
 			}			
@@ -322,7 +331,7 @@ public class TFTPCommon {
 		    if (receive.getPort() != port) 
 		    {
 				String errString = "Received packet from unknown port: " + receive.getPort();
-				sendErrorPacket(receive, sendReceiveSocket, errString, ErrorCode.UNKNOWNTID ,Verbosity.NONE);
+				sendErrorPacket(receive, sendReceiveSocket, errString, ErrorCode.UNKNOWNTID, consolePrefix, Verbosity.NONE);
 			}
 
 			//We received a DATA packet but it is not the block number we were expecting (i.e. delayed/lost DATA)
@@ -353,16 +362,21 @@ public class TFTPCommon {
 			{
 				String errString = "";
 
-				if(getPacketType(dataMsg) != PacketType.DATA)
+				if (getPacketType(dataMsg) == PacketType.ERROR)
 				{
-					 errString = "Expecting DATA, received invalid Opcode";
+					parseErrorPacket(dataMsg, consolePrefix);
+					return false;
 				}
-				else if(blockNumToPacket(dataMsg) != blockNum)
+				else if (getPacketType(dataMsg) != PacketType.DATA)
 				{
-					 errString = "Expecting block number " + blockNum + " instead received " + blockNumToPacket(dataMsg);
+					errString = "Expecting DATA, received invalid Opcode";
+				}
+				else if (blockNumToPacket(dataMsg) != blockNum)
+				{
+					errString = "Expecting block number " + blockNum + " instead received " + blockNumToPacket(dataMsg);
 				}
 				
-				sendErrorPacket(receive, sendReceiveSocket, errString, ErrorCode.ILLEGAL ,Verbosity.NONE);
+				sendErrorPacket(receive, sendReceiveSocket, errString, ErrorCode.ILLEGAL, consolePrefix, Verbosity.NONE);
 				return false;
 			}
 
@@ -426,7 +440,7 @@ public class TFTPCommon {
 	 */
 	public static String packetTypeAndNumber (byte[] data)
 	{
-		if ( getPacketType(data) == PacketType.REQUEST)
+		if ( getPacketType(data) == PacketType.REQUEST || getPacketType(data) == PacketType.ERROR )
 		{
 			return (opcodeToString(data) + " packet");
 		}
@@ -601,37 +615,42 @@ public class TFTPCommon {
 	 *   @return String
 	 * 
 	 */
-	public static String errorCodeToString (ErrorCode code)
+	public static String errorOpcodeToString (byte[] data)
 	{
-		if (code == ErrorCode.INVALID)
+		if (data[2] != 0)
 		{
-			return "Not defined.";
+			return "invalid";
 		}
-		else if (code == ErrorCode.FILENOTFOUND)
+
+		if (data[3] == 0)
 		{
-			return "File not found.";
+			return "not defined";
 		}
-		else if (code == ErrorCode.ACCESSVIOLATE)
+		else if (data[3] == 1)
 		{
-			return "Access violation.";
+			return "file not found";
 		}
-		else if (code == ErrorCode.DISKFULL)
+		else if (data[3] == 2)
 		{
-			return "Disk full or allocation exceeded.";
+			return "access violation";
 		}
-		else if (code == ErrorCode.ILLEGAL)
+		else if (data[3] == 3)
 		{
-			return "Illegal TFTP operation.";
+			return "disk full";
 		}
-		else if (code == ErrorCode.UNKNOWNTID)
+		else if (data[3] == 4)
 		{
-			return "Unknown transfer ID.";
+			return "illegal TFTP operation";
 		}
-		else if (code == ErrorCode.FILEEXISTS)
+		else if (data[3] == 5)
 		{
-			return "File already exists.";
+			return "unknown transfer ID";
 		}
-		return "Invalid";
+		else if (data[3] == 6)
+		{
+			return "file already exists";
+		}
+		return "invalid";
 	}
 
 	/**
@@ -765,7 +784,6 @@ public class TFTPCommon {
 		System.arraycopy(em, 0, msg, 4, em.length);
 		msg[em.length + 4] = 0;
 		
-		
 		msg[0] = 0;
 		msg[1] = 5;
 
@@ -806,6 +824,23 @@ public class TFTPCommon {
 		}
 		return em.length + 5;
 	}
+
+	public static void parseErrorPacket(byte[] data, String consolePrefix)
+	{
+		int i;
+
+		for (i = 4; i < data.length; i++)
+		{
+			if (data[i] == 0)
+			{
+				break;
+			}
+		}
+
+		String errorMessage = new String(data, 4, i - 2);
+
+		System.out.println("Received error " + errorOpcodeToString(data) + " with message " + errorMessage);
+	}
 	
 	public static ErrorCode getErrorType(byte[] data)
     {
@@ -837,11 +872,6 @@ public class TFTPCommon {
 
         return ErrorCode.INVALID;
     }
-	
-	
-	
-	
-	
 
 	/**
 	 *   Convert 16 bit block number to int packet number
