@@ -92,12 +92,12 @@ public class TFTPServer
 
 				TFTPCommon.receivePacket(receivePacket, receiveSocket);
 
-				System.out.println("Server: Packet received.");
-
-				TFTPCommon.printPacketDetails(receivePacket, verbosity, true);
-
 				if (!receiveSocket.isClosed())
 				{
+					System.out.println("Server: Packet received.");
+
+					TFTPCommon.printPacketDetails(receivePacket, verbosity, true);
+
 					Thread client = new Thread(new ClientConnectionThread(receivePacket, this, verbosity, clients.size() + 1, timeout));
 					client.start();
 					clients.add(client);
