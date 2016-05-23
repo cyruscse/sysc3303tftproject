@@ -281,7 +281,6 @@ public class TFTPCommon {
 		byte[] dataMsg;
 		int blockNum = 1;
 		int len = 0;
-		
 		int port = -1;
 	
 		while (writingFile)
@@ -350,7 +349,6 @@ public class TFTPCommon {
 				}
 			}
 			
-			
 			else
 			{
 				String errString = "";
@@ -364,9 +362,6 @@ public class TFTPCommon {
 				return false;
 			}
 		
-				//System.out.println(consolePrefix + "Non-DATA packet received, ignoring");
-		
-			//// end if
 			//Can't exit right after we receive the last data packet,
 			//we have to acknowledge the data first
 			if (willExit)
