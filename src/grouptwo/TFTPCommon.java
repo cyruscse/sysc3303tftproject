@@ -126,6 +126,29 @@ public class TFTPCommon {
 		printPacketDetails(send, verbose, false);
 		sendPacket(send, socket);
 	}
+	
+	/**
+	 *   Send an Error Packet packet with the specified Error Code
+	 *
+	 *   @param  DatagramPacket to send
+	 *   @param  DatagramPacket to get destination details
+	 *   @param  DatagramSocket to send ACK with
+	 *   @param  Verbosity verbosity of caller
+	 *   @param  String console prefix of caller
+	 *   @return none
+	 * 
+	 */
+	
+	public static void sendErrorPacket(DatagramPacket receive, DatagramSocket socket, String errString, ErrorCode errCode ,Verbosity verbose)
+	{		
+		byte[] errMsg = new byte[200];
+		int errlen = constructErrorPacket(errMsg, errCode, errString);
+		System.out.println(errString);
+		System.out.println("Sending ERROR packet to port " + receive.getPort());
+		DatagramPacket sendErr = new DatagramPacket(errMsg, errlen, receive.getAddress(), receive.getPort());
+		printPacketDetails(sendErr, verbose, false);
+		sendPacket(sendErr, socket);
+	}
 
 	/**
 	 *   Send a file with timeouts and retransmits
@@ -209,17 +232,8 @@ public class TFTPCommon {
 					sendData = true;
 
 					if (receive.getPort() != port) {
-						byte[] errMsg = new byte[200];
 						String errString = "Received packet from unknown port: " + receive.getPort();
-						int errlen = constructErrorPacket(errMsg, ErrorCode.UNKNOWNTID, errString);
-
-						System.out.println(errString);
-						System.out.println("Sending ERROR packet to port " + receive.getPort());
-
-						DatagramPacket senderr = new DatagramPacket(errMsg, errlen, receive.getAddress(), receive.getPort());
-
-						printPacketDetails(senderr, verbose, false);
-						sendPacket(senderr, sendReceiveSocket);
+						sendErrorPacket(receive, sendReceiveSocket, errString, ErrorCode.ILLEGAL ,Verbosity.NONE);
 					}
 				}
 				else if (getPacketType(ackMsg) == PacketType.ACK && blockNumToPacket(ackMsg) < blockNum) 
@@ -234,19 +248,9 @@ public class TFTPCommon {
 						 errString = "Expecting ACK, received invalid Opcode";
 					}
 					else if(blockNumToPacket(ackMsg) != blockNum){
-						 errString = "Expecting block number" + blockNum + " instead received " + blockNumToPacket(ackMsg);
+						 errString = "Expecting block number " + blockNum + " instead received " + blockNumToPacket(ackMsg);
 					}
-					byte[] errMsg = new byte[200];
-					
-					int errlen = constructErrorPacket(errMsg, ErrorCode.ILLEGAL, errString);
-
-					System.out.println(consolePrefix + errString);
-					
-					DatagramPacket senderr = new DatagramPacket(errMsg, errlen, receive.getAddress(), port);
-					System.out.println("Sending ERROR packet to port " + port);
-					printPacketDetails(senderr, verbose, false);
-					sendPacket(senderr, sendReceiveSocket);
-
+					sendErrorPacket(receive, sendReceiveSocket, errString, ErrorCode.ILLEGAL ,Verbosity.NONE);
 					return false;
 				}
 			}
