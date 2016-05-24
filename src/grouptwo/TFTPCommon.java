@@ -434,6 +434,7 @@ public class TFTPCommon {
 				{
 					System.out.print((packet.getData()[j] & 0xFF) + " ");
 				}
+				System.out.println();
 			}
 		}
 
