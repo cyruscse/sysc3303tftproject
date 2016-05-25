@@ -373,7 +373,8 @@ public class TFTPCommon {
 			{
 				String errString = "";
 
-				if(receive.getLength() < 4){
+				if(receive.getLength() < 4)
+				{
 					errString = "The packet is too small";
 				}
 				else if (getPacketType(dataMsg) == PacketType.ERROR)
@@ -389,7 +390,8 @@ public class TFTPCommon {
 				{
 					errString = "Expecting block number " + blockNum + " instead received " + blockNumToPacket(dataMsg);
 				}
-				else{
+				else
+				{
 					errString = "An error occurred";
 				}
 				

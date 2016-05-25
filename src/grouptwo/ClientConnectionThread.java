@@ -106,9 +106,10 @@ public class ClientConnectionThread implements Runnable {
 			}
 			if (k==len) requestType = TFTPCommon.Request.ERROR; // didn't find a 0 byte
 			if (k==j+1) requestType = TFTPCommon.Request.ERROR; // mode is 0 bytes long
-			mode = new String(data,j,k-j);
-			
-			if ( mode.equalsIgnoreCase("octet") || mode.equalsIgnoreCase("netascii")) 
+
+			mode = new String(data,j+1,k-j-1);
+
+			if ( !mode.equalsIgnoreCase("octet") && !mode.equalsIgnoreCase("netascii")) 
 			{
 				requestType = TFTPCommon.Request.ERROR; // mode was not passed correctly
 			}

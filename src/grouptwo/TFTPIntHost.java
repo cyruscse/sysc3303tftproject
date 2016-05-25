@@ -220,8 +220,10 @@ class ErrorSimulator extends Thread
         data = sendPacket.getData();
         int len = sendPacket.getLength();
         String packetType = TFTPCommon.packetTypeAndNumber(sendPacket.getData());
+        Boolean modFileName = check.subModListHas(TFTPCommon.ContentSubmod.FILENAME);
+        Boolean modFileMode = check.subModListHas(TFTPCommon.ContentSubmod.FILEMODE);
 
-        if (check.getContentModType() == TFTPCommon.ContentSubmod.FILENAME || check.getContentModType() == TFTPCommon.ContentSubmod.FILEMODE)
+        if ( modFileMode || modFileName )
         {
             String fileName, fileMode;
             int opcode, j, k;
@@ -248,15 +250,15 @@ class ErrorSimulator extends Thread
            
             opcode = Byte.toUnsignedInt(data[0]) * 256 + Byte.toUnsignedInt(data[1]);
 
-            if (check.getFileName().length() > 0)
+            if ( modFileName )
             {
-                System.out.println("Changing file name in request from " + fileName + " to " + check.getFileName());
+                System.out.println("Changing file name in request from \"" + fileName + "\" to \"" + check.getFileName() + "\"");
                 fileName = check.getFileName();
             }
 
-            if (check.getFileMode().length() > 0)
+            if ( modFileMode )
             {
-                System.out.println("Changing file mode in request from " + fileMode + " to " + check.getFileMode());
+                System.out.println("Changing file mode in request from \"" + fileMode + "\" to \"" + check.getFileMode() + "\"");
                 fileMode = check.getFileMode();
             }
 
@@ -267,7 +269,7 @@ class ErrorSimulator extends Thread
             sendPacket.setLength(len);
         }
         
-        if (check.getContentModType() == TFTPCommon.ContentSubmod.LENGTH)
+        if (check.subModListHas(TFTPCommon.ContentSubmod.LENGTH))
         {
             data = sendPacket.getData();
 
@@ -704,7 +706,7 @@ class TFTPIntHostCommandLine extends Thread
             {
                 opcode = getIntMenu(sc, 0, 512, "Enter new opcode (as bytes, i.e. 02, 03, etc.): ");
                 dataModPacket.setOpcode(opcode);
-                dataModPacket.setContentModType(TFTPCommon.ContentSubmod.OPCODE);
+                dataModPacket.addContentModType(TFTPCommon.ContentSubmod.OPCODE);
             }
             
             if (dataModPacket.getPacketType() == TFTPCommon.PacketType.REQUEST)
@@ -713,13 +715,13 @@ class TFTPIntHostCommandLine extends Thread
                 {
                     System.out.print("Enter new file name: ");
                     dataModPacket.setFileName(sc.nextLine());
-                    dataModPacket.setContentModType(TFTPCommon.ContentSubmod.FILENAME);
+                    dataModPacket.addContentModType(TFTPCommon.ContentSubmod.FILENAME);
                 }
                 else if ( scIn.equalsIgnoreCase("mode") )
                 {
                     System.out.print("Enter new file mode: ");
                     dataModPacket.setFileMode(sc.nextLine());
-                    dataModPacket.setContentModType(TFTPCommon.ContentSubmod.FILEMODE);
+                    dataModPacket.addContentModType(TFTPCommon.ContentSubmod.FILEMODE);
                 }
             }
 
@@ -727,7 +729,7 @@ class TFTPIntHostCommandLine extends Thread
             {
                 blockNum = getIntMenu(sc, 0, 512, "Enter new block number (as integer, 0-512): ");
                 dataModPacket.setBlockNum(blockNum);
-                dataModPacket.setContentModType(TFTPCommon.ContentSubmod.BLOCKNUM);
+                dataModPacket.addContentModType(TFTPCommon.ContentSubmod.BLOCKNUM);
             }
 
             if ( scIn.equalsIgnoreCase("length") )
@@ -735,7 +737,7 @@ class TFTPIntHostCommandLine extends Thread
                 System.out.println("Note: If the new length is greater than the old length, the packet gets padded with 0s. If the new length is smaller than the old length, the packet gets truncated");
                 newLen = getIntMenu(sc, 0, 516, "Enter new length (as integer, 0-516): ");
                 dataModPacket.setLength(newLen);
-                dataModPacket.setContentModType(TFTPCommon.ContentSubmod.LENGTH);
+                dataModPacket.addContentModType(TFTPCommon.ContentSubmod.LENGTH);
             }
 
             else if ( scIn.equalsIgnoreCase("manual") )
@@ -745,7 +747,7 @@ class TFTPIntHostCommandLine extends Thread
 
                 ModifyByte modByte = new ModifyByte(position, value.byteValue());
                 dataModPacket.addModByte(modByte);
-                dataModPacket.setContentModType(TFTPCommon.ContentSubmod.MANUAL);
+                dataModPacket.addContentModType(TFTPCommon.ContentSubmod.MANUAL);
             }
 
             if ( scIn.equalsIgnoreCase("r") )
@@ -755,7 +757,7 @@ class TFTPIntHostCommandLine extends Thread
 
             if ( scIn.equalsIgnoreCase("s") )
             {
-                if (dataModPacket.getContentModType() != TFTPCommon.ContentSubmod.INVALID)
+                if (dataModPacket.getSubModListSize() != 0)
                 {
                     if (!parentSimulator.appendMod(dataModPacket))
                     {
@@ -928,13 +930,13 @@ class SimulatePacketInfo
     private String fileName, fileMode;
 	private TFTPCommon.ModificationType modType;
     private List<ModifyByte> modByte;
-    private TFTPCommon.ContentSubmod subMod;
+    private List<TFTPCommon.ContentSubmod> subMod;
 
     public SimulatePacketInfo (int pNum, TFTPCommon.PacketType pType)
     {
         this.pNum = pNum;
         this.pType = pType;
-        this.subMod = TFTPCommon.ContentSubmod.INVALID;
+        this.subMod = new ArrayList<TFTPCommon.ContentSubmod>();
         this.length = -1;
         fileName = new String();
         fileMode = new String();
@@ -956,9 +958,14 @@ class SimulatePacketInfo
         return modType;
     }
 
-    public TFTPCommon.ContentSubmod getContentModType ()
+    public int getSubModListSize ()
     {
-        return subMod;
+        return subMod.size();
+    }
+
+    public boolean subModListHas (TFTPCommon.ContentSubmod cs)
+    {
+        return subMod.contains(cs);
     }
 
     public int getDelayDuplicateGap ()
@@ -991,10 +998,10 @@ class SimulatePacketInfo
         this.modType = modType;
     }
 
-    public void setContentModType (TFTPCommon.ContentSubmod subMod)
+    public void addContentModType (TFTPCommon.ContentSubmod subMod)
     {
         setModType(TFTPCommon.ModificationType.CONTENTS);
-        this.subMod = subMod;
+        this.subMod.add(subMod);
     }
 
     public void setDelayDuplicateGap (int delayDuplicateGap)
@@ -1052,19 +1059,22 @@ class SimulatePacketInfo
 
         else if (getModType() == TFTPCommon.ModificationType.CONTENTS)
         {
-            if (fileName.length() > 0)
+            for (TFTPCommon.ContentSubmod cs : subMod)
             {
-                returnString = returnString + System.lineSeparator() + "Change filename to " + fileName;
-            }
+                if (cs == TFTPCommon.ContentSubmod.FILENAME)
+                {
+                    returnString = returnString + System.lineSeparator() + "Change filename to \"" + fileName + "\"";
+                }
 
-            if (fileMode.length() > 0)
-            {
-                returnString = returnString + System.lineSeparator() + "Change filemode to " + fileMode;
-            }
+                if (cs == TFTPCommon.ContentSubmod.FILEMODE)
+                {
+                    returnString = returnString + System.lineSeparator() + "Change filemode to \"" + fileMode + "\"";
+                }
 
-            if (length > -1)
-            {
-                returnString = returnString + System.lineSeparator() + "Change length to " + length;
+                if (cs == TFTPCommon.ContentSubmod.LENGTH)
+                {
+                    returnString = returnString + System.lineSeparator() + "Change length to " + length;
+                }
             }
 
             for (ModifyByte m : modByte)
