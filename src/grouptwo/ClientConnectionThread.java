@@ -138,7 +138,12 @@ public class ClientConnectionThread implements Runnable {
 			//Close file now that we are done sending it to client
 			if (sendReceiveStatus)
 			{
-				fileOp.closeFileRead();
+				try {
+					fileOp.closeFileRead();
+				} catch (IOException e) {
+					e.printStackTrace();
+					System.exit(1);
+				}
 			}
 		} 
 
@@ -164,7 +169,12 @@ public class ClientConnectionThread implements Runnable {
 
 			if (sendReceiveStatus)
 			{
-				fileOp.finalizeFileWrite();
+				try {
+					fileOp.finalizeFileWrite();
+				} catch (IOException e) {
+					e.printStackTrace();
+					System.exit(1);
+				}
 			}
 		} 
 		else 

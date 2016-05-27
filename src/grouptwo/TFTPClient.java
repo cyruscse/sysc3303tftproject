@@ -409,7 +409,12 @@ class TFTPClientTransfer extends Thread
 			//Close file now that we are done sending it to server
 			if (sendReceiveStatus)
 			{
-				fileOp.closeFileRead();
+				try {
+					fileOp.closeFileRead();
+				} catch (IOException e) {
+					e.printStackTrace();
+					System.exit(1);
+				}
 			}
 	    }
 
@@ -419,7 +424,12 @@ class TFTPClientTransfer extends Thread
 
 			if (sendReceiveStatus)
 			{
-				fileOp.finalizeFileWrite();
+				try {
+					fileOp.finalizeFileWrite();
+				} catch (IOException e) {
+					e.printStackTrace();
+					System.exit(1);
+				}
 			}
 		}
 		

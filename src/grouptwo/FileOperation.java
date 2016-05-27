@@ -49,29 +49,19 @@ public class FileOperation
     *   @param  int number of bytes preceding data block (i.e. opcode and block number), read starts after this many bytes
     *   @return int number of bytes read
     */
-    public int readNextDataPacket(byte[] data, int dataOffset) throws FileNotFoundException 
+    public int readNextDataPacket(byte[] data, int dataOffset) throws FileNotFoundException, IOException 
     {
         int readAmount = numBytes;
 
-        try {
-            if (inStream.available() < readAmount)
-            {
-                readAmount = inStream.available();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-            System.exit(1);
+        if (inStream.available() < readAmount)
+        {
+            readAmount = inStream.available();
         }
 
         if (readAmount > 0)
         {
-            try {
-                //Returns readAmount, add 4 for opcode/bytenumber
-                return inStream.read(data, dataOffset, readAmount) + dataOffset;
-            } catch (IOException e) {
-                e.printStackTrace();
-                System.exit(1);
-            }
+            //Returns readAmount, add 4 for opcode/bytenumber
+            return inStream.read(data, dataOffset, readAmount) + dataOffset;
         }
 
         return 4;
@@ -86,14 +76,9 @@ public class FileOperation
     *   @param  int length of data to write, in bytes
     *   @return none
     */
-    public void writeNextDataPacket(byte[] data, int dataOffset, int len) throws FileNotFoundException 
+    public void writeNextDataPacket(byte[] data, int dataOffset, int len) throws FileNotFoundException, IOException 
     {
-        try {
-            outStream.write(data, dataOffset, len);
-        } catch (IOException e) {
-            e.printStackTrace();
-            System.exit(1);
-        }
+        outStream.write(data, dataOffset, len);
     }
 
     /**
@@ -102,14 +87,9 @@ public class FileOperation
     *   @param  none
     *   @return none
     */
-    public void finalizeFileWrite()
+    public void finalizeFileWrite() throws IOException
     {
-        try {
-            outStream.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-            System.exit(1);
-        }
+        outStream.close();
     }
 
     /**
@@ -118,14 +98,9 @@ public class FileOperation
     *   @param  none
     *   @return none
     */
-    public void closeFileRead()
+    public void closeFileRead() throws IOException
     {
-        try {
-            inStream.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-            System.exit(1);
-        }
+        inStream.close();
     }
 
     /**
@@ -137,7 +112,7 @@ public class FileOperation
     *   @param  int number of bytes to read write (for TFTP, 512)
     *   @return FileOperation
     */
-    public FileOperation(String absolutePath, Boolean localRead, int bytesRW) throws FileNotFoundException, Exception
+    public FileOperation(String absolutePath, Boolean localRead, int bytesRW) throws FileNotFoundException, IOException
     {
         numBytes = bytesRW;
         file = new File(absolutePath);
@@ -146,7 +121,10 @@ public class FileOperation
         //Server: Write Request writes to local machine
         if ( localRead == false ) 
         {
-            file.delete();
+            if (file.exists())
+            {
+                throw new IOException("File already exists!");
+            }
             //Constructor: Path, Append (allows us to make a file out of packets)
             outStream = new FileOutputStream(absolutePath, true);
         }
@@ -158,7 +136,7 @@ public class FileOperation
 
             if (getNumTFTPBlocks() > 65536)
             {
-                throw new Exception("File is too big!");
+                throw new IOException("File is too big!");
             }
         }
     }

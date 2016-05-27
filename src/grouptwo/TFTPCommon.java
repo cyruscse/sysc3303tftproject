@@ -34,7 +34,7 @@ public class TFTPCommon {
 	//Error Simulator modes
 	public static enum ModificationType { NONE, LOSE, DUPLICATE, DELAY, CONTENTS, INVALIDTID };
 
-	//TFTP Error Codes (Iteration 3 only uses ILLEGAL and UTID)
+	//TFTP Error Codes
 	public static enum ErrorCode { INVALID, FILENOTFOUND, ACCESSVIOLATE, DISKFULL, ILLEGAL, UNKNOWNTID, FILEEXISTS };
 	
 	//CONTENTS ModificationType subtypes
@@ -786,6 +786,10 @@ public class TFTPCommon {
 			e.printStackTrace();					//It still needs to be caught though
 			System.exit(1);
 			return -1;   							//Need this return for compilation (even though it's after exit)
+		} catch (IOException e) {
+			e.printStackTrace();
+			System.exit(1);
+			return -1;
 		}
 	}
 	
