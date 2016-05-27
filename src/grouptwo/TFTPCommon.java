@@ -145,14 +145,20 @@ public class TFTPCommon {
 	{		
 		byte[] errMsg = new byte[200];
 		int errlen = constructErrorPacket(errMsg, errCode, errString);
+		DatagramPacket sendErr = new DatagramPacket(errMsg, errlen, receive.getAddress(), receive.getPort());
+
+		
 		System.out.println(consolePrefix + errString);
-		if(verbose != Verbosity.NONE){
+		
+		if(verbose != Verbosity.NONE)
+		{
 			System.out.println(consolePrefix + "Sending ERROR packet to port " + receive.getPort());
 		}
-		else{
+		else
+		{
 			System.out.println(consolePrefix + "Sending ERROR packet");
 		}
-		DatagramPacket sendErr = new DatagramPacket(errMsg, errlen, receive.getAddress(), receive.getPort());
+
 		printPacketDetails(sendErr, verbose, false);
 		sendPacket(sendErr, socket);
 	}
@@ -863,7 +869,7 @@ public class TFTPCommon {
 
 		String errorMessage = new String(data, 4, i - 2);
 
-		System.out.println("Received error " + errorOpcodeToString(data) + " with message \"" + errorMessage.trim() + "\"");
+		System.out.println(consolePrefix + "Received error " + errorOpcodeToString(data) + " with message \"" + errorMessage.trim() + "\"");
 	}
 	
 	public static ErrorCode getErrorType(byte[] data)

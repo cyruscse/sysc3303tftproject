@@ -103,6 +103,11 @@ public class FileOperation
         inStream.close();
     }
 
+    public boolean delete()
+    {
+        return file.delete();
+    }
+
     /**
     *   Constructor for FileOperation, creates FileInputStream or FileOutputStream, depending on
     *   client/server and request type.

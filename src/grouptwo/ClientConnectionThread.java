@@ -125,10 +125,14 @@ public class ClientConnectionThread implements Runnable {
 			try {
 				fileOp = new FileOperation(localName, true, 512); 
 			} catch (FileNotFoundException e) {
-				System.out.println(consolePrefix + "Local file " + localName + " does not exist!");
-				e.printStackTrace();
+				String fileNotFoundMessage = new String(consolePrefix + "Local file " + localName + " does not exist!");
+				TFTPCommon.sendErrorPacket(receivePacket, sendReceiveSocket, fileNotFoundMessage, TFTPCommon.ErrorCode.FILENOTFOUND, consolePrefix, verbose);
+				
+				sendReceiveSocket.close();
+				parent.threadDone(Thread.currentThread());
+				
 				return;
-			} catch (Exception e) {
+			} catch (IOException e) {
 				System.out.println(consolePrefix + "File is too big!");
 				return;
 			}
@@ -155,7 +159,7 @@ public class ClientConnectionThread implements Runnable {
 				System.out.println(consolePrefix + "Couldn't write to " + localName);
 				parent.threadDone(Thread.currentThread());
 				return;
-			} catch (Exception e) {
+			} catch (IOException e) {
 				System.out.println(consolePrefix + "File is too big!");
 				parent.threadDone(Thread.currentThread());
 				return;
@@ -193,6 +197,11 @@ public class ClientConnectionThread implements Runnable {
 		else
 		{
 			System.out.println(consolePrefix + "Error occurred, transfer incomplete");
+
+			if ( !fileOp.delete() && requestType == TFTPCommon.Request.WRITE )
+			{
+				System.out.println("Failed to delete incomplete file");
+			}
 		}
 
 		// We're finished with this socket, so close it.

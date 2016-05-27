@@ -370,9 +370,9 @@ class TFTPClientTransfer extends Thread
 			try {
 				fileOp = new FileOperation(localName, true, 512);
 			} catch (FileNotFoundException e) {
-				System.out.println("Local file " + localName + " does not exist!");
+				System.out.println("Local file \"" + localName + "\" does not exist!");
 				return;
-			} catch (Exception e) {
+			} catch (IOException e) {
 				System.out.println("File is too big!");
 				return;
 			}
@@ -384,8 +384,8 @@ class TFTPClientTransfer extends Thread
 			} catch (FileNotFoundException e) {
 				System.out.println("Couldn't write to " + localName);
 				return;
-			} catch (Exception e) {
-				System.out.println("File is too big!");
+			} catch (IOException e) {
+				System.out.println("\"" + localName + "\"" + " already exists");
 				return;
 			}
 		}
@@ -440,6 +440,11 @@ class TFTPClientTransfer extends Thread
 		else
 		{
 			System.out.println(consolePrefix + "Error occurred, transfer incomplete");
+			
+			if ( !fileOp.delete() && requestType == TFTPCommon.Request.READ )
+			{
+				System.out.println("Failed to delete incomplete file");
+			}
 		}
 		
 		// We're finished, so close the socket.
