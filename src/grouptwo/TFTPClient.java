@@ -79,7 +79,7 @@ public class TFTPClient
 				System.out.println("Enter transfer as string, with file names in quotes");
 				System.out.println("(i.e. read \"readFile.txt\" to \"dest.txt\", write \"writeFile.txt\" to \"dest2.txt\"");
 				System.out.println("");
-				System.out.println("--Options--");								
+				System.out.println("--Options--");							
 				System.out.println("m: Set mode (current: " + TFTPCommon.modeToString(mode) + ")");
 				System.out.println("t: Set retransmission timeout (current: " + timeout + ")");
 				System.out.println("v: Set verbosity (current: " + TFTPCommon.verbosityToString(verbosity) + ")");

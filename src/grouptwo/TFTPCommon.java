@@ -195,7 +195,11 @@ public class TFTPCommon {
 				if (timeoutCount == 0)
 				{
 					dataMsg = new byte[516];
-					len = constructDataPacket(dataMsg, blockNum, fileOp);
+					try {
+						len = constructDataPacket(dataMsg, blockNum, fileOp);
+					} catch (FileOperation.FileOperationException e) {
+						sendErrorPacket(receive, sendReceiveSocket, "Access violation while trying to read file", e.error, consolePrefix, verbose);
+					}
 				}
 
 				System.out.println(consolePrefix + "Sending DATA " + blockNum + "/" + (fileOp.getNumTFTPBlocks()));
@@ -364,9 +368,19 @@ public class TFTPCommon {
 				else if (blockNumToPacket(dataMsg) == blockNum)
 				{
 					System.out.println(consolePrefix + "Received DATA " + blockNum);
+					
 					try {
 						willExit = writeDataPacket(dataMsg, len, fileOp, verbose);
-					} catch (Exception e) {
+					} catch (FileOperation.FileOperationException e) {
+						if (e.error == ErrorCode.ACCESSVIOLATE)
+						{
+							sendErrorPacket(receive, sendReceiveSocket, "Access violation while trying to write to file", e.error, consolePrefix, verbose);
+						}
+						else if (e.error == ErrorCode.DISKFULL)
+						{
+							sendErrorPacket(receive, sendReceiveSocket, "Couldn't write to file, disk is full", e.error, consolePrefix, verbose);
+						}
+
 						return false;
 					}
 
@@ -779,7 +793,7 @@ public class TFTPCommon {
 	 *   @param  FileOperation current file we are reading data from
 	 *   @return int length of DATA packet
 	 */
-	public static int constructDataPacket(byte[] msg, int blockNumber, FileOperation file) 
+	public static int constructDataPacket(byte[] msg, int blockNumber, FileOperation file) throws FileOperation.FileOperationException
 	{
 		msg[0] = 0;
 		msg[1] = 3;
@@ -925,21 +939,26 @@ public class TFTPCommon {
 	 *   @param  FileOperation current file we are writing to
 	 *   @return Boolean indicating if this was the final DATA packet
 	 */
-	public static Boolean writeDataPacket(byte[] msg, int len, FileOperation file, Verbosity verbose) throws Exception
+	public static Boolean writeDataPacket(byte[] msg, int len, FileOperation file, Verbosity verbose) throws FileOperation.FileOperationException
 	{
-		if (msg[0] != 0 || msg[1] != 3)
-		{
-			throw new Exception("Invalid data packet");
+		try {
+			file.writeNextDataPacket(msg, 4, len - 4);
+		} catch (IOException e) {
+			e.printStackTrace();
+			System.exit(1);
 		}
-		
-		file.writeNextDataPacket(msg, 4, len - 4);
 
 		if (len < 516)
 		{
 			if (verbose != Verbosity.NONE)
 			{
 				System.out.println("Received final data packet");
-				file.finalizeFileWrite();
+				try {
+					file.finalizeFileWrite();
+				} catch (IOException e) {
+					e.printStackTrace();
+					System.exit(1);
+				}
 			}
 
 			return true;

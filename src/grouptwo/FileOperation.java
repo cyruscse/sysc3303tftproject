@@ -18,6 +18,16 @@ public class FileOperation
     private FileOutputStream outStream;
     private int numBytes;
 
+    public class FileOperationException extends Exception 
+    {
+        public TFTPCommon.ErrorCode error;
+
+        public FileOperationException (TFTPCommon.ErrorCode e)
+        {
+            error = e;
+        }
+    }
+
     /**
     *   Calculate the number of TFTP data packets required to transfer file
     *
@@ -49,9 +59,14 @@ public class FileOperation
     *   @param  int number of bytes preceding data block (i.e. opcode and block number), read starts after this many bytes
     *   @return int number of bytes read
     */
-    public int readNextDataPacket(byte[] data, int dataOffset) throws FileNotFoundException, IOException 
+    public int readNextDataPacket(byte[] data, int dataOffset) throws IOException, FileOperationException 
     {
         int readAmount = numBytes;
+
+        if ( !file.canRead() )
+        {
+            throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE);
+        }
 
         if (inStream.available() < readAmount)
         {
@@ -76,8 +91,18 @@ public class FileOperation
     *   @param  int length of data to write, in bytes
     *   @return none
     */
-    public void writeNextDataPacket(byte[] data, int dataOffset, int len) throws FileNotFoundException, IOException 
+    public void writeNextDataPacket(byte[] data, int dataOffset, int len) throws IOException, FileOperationException 
     {
+        if ( file.getUsableSpace() < len )
+        {
+            throw new FileOperationException(TFTPCommon.ErrorCode.DISKFULL);
+        }
+
+        if ( !file.canWrite() )
+        {
+            throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE);
+        }
+
         outStream.write(data, dataOffset, len);
     }
 
@@ -121,7 +146,7 @@ public class FileOperation
     {
         numBytes = bytesRW;
         file = new File(absolutePath);
-
+                
         //Client: Read Request writes to local machine
         //Server: Write Request writes to local machine
         if ( localRead == false ) 
