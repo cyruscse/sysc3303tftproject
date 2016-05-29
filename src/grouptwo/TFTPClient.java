@@ -374,7 +374,7 @@ class TFTPClientTransfer extends Thread
 				}
 				else if (TFTPCommon.getPacketType(receivePacket.getData()) == TFTPCommon.PacketType.ERROR)
 				{
-					TFTPCommon.parseErrorPacket(receivePacket.getData(), consolePrefix);
+					TFTPCommon.parseErrorPacket(receivePacket, consolePrefix);
 					return false;
 				}
 			} 
