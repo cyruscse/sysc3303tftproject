@@ -109,16 +109,16 @@ public class FileOperation
     public void writeNextDataPacket(byte[] data, int dataOffset, int len) throws IOException, FileOperationException 
     {
         if ( file.getUsableSpace() < len )
-        {
-            file.delete();
-            finalizeFileWrite();
+        {   finalizeFileWrite();
+            delete();
             throw new FileOperationException(TFTPCommon.ErrorCode.DISKFULL, "Destination disk is full"); 
         }
 
         if ( !file.canWrite() )
         {
-            file.delete();
+            
             finalizeFileWrite();
+            delete();
             throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE, "File: \"" + file.getName() + "\" is not writeable. Access violation");
         }
 
@@ -153,9 +153,15 @@ public class FileOperation
      *   @param  none
      *   @return boolean true if delete was successful
      */
-    public boolean delete()
-    {
-        return file.delete();
+    public boolean delete(){
+        try {
+        	outStream.close();
+	    	Files.delete(file.toPath());
+	    	return true;
+	    } catch (IOException e) {
+	    	e.printStackTrace();
+	    	return false;
+	    }
     }
 
     /**
