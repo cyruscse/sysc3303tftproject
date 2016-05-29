@@ -360,36 +360,33 @@ public class TFTPCommon {
 				sendErrorPacket(receive, sendReceiveSocket, errString, ErrorCode.UNKNOWNTID, consolePrefix, Verbosity.NONE);
 			}
 
-			//We received a DATA packet but it is not the block number we were expecting (i.e. delayed/lost DATA)
-			else if (validDATAPacket(receive)) 
-			{
-				//Duplicate DATA received (i.e. block number has already been acknowledged)
-				if (blockNumToPacket(dataMsg) < blockNum)
-				{	
-					System.out.println(consolePrefix + "Duplicate or delayed DATA " + (blockNumToPacket(dataMsg) + (rollOver * 65536)) + " received, not writing to file");
-					sendACKPacket(blockNumToPacket(dataMsg), rollOver, send, receive, sendReceiveSocket, verbose, consolePrefix);
-				}	
-				//We received the DATA packet we were expecting, look for next DATA
-				else if (blockNumToPacket(dataMsg) == blockNum)
-				{
-					System.out.println(consolePrefix + "Received DATA " + (blockNum + (rollOver * 65536)));
-					
-					try {
-						willExit = writeDataPacket(dataMsg, len, fileOp, verbose);
-					} catch (FileOperation.FileOperationException e) {
-						sendErrorPacket(receive, sendReceiveSocket, e.toString(), e.error, consolePrefix, verbose);
-						return false;
-					}
-
-					sendACKPacket(blockNum, rollOver, send, receive, sendReceiveSocket, verbose, consolePrefix);					
-					blockNum++;
-
-					if (blockNum == 65536)
-					{
-						blockNum = 0;
-						rollOver++;
-					}
+			//We received the DATA packet we were expecting, look for next DATA
+			else if (validDATAPacket(receive, blockNum)) 
+			{				
+				System.out.println(consolePrefix + "Received DATA " + (blockNum + (rollOver * 65536)));
+				
+				try {
+					willExit = writeDataPacket(dataMsg, len, fileOp, verbose);
+				} catch (FileOperation.FileOperationException e) {
+					sendErrorPacket(receive, sendReceiveSocket, e.toString(), e.error, consolePrefix, verbose);
+					return false;
 				}
+
+				sendACKPacket(blockNum, rollOver, send, receive, sendReceiveSocket, verbose, consolePrefix);					
+				blockNum++;
+
+				if (blockNum == 65536)
+				{
+					blockNum = 0;
+					rollOver++;
+				}
+			}
+			
+			//Duplicate DATA received (i.e. block number has already been acknowledged)
+			else if (getPacketType(dataMsg) == PacketType.DATA && blockNumToPacket(dataMsg) < blockNum)
+			{
+				System.out.println(consolePrefix + "Duplicate or delayed DATA " + (blockNumToPacket(dataMsg) + (rollOver * 65536)) + " received, not writing to file");
+				sendACKPacket(blockNumToPacket(dataMsg), rollOver, send, receive, sendReceiveSocket, verbose, consolePrefix);
 			}
 
 			else
@@ -999,9 +996,9 @@ public class TFTPCommon {
 	 *   @param  int length of data
 	 *   @return Boolean indicating if DATA is valid or not
 	 */
-	public static Boolean validDATAPacket(DatagramPacket packet)
+	public static Boolean validDATAPacket(DatagramPacket packet, int blockNum)
 	{
-		return ( getPacketType(packet.getData()) == PacketType.DATA && packet.getLength() > 3 && packet.getLength() < 517 );
+		return ( getPacketType(packet.getData()) == PacketType.DATA && blockNumToPacket(packet.getData()) == blockNum && packet.getLength() > 3 && packet.getLength() < 517 );
 	}
 	
 	/**

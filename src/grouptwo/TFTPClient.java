@@ -368,7 +368,7 @@ class TFTPClientTransfer extends Thread
 				TFTPCommon.receivePacketWTimeout(receivePacket, sendReceiveSocket, timeout);
 				sendPort = receivePacket.getPort();
 
-				if ( ( requestType == TFTPCommon.Request.WRITE && TFTPCommon.validACKPacket(receivePacket, 0) ) || ( requestType == TFTPCommon.Request.READ && TFTPCommon.validDATAPacket(receivePacket) ) )
+				if ( ( requestType == TFTPCommon.Request.WRITE && TFTPCommon.validACKPacket(receivePacket, 0) ) || ( requestType == TFTPCommon.Request.READ && TFTPCommon.validDATAPacket(receivePacket, 1) ) )
 				{
 					return true;
 				}
