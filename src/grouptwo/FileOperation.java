@@ -1,6 +1,8 @@
 package grouptwo;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.FileSystems;
 
 /**
 * FileOperation is the class that is used by both the TFTP server and client
@@ -174,7 +176,7 @@ public class FileOperation
         //Server: Write Request writes to local machine
         if ( localRead == false ) 
         {
-            if (file.exists() && !file.canWrite())
+            if (file.exists() && !Files.isWritable(FileSystems.getDefault().getPath(file.getAbsolutePath())))
             {
                 throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE, "File: \"" + file.getName() + "\" exists and is not writable");
             }
@@ -196,7 +198,7 @@ public class FileOperation
         //Server: Read Request reads from local machine
         else
         {
-            if (file.exists() && !file.canRead())
+            if (file.exists() && !Files.isReadable(FileSystems.getDefault().getPath(file.getAbsolutePath())))
             {
                 throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE, "File: \"" + file.getName() + "\" is not readable. Access violation.");
             }
