@@ -165,7 +165,7 @@ public class ClientConnectionThread implements Runnable {
 			try {
 				fileOp = new FileOperation(localName, true, 512, overwrite); 
 			} catch (FileNotFoundException e) {
-				String fileNotFoundMessage = new String(consolePrefix + "File: \"" + localName + "\" does not exist!");
+				String fileNotFoundMessage = new String("File: \"" + localName + "\" does not exist!");
 				TFTPCommon.sendErrorPacket(receivePacket, sendReceiveSocket, fileNotFoundMessage, TFTPCommon.ErrorCode.FILENOTFOUND, consolePrefix, verbose);
 				
 				sendReceiveSocket.close();

@@ -253,7 +253,7 @@ public class TFTPCommon {
 						rollOver++;
 					}
 				}
-				else if (getPacketType(ackMsg) == PacketType.ACK && blockNumToPacket(ackMsg) < blockNum) 
+				else if (getPacketType(ackMsg) == PacketType.ACK && receive.getLength() == 4 && blockNumToPacket(ackMsg) < blockNum) 
 				{
 					System.out.println(consolePrefix + "Duplicate ACK " + (blockNumToPacket(ackMsg) + (rollOver * 65536)) + " received, ignoring");
 					sendData = false;
@@ -261,23 +261,23 @@ public class TFTPCommon {
 				else 
 				{
 					String errString = "";
-					
+
 					if (getPacketType(ackMsg) == PacketType.ERROR)
 					{
 						parseErrorPacket(receive, consolePrefix);
 						return false;
 					}
+					else if (receive.getLength() != 4)
+					{
+						errString = "Expecting ACK packet of length 4 instead received packet with length " + receive.getLength();
+					}
 					else if (getPacketType(ackMsg) != PacketType.ACK)
 					{
 						errString = "Expecting ACK, received invalid opcode: " + ackMsg[0] + " " + ackMsg[1];
 					}
-					else if(blockNumToPacket(ackMsg) != blockNum)
+					else if (blockNumToPacket(ackMsg) != blockNum)
 					{
 						errString = "Expecting block number " + (blockNum + (rollOver * 65536)) + " instead received " + (blockNumToPacket(ackMsg) + (rollOver * 65536));
-					}
-					else if(receive.getLength() != 4 && getPacketType(ackMsg) == PacketType.ACK)
-					{
-						errString = "Expecting ACK packet of length 4 instead received packet with length " + receive.getLength();
 					}
 					else
 					{
@@ -383,7 +383,7 @@ public class TFTPCommon {
 			}
 			
 			//Duplicate DATA received (i.e. block number has already been acknowledged)
-			else if (getPacketType(dataMsg) == PacketType.DATA && blockNumToPacket(dataMsg) < blockNum)
+			else if (getPacketType(dataMsg) == PacketType.DATA && receive.getLength() > 3 && receive.getLength() < 517 && blockNumToPacket(dataMsg) < blockNum)
 			{
 				System.out.println(consolePrefix + "Duplicate or delayed DATA " + (blockNumToPacket(dataMsg) + (rollOver * 65536)) + " received, not writing to file");
 				sendACKPacket(blockNumToPacket(dataMsg), rollOver, send, receive, sendReceiveSocket, verbose, consolePrefix);
@@ -393,14 +393,14 @@ public class TFTPCommon {
 			{
 				String errString = "";
 
-				if (receive.getLength() < 4 || receive.getLength() > 516)
-				{
-					errString = "Expecting DATA packet of length 4-516 instead received packet with length " + receive.getLength();
-				}
-				else if (getPacketType(dataMsg) == PacketType.ERROR)
+				if (getPacketType(dataMsg) == PacketType.ERROR)
 				{
 					parseErrorPacket(receive, consolePrefix);
 					return false;
+				}
+				else if (receive.getLength() < 4 || receive.getLength() > 516)
+				{
+					errString = "Expecting DATA packet of length 4-516 instead received packet with length " + receive.getLength();
 				}
 				else if (getPacketType(dataMsg) != PacketType.DATA)
 				{
