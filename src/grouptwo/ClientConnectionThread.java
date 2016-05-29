@@ -250,10 +250,10 @@ public class ClientConnectionThread implements Runnable {
 
 			if ( requestType == TFTPCommon.Request.WRITE  )
 			{	if (fileOp.delete()){
-					System.out.println(consolePrefix +"Incomplete file deleted");
+					System.out.println(consolePrefix + "Incomplete file \"" + localName + "\" deleted");
 				}
 				else{
-					System.out.println("Failed to delete incomplete file");
+					System.out.println(consolePrefix + "Failed to delete incomplete file \"" + localName + "\"");
 				}
 			}
 			

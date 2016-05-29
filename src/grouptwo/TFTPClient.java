@@ -363,7 +363,8 @@ class TFTPClientTransfer extends Thread
 				return false;
 			}
 
-			try {
+			try 
+			{
 				TFTPCommon.receivePacketWTimeout(receivePacket, sendReceiveSocket, timeout);
 				sendPort = receivePacket.getPort();
 
@@ -376,7 +377,9 @@ class TFTPClientTransfer extends Thread
 					TFTPCommon.parseErrorPacket(receivePacket.getData(), consolePrefix);
 					return false;
 				}
-			} catch (SocketTimeoutException e) {
+			} 
+			catch (SocketTimeoutException e) 
+			{
 				System.out.println("Client: Server did not respond to request within " + timeout + " ms, trying again: attempt " + (i + 1) + " of " + maxTimeout);
 			}
 		}
@@ -436,18 +439,33 @@ class TFTPClientTransfer extends Thread
 			}
 		}
 
-		try {
-			if (!sendRequestPacket(msg))
+		if (!sendRequestPacket(msg))
+		{
+			try 
 			{
 				System.out.println(consolePrefix + "Cancelling transfer");
 				sendReceiveSocket.close();
-				return;
 			}
-			len = receivePacket.getLength();
-		} catch (SocketTimeoutException e) {
-			sendReceiveSocket.close();
+			catch (SocketTimeoutException e) 
+			{
+				sendReceiveSocket.close();
+			}
+
+			if ( requestType == TFTPCommon.Request.READ )
+			{
+				if (fileOp.delete())
+				{
+					System.out.println(consolePrefix + "Incomplete file \"" + localName + "\" deleted");
+				}
+				else
+				{
+					System.out.println(consolePrefix + "Failed to delete incomplete file \"" + localName + "\"");
+				}
+			}
 			return;
-		}
+		} 
+
+		len = receivePacket.getLength();
 
 		TFTPCommon.printPacketDetails(receivePacket, verbose, false);
 
@@ -493,9 +511,16 @@ class TFTPClientTransfer extends Thread
 		{
 			System.out.println(consolePrefix + "Error occurred, transfer incomplete");
 			
-			if ( requestType == TFTPCommon.Request.READ && !fileOp.delete() )
+			if ( requestType == TFTPCommon.Request.READ )
 			{
-				System.out.println("Failed to delete incomplete file");
+				if (fileOp.delete())
+				{
+					System.out.println(consolePrefix + "Incomplete file \"" + localName + "\" deleted");
+				}
+				else
+				{
+					System.out.println(consolePrefix + "Failed to delete incomplete file \"" + localName + "\"");
+				}
 			}
 		}
 		
