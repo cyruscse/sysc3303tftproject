@@ -34,7 +34,7 @@ public class ClientConnectionThread implements Runnable {
 	private FileOperation fileOp;
 	private String localName, mode;
 	private int port;
-	private InetAddress address;
+	private InetAddress clientAddress;
 	private int threadNumber;
 	//hardTimeout - timeout when waiting for DATA
 	private int hardTimeout;
@@ -51,7 +51,7 @@ public class ClientConnectionThread implements Runnable {
 		receivePacket = receivePckt;
 		this.parent = parent;
 		port = receivePckt.getPort();
-		address = receivePckt.getAddress();
+		clientAddress = receivePckt.getAddress();
 		verbose = verbosity;
 		mode = new String();
 		hardTimeout = 60000;
@@ -180,7 +180,7 @@ public class ClientConnectionThread implements Runnable {
 				return;
 			}
 
-			sendReceiveStatus = TFTPCommon.sendDataWTimeout(sendPacket, receivePacket, sendReceiveSocket, address, timeout, maxTimeout, port, fileOp, verbose, consolePrefix);
+			sendReceiveStatus = TFTPCommon.sendDataWTimeout(sendPacket, receivePacket, sendReceiveSocket, clientAddress, timeout, maxTimeout, port, fileOp, verbose, consolePrefix);
 
 			//Close file now that we are done sending it to client
 			if (sendReceiveStatus)
@@ -217,7 +217,7 @@ public class ClientConnectionThread implements Runnable {
 
 			System.out.println(consolePrefix + "Beginning file transfer");
 
-			sendReceiveStatus = TFTPCommon.receiveDataWTimeout(sendPacket, receivePacket, sendReceiveSocket, false, hardTimeout, fileOp, verbose, consolePrefix);
+			sendReceiveStatus = TFTPCommon.receiveDataWTimeout(sendPacket, receivePacket, sendReceiveSocket, clientAddress, false, hardTimeout, fileOp, verbose, consolePrefix);
 
 			if (sendReceiveStatus)
 			{

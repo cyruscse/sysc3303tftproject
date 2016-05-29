@@ -141,6 +141,21 @@ public class TFTPClient
 				}
 			}
 
+			else if ( scIn.equalsIgnoreCase("i") )
+			{
+				System.out.print("Enter IP address of server: ");
+				scIn = sc.nextLine();
+
+				try
+				{
+					serverAddress = InetAddress.getByName(scIn);
+				} 
+				catch (UnknownHostException e)
+				{
+					System.out.println("Invalid IP address");
+				}
+			}
+
 			else if ( scIn.equalsIgnoreCase("m") ) 
 			{
 				System.out.print("Enter mode (test, normal): ");
@@ -249,7 +264,6 @@ public class TFTPClient
  */
 class TFTPClientTransfer extends Thread 
 {
-	private InetAddress localAddress;
 	private DatagramPacket sendPacket, receivePacket;
 	private DatagramSocket sendReceiveSocket;
 	private FileOperation  fileOp;
@@ -303,13 +317,6 @@ class TFTPClientTransfer extends Thread
 		} catch (SocketException e) {
 			e.printStackTrace();
 			System.exit(1);
-		}
-
-		try {
-			localAddress = InetAddress.getLocalHost();
-		} catch (UnknownHostException e) {
-			e.printStackTrace();
-			return;
 		}
 	}
 
@@ -465,7 +472,7 @@ class TFTPClientTransfer extends Thread
 
 	    else if ( requestType == TFTPCommon.Request.READ ) 
 		{
-			sendReceiveStatus = TFTPCommon.receiveDataWTimeout(sendPacket, receivePacket, sendReceiveSocket, true, hardTimeout, fileOp, verbose, consolePrefix);
+			sendReceiveStatus = TFTPCommon.receiveDataWTimeout(sendPacket, receivePacket, sendReceiveSocket, serverAddress, true, hardTimeout, fileOp, verbose, consolePrefix);
 
 			if (sendReceiveStatus)
 			{

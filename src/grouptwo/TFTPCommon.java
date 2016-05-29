@@ -41,10 +41,10 @@ public class TFTPCommon {
 	public static enum ContentSubmod { INVALID, MANUAL, OPCODE, BLOCKNUM, LENGTH, FILENAME, FILEMODE };
 
 	//Server Listen Port
-	public static int TFTPListenPort = 69;
+	public static int TFTPListenPort = 1069;
 
 	//Error Sim Listen Port
-	public static int TFTPErrorSimPort = 23;
+	public static int TFTPErrorSimPort = 1070;
 
 	/**
 	 *   Send a DatagramPacket through a DatagramSocket.
@@ -314,7 +314,7 @@ public class TFTPCommon {
 	 *   @return Boolean true if file was received successfully
 	 * 
 	 */
-	public static Boolean receiveDataWTimeout (DatagramPacket send, DatagramPacket receive, DatagramSocket sendReceiveSocket, Boolean client, int hardTimeout, FileOperation fileOp, Verbosity verbose, String consolePrefix)
+	public static Boolean receiveDataWTimeout (DatagramPacket send, DatagramPacket receive, DatagramSocket sendReceiveSocket, InetAddress address, Boolean client, int hardTimeout, FileOperation fileOp, Verbosity verbose, String consolePrefix)
 	{
 		Boolean writingFile = true;
 		Boolean willExit = false;
