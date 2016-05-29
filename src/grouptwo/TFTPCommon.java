@@ -41,10 +41,10 @@ public class TFTPCommon {
 	public static enum ContentSubmod { INVALID, MANUAL, OPCODE, BLOCKNUM, LENGTH, FILENAME, FILEMODE };
 
 	//Server Listen Port
-	public static int TFTPListenPort = 1069;
+	public static int TFTPListenPort = 69;
 
 	//Error Sim Listen Port
-	public static int TFTPErrorSimPort = 1070;
+	public static int TFTPErrorSimPort = 70;
 
 	/**
 	 *   Send a DatagramPacket through a DatagramSocket.
@@ -189,6 +189,8 @@ public class TFTPCommon {
 		Boolean sendData = true;
 		byte[] dataMsg = new byte[516];
 		byte[] ackMsg = new byte[516];
+
+		System.out.println("client address is " + address);
 
 		while ((blockNum + (rollOver * 65536)) - 1 < fileOp.getNumTFTPBlocks())
 		{

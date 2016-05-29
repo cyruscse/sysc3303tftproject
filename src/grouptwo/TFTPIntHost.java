@@ -149,7 +149,7 @@ class ErrorSimulator extends Thread
     private DatagramSocket sendReceiveSocket, invalidTIDSocket;
     private DatagramPacket sendPacket, receivePacket;
     private TFTPCommon.Verbosity verbosity;
-    private InetAddress clientAddress;
+    private InetAddress clientAddress, serverAddress;
     private int clientPort, serverPort, len;
     private byte [] data;
     private SimulatePacketInfo simCompare;
@@ -160,6 +160,7 @@ class ErrorSimulator extends Thread
     {
         clientAddress = firstPacket.getAddress();
         clientPort = firstPacket.getPort();
+        serverAddress = InetAddress.getLoopbackAddress();
         serverPort = 0;
         len = firstPacket.getLength();
         data = firstPacket.getData();
@@ -384,12 +385,11 @@ class ErrorSimulator extends Thread
     private void passOnTFTP()
     {
         int port = TFTPCommon.TFTPListenPort;
+        InetAddress address = serverAddress;
 
         while (true) 
         {
-            //Assume that server and client are on same machine by using clientAddress for both
-            //Will have to be changed for Iteration 5
-            sendPacket = new DatagramPacket(data, len, clientAddress, port);
+            sendPacket = new DatagramPacket(data, len, address, port);
             len = sendPacket.getLength();
             TFTPCommon.printPacketDetails(sendPacket, verbosity, false);
 
@@ -416,10 +416,12 @@ class ErrorSimulator extends Thread
             if (receivePacket.getPort() == serverPort)
             {
                 port = clientPort;
+                address = clientAddress;
             }
             else if (receivePacket.getPort() == clientPort)
             {
                 port = serverPort;
+                address = InetAddress.getLoopbackAddress();
             }
             else
             {
