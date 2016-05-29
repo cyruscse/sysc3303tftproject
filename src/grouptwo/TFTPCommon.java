@@ -41,10 +41,10 @@ public class TFTPCommon {
 	public static enum ContentSubmod { INVALID, MANUAL, OPCODE, BLOCKNUM, LENGTH, FILENAME, FILEMODE };
 
 	//Server Listen Port
-	public static int TFTPListenPort = 69;
+	public static int TFTPListenPort = 1069;
 
 	//Error Sim Listen Port
-	public static int TFTPErrorSimPort = 23;
+	public static int TFTPErrorSimPort = 1070;
 
 	/**
 	 *   Send a DatagramPacket through a DatagramSocket.
@@ -272,7 +272,7 @@ public class TFTPCommon {
 					
 					if (getPacketType(ackMsg) == PacketType.ERROR)
 					{
-						parseErrorPacket(ackMsg, consolePrefix);
+						parseErrorPacket(ackMsg, consolePrefix, true);
 						return false;
 					}
 					else if (getPacketType(ackMsg) != PacketType.ACK)
@@ -417,7 +417,7 @@ public class TFTPCommon {
 				}
 				else if (getPacketType(dataMsg) == PacketType.ERROR)
 				{
-					parseErrorPacket(dataMsg, consolePrefix);
+					parseErrorPacket(dataMsg, consolePrefix, true);
 					return false;
 				}
 				else if (getPacketType(dataMsg) != PacketType.DATA)
@@ -887,7 +887,7 @@ public class TFTPCommon {
 		return em.length + 5;
 	}
 
-	public static void parseErrorPacket(byte[] data, String consolePrefix)
+	public static void parseErrorPacket(byte[] data, String consolePrefix, Boolean detailed)
 	{
 		int i;
 
@@ -901,7 +901,14 @@ public class TFTPCommon {
 
 		String errorMessage = new String(data, 4, i - 2);
 
-		System.out.println(consolePrefix + "Received error " + errorOpcodeToString(data) + " with message \"" + errorMessage.trim() + "\"");
+		if (detailed)
+		{
+			System.out.println(consolePrefix + "Received error " + errorOpcodeToString(data) + " with message \"" + errorMessage.trim() + "\"");
+		}
+		else
+		{
+			System.out.println(consolePrefix + "Received error: " + errorOpcodeToString(data));
+		}
 	}
 	
 	public static ErrorCode getErrorType(byte[] data)

@@ -42,9 +42,10 @@ public class ClientConnectionThread implements Runnable {
 	private int timeout;
 	//maxTimeout - number of timeouts to wait before giving up
 	private int maxTimeout;
+	private Boolean overwrite;
 	private final String consolePrefix = ("Server Thread " + (threadNumber + 1) + ": ");
 
-	public ClientConnectionThread(DatagramPacket receivePckt, TFTPServer parent, TFTPCommon.Verbosity verbosity, int threadNumber, int reTimeout) 
+	public ClientConnectionThread(DatagramPacket receivePckt, TFTPServer parent, TFTPCommon.Verbosity verbosity, int threadNumber, int reTimeout, Boolean overwrite) 
 	{
 		this.threadNumber = threadNumber;
 		receivePacket = receivePckt;
@@ -55,6 +56,7 @@ public class ClientConnectionThread implements Runnable {
 		mode = new String();
 		hardTimeout = 60000;
 		timeout = reTimeout;
+		this.overwrite = overwrite;
 		maxTimeout = 10;
 
 		try {
@@ -123,7 +125,7 @@ public class ClientConnectionThread implements Runnable {
 		if (requestType == TFTPCommon.Request.READ)
 		{
 			try {
-				fileOp = new FileOperation(localName, true, 512); 
+				fileOp = new FileOperation(localName, true, 512, overwrite); 
 			} catch (FileNotFoundException e) {
 				String fileNotFoundMessage = new String(consolePrefix + "Local file " + localName + " does not exist!");
 				TFTPCommon.sendErrorPacket(receivePacket, sendReceiveSocket, fileNotFoundMessage, TFTPCommon.ErrorCode.FILENOTFOUND, consolePrefix, verbose);
@@ -132,8 +134,12 @@ public class ClientConnectionThread implements Runnable {
 				parent.threadDone(Thread.currentThread());
 				
 				return;
-			} catch (IOException e) {
-				System.out.println(consolePrefix + "File is too big!");
+			} catch (FileOperation.FileOperationException e) {
+				System.out.println(consolePrefix + e);
+				TFTPCommon.sendErrorPacket(receivePacket, sendReceiveSocket, e.toString(), e.error, consolePrefix, verbose);
+
+				sendReceiveSocket.close();
+				parent.threadDone(Thread.currentThread());
 				return;
 			}
 
@@ -154,13 +160,18 @@ public class ClientConnectionThread implements Runnable {
 		else if (requestType == TFTPCommon.Request.WRITE)
 		{
 			try {
-				fileOp = new FileOperation(localName, false, 512);
+				fileOp = new FileOperation(localName, false, 512, overwrite);
 			} catch (FileNotFoundException e) {
 				System.out.println(consolePrefix + "Couldn't write to " + localName);
+				TFTPCommon.sendErrorPacket(receivePacket, sendReceiveSocket, "Couldn't write to local file", TFTPCommon.ErrorCode.FILENOTFOUND, consolePrefix, verbose);
+
+				sendReceiveSocket.close();
 				parent.threadDone(Thread.currentThread());
 				return;
-			} catch (IOException e) {
-				System.out.println(consolePrefix + "File is too big!");
+			} catch (FileOperation.FileOperationException e) {
+				TFTPCommon.sendErrorPacket(receivePacket, sendReceiveSocket, e.toString(), e.error, consolePrefix, verbose);
+
+				sendReceiveSocket.close();
 				parent.threadDone(Thread.currentThread());
 				return;
 			}

@@ -19,7 +19,7 @@ public class TFTPServer
 	private TFTPServerCommandLine cliThread;
 	private Integer runningClientCount;
 	private TFTPCommon.Verbosity verbosity;
-	private Boolean acceptConnections;
+	private Boolean acceptConnections, overwrite;
 	private byte [] data;
 	private int timeout;
 
@@ -43,6 +43,7 @@ public class TFTPServer
 		timeout = 1000;
 		acceptConnections = true;
 		verbosity = TFTPCommon.Verbosity.NONE;
+		overwrite = false;
 		cliThread = new TFTPServerCommandLine(this);
 	}
 
@@ -98,7 +99,7 @@ public class TFTPServer
 
 					TFTPCommon.printPacketDetails(receivePacket, verbosity, true);
 
-					Thread client = new Thread(new ClientConnectionThread(receivePacket, this, verbosity, clients.size() + 1, timeout));
+					Thread client = new Thread(new ClientConnectionThread(receivePacket, this, verbosity, clients.size() + 1, timeout, overwrite));
 					client.start();
 					clients.add(client);
 				}
@@ -130,6 +131,11 @@ public class TFTPServer
 		timeout = newTimeout;
 	}
 
+	public void setOverwrite(Boolean overwrite)
+	{
+		this.overwrite = overwrite;
+	}
+
 	public static void main(String[] args) 
 	{
 		TFTPServer s = new TFTPServer();
@@ -148,7 +154,7 @@ class TFTPServerCommandLine extends Thread {
 
 	private TFTPCommon.Verbosity verbosity;
 	private TFTPServer parentServer;
-	private Boolean cliRunning;
+	private Boolean cliRunning, overwrite;
 	private int timeout;
 
 	/**
@@ -163,6 +169,7 @@ class TFTPServerCommandLine extends Thread {
 		parentServer = parent;
 		verbosity = TFTPCommon.Verbosity.NONE;
 		cliRunning = true;
+		overwrite = false;
 		timeout = 1000;
 	}
 
@@ -181,9 +188,10 @@ class TFTPServerCommandLine extends Thread {
 		{
 			System.out.println("TFTP Server");
 			System.out.println("-----------");
+			System.out.println("o: Overwrite existing files (current: " + overwrite + ")");
 			System.out.println("t: Set retransmission timeout (current: " + timeout + ")");
 			System.out.println("v: Set verbosity (current: " + TFTPCommon.verbosityToString(verbosity) + ")");
-			System.out.println("q: Quit (finishes current transfer before quitting)");
+			System.out.println("q: Quit (quits once transfer in progress end)");
 
 			scIn = sc.nextLine();
 
@@ -225,6 +233,27 @@ class TFTPServerCommandLine extends Thread {
 				}
 
 				parentServer.setTimeout(timeout);
+			}
+
+			else if ( scIn.equalsIgnoreCase("o") )
+			{
+				System.out.print("Enter overwrite setting (true, false): ");
+				scIn = sc.nextLine();
+
+				if ( scIn.equalsIgnoreCase("true") )
+				{
+					overwrite = true;
+					parentServer.setOverwrite(overwrite);
+				}
+				else if ( scIn.equalsIgnoreCase("false") )
+				{
+					overwrite = false;
+					parentServer.setOverwrite(overwrite);
+				}
+				else
+				{
+					System.out.println("Invalid setting");
+				}
 			}
 
 			else if ( scIn.equalsIgnoreCase("q") ) 

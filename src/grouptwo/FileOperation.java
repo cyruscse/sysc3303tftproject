@@ -21,10 +21,23 @@ public class FileOperation
     public class FileOperationException extends Exception 
     {
         public TFTPCommon.ErrorCode error;
+        public String strError;
 
         public FileOperationException (TFTPCommon.ErrorCode e)
         {
             error = e;
+            strError = new String();
+        }
+
+        public FileOperationException (TFTPCommon.ErrorCode e, String strError)
+        {
+            this(e);
+            this.strError = strError;
+        }
+
+        public String toString()
+        {
+            return strError;
         }
     }
 
@@ -65,7 +78,9 @@ public class FileOperation
 
         if ( !file.canRead() )
         {
-            throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE);
+            closeFileRead();
+            file.delete();
+            throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE, "access violation");
         }
 
         if (inStream.available() < readAmount)
@@ -95,12 +110,16 @@ public class FileOperation
     {
         if ( file.getUsableSpace() < len )
         {
-            throw new FileOperationException(TFTPCommon.ErrorCode.DISKFULL);
+            file.delete();
+            finalizeFileWrite();
+            throw new FileOperationException(TFTPCommon.ErrorCode.DISKFULL, "disk full"); 
         }
 
         if ( !file.canWrite() )
         {
-            throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE);
+            file.delete();
+            finalizeFileWrite();
+            throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE, "access violation");
         }
 
         outStream.write(data, dataOffset, len);
@@ -142,7 +161,7 @@ public class FileOperation
     *   @param  int number of bytes to read write (for TFTP, 512)
     *   @return FileOperation
     */
-    public FileOperation(String absolutePath, Boolean localRead, int bytesRW) throws FileNotFoundException, IOException
+    public FileOperation(String absolutePath, Boolean localRead, int bytesRW, Boolean overwrite) throws FileNotFoundException, FileOperationException
     {
         numBytes = bytesRW;
         file = new File(absolutePath);
@@ -151,9 +170,14 @@ public class FileOperation
         //Server: Write Request writes to local machine
         if ( localRead == false ) 
         {
+            if (overwrite)
+            {
+                file.delete();
+            }
+
             if (file.exists())
             {
-                throw new IOException("File already exists!");
+                throw new FileOperationException(TFTPCommon.ErrorCode.FILEEXISTS, "file exists");
             }
             //Constructor: Path, Append (allows us to make a file out of packets)
             outStream = new FileOutputStream(absolutePath, true);

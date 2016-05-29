@@ -14,9 +14,9 @@ import grouptwo.FileOperation;
  */
 public class TFTPClient 
 {
-	private String localFile, remoteFile, strRequestType, strVerbosity, strMode, strTimeout;
+	private String localFile, remoteFile, strRequestType, strVerbosity, strMode, strTimeout, strOverwrite;
 	private String[] scInArr;
-	private Boolean cliRunning, clientReady, clientTransferring;
+	private Boolean cliRunning, clientReady, clientTransferring, overwrite;
 	private Thread tftpTransfer;
 	private TFTPCommon.Request requestType;
 	private TFTPCommon.Verbosity verbosity;
@@ -34,6 +34,7 @@ public class TFTPClient
 		cliRunning = true;
 		clientReady = false;
 		clientTransferring = false;
+		overwrite = false;
 		timeout = 1000;
 		verbosity = TFTPCommon.Verbosity.NONE;
 		mode = TFTPCommon.Mode.TEST;
@@ -81,9 +82,10 @@ public class TFTPClient
 				System.out.println("");
 				System.out.println("--Options--");							
 				System.out.println("m: Set mode (current: " + TFTPCommon.modeToString(mode) + ")");
+				System.out.println("o: Overwrite existing files (current: " + overwrite + ")");
 				System.out.println("t: Set retransmission timeout (current: " + timeout + ")");
 				System.out.println("v: Set verbosity (current: " + TFTPCommon.verbosityToString(verbosity) + ")");
-				System.out.println("q: Quit (once transfers are complete)");
+				System.out.println("q: Quit (blocked if transfer in progress)");
 			}
 
 			printMenu = true;
@@ -124,7 +126,7 @@ public class TFTPClient
 
 				if (remoteFile.length() > 0 && localFile.length() > 0 && requestType != TFTPCommon.Request.ERROR)
 				{
-					tftpTransfer = new TFTPClientTransfer("clientTransfer", remoteFile, localFile, this, requestType, mode, verbosity, timeout);
+					tftpTransfer = new TFTPClientTransfer("clientTransfer", remoteFile, localFile, this, requestType, mode, verbosity, timeout, overwrite);
 					tftpTransfer.start();
 					printMenu = false;
 				}
@@ -146,6 +148,25 @@ public class TFTPClient
 				else 
 				{
 					System.out.println("Invalid mode");
+				}
+			}
+
+			else if ( scIn.equalsIgnoreCase("o") )
+			{
+				System.out.print("Enter overwrite setting (true, false): ");
+				strOverwrite = sc.nextLine();
+
+				if ( strOverwrite.equalsIgnoreCase("true") )
+				{
+					overwrite = true;
+				}
+				else if ( strOverwrite.equalsIgnoreCase("false") )
+				{
+					overwrite = false;
+				}
+				else
+				{
+					System.out.println("Invalid setting");
 				}
 			}
 
@@ -235,6 +256,7 @@ class TFTPClientTransfer extends Thread
 	private int timeout;
 	//maxTimeout - number of timeouts to wait before giving up
 	private int maxTimeout;
+	private Boolean overwrite;
 	private InetAddress serverAddress;
 	private final String consolePrefix = ("Client: ");
 
@@ -250,7 +272,7 @@ class TFTPClientTransfer extends Thread
 	 *   @param  Verbosity verbosity of info (ranging from none to full packet details)
 	 *   @return TFTPClientTransfer
 	 */
-	public TFTPClientTransfer(String threadName, String remoteFile, String localFile, TFTPClient cliThread, TFTPCommon.Request transferType, TFTPCommon.Mode runMode, TFTPCommon.Verbosity verMode, int reTimeout)
+	public TFTPClientTransfer(String threadName, String remoteFile, String localFile, TFTPClient cliThread, TFTPCommon.Request transferType, TFTPCommon.Mode runMode, TFTPCommon.Verbosity verMode, int reTimeout, Boolean overwrite)
 	{
 		super(threadName);
 
@@ -262,6 +284,7 @@ class TFTPClientTransfer extends Thread
 		verbose = verMode;
 		parent = cliThread;
 		timeout = reTimeout;
+		this.overwrite = overwrite;
 		maxTimeout = 10;
 		hardTimeout = 60000;
 		
@@ -294,7 +317,7 @@ class TFTPClientTransfer extends Thread
 	 *   @param  byte[] filename as byte array
 	 *   @return int length of request packet
 	 */
-	private void sendRequestPacket (byte[] msg) throws SocketTimeoutException
+	private Boolean sendRequestPacket (byte[] msg) throws SocketTimeoutException
 	{
 		byte[] data;
 		int    len;
@@ -327,13 +350,22 @@ class TFTPClientTransfer extends Thread
 				sendReceiveSocket.send(sendPacket);
 			} catch (IOException e) {
 				e.printStackTrace();
-				return;
+				return false;
 			}
 
 			try {
 				TFTPCommon.receivePacketWTimeout(receivePacket, sendReceiveSocket, timeout);
 				sendPort = receivePacket.getPort();
-				return;
+
+				if (TFTPCommon.validACKPacket(receivePacket.getData(), 0))
+				{
+					return true;
+				}
+				else if (TFTPCommon.getPacketType(receivePacket.getData()) == TFTPCommon.PacketType.ERROR)
+				{
+					TFTPCommon.parseErrorPacket(receivePacket.getData(), consolePrefix, false);
+					return false;
+				}
 			} catch (SocketTimeoutException e) {
 				System.out.println("Client: Server did not respond to request within " + timeout + " ms, trying again: attempt " + (i + 1) + " of " + maxTimeout);
 			}
@@ -368,32 +400,42 @@ class TFTPClientTransfer extends Thread
 		if (requestType == TFTPCommon.Request.WRITE)
 		{
 			try {
-				fileOp = new FileOperation(localName, true, 512);
+				fileOp = new FileOperation(localName, true, 512, overwrite);
 			} catch (FileNotFoundException e) {
-				System.out.println("Local file \"" + localName + "\" does not exist!");
+				System.out.println(consolePrefix + "Local file \"" + localName + "\" does not exist!");
+				sendReceiveSocket.close();
 				return;
-			} catch (IOException e) {
-				System.out.println("File is too big!");
+			} catch (FileOperation.FileOperationException e) {
+				System.out.println(consolePrefix + e);
+				sendReceiveSocket.close();
 				return;
 			}
 		}
 		else
 		{
 			try {
-				fileOp = new FileOperation(localName, false, 512);
+				fileOp = new FileOperation(localName, false, 512, overwrite);
 			} catch (FileNotFoundException e) {
 				System.out.println("Couldn't write to " + localName);
+				sendReceiveSocket.close();
 				return;
-			} catch (IOException e) {
-				System.out.println("\"" + localName + "\"" + " already exists");
+			} catch (FileOperation.FileOperationException e) {
+				System.out.println(consolePrefix + e);
+				sendReceiveSocket.close();
 				return;
 			}
 		}
 
 		try {
-			sendRequestPacket(msg);
+			if (!sendRequestPacket(msg))
+			{
+				System.out.println(consolePrefix + "Cancelling transfer");
+				sendReceiveSocket.close();
+				return;
+			}
 			len = receivePacket.getLength();
 		} catch (SocketTimeoutException e) {
+			sendReceiveSocket.close();
 			return;
 		}
 
@@ -441,7 +483,7 @@ class TFTPClientTransfer extends Thread
 		{
 			System.out.println(consolePrefix + "Error occurred, transfer incomplete");
 			
-			if ( !fileOp.delete() && requestType == TFTPCommon.Request.READ )
+			if ( requestType == TFTPCommon.Request.READ && !fileOp.delete() )
 			{
 				System.out.println("Failed to delete incomplete file");
 			}
