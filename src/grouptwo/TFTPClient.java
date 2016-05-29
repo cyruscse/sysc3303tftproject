@@ -393,7 +393,7 @@ class TFTPClientTransfer extends Thread
 	 */
 	private void sendAndReceive() 
 	{
-		byte[] msg = new byte[100];
+		byte[] msg = new byte[TFTPCommon.maxPacketSize];
 		int blockNum, len, timeoutCount;
 		Boolean sendReceiveStatus = false;
 

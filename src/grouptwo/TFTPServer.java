@@ -88,7 +88,7 @@ public class TFTPServer
 		{				
 			if (acceptConnections)
 			{
-				data = new byte[100];
+				data = new byte[TFTPCommon.maxPacketSize];
 				receivePacket = new DatagramPacket(data, data.length);
 
 				TFTPCommon.receivePacket(receivePacket, receiveSocket);

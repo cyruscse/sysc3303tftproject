@@ -334,8 +334,6 @@ class ErrorSimulator extends Thread
             if (sendPacket.getLength() > check.getLength())
             {
                 System.arraycopy(data, 0, data, 0, check.getLength());
-                sendPacket.setLength(check.getLength());
-                sendPacket.setData(data);
             }
 
             //Packet's length is less than new length, pad with 0s
@@ -343,11 +341,12 @@ class ErrorSimulator extends Thread
             {
                 byte[] paddedData = new byte[check.getLength()];
                 System.arraycopy(data, 0, paddedData, 0, sendPacket.getLength());
-                sendPacket.setLength(check.getLength());
-                sendPacket.setData(paddedData);
+                data = paddedData;
             }
 
             len = check.getLength();
+            sendPacket.setData(data);
+            sendPacket.setLength(len);
         }
 
         for (ModifyByte mod : check.getModByteList())
@@ -804,9 +803,13 @@ class TFTPIntHostCommandLine extends Thread
                 System.out.println("fname: Modify file name");
                 System.out.println("mode: Modify file mode");
             }
-            else
+            else if (dataModPacket.getPacketType() != TFTPCommon.PacketType.ERROR)
             {
                 System.out.println("block: Modify block number");
+            }
+            else
+            {
+                System.out.println("num: Modify error number");
             }
             System.out.println("length: Modify packet length");
             System.out.println("manual: Manually modify packet contents");
@@ -838,9 +841,17 @@ class TFTPIntHostCommandLine extends Thread
                 }
             }
 
-            else if ( scIn.equalsIgnoreCase("block") )
+            else if ( dataModPacket.getPacketType() != TFTPCommon.PacketType.ERROR && scIn.equalsIgnoreCase("block") )
             {
                 blockNum = getIntMenu(sc, 0, 512, -1, "Enter new block number (as integer, 0-512): ");
+                dataModPacket.setBlockNum(blockNum);
+                dataModPacket.addContentModType(TFTPCommon.ContentSubmod.BLOCKNUM);
+            }
+
+            else if ( scIn.equalsIgnoreCase("num") )
+            {
+                //Reuse blockNum for ERROR packets as error number
+                blockNum = getIntMenu(sc, 0, 512, -1, "Enter new error number (as integer, 0-512): ");
                 dataModPacket.setBlockNum(blockNum);
                 dataModPacket.addContentModType(TFTPCommon.ContentSubmod.BLOCKNUM);
             }
