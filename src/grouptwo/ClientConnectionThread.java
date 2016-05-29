@@ -165,7 +165,7 @@ public class ClientConnectionThread implements Runnable {
 				return;
 			}
 
-			TFTPCommon.sendACKPacket(0, sendPacket, receivePacket, sendReceiveSocket, verbose, consolePrefix); //Respond to WRQ
+			TFTPCommon.sendACKPacket(0, 0, sendPacket, receivePacket, sendReceiveSocket, verbose, consolePrefix); //Respond to WRQ
 
 			System.out.println(consolePrefix + "Beginning file transfer");
 

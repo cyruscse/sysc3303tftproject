@@ -146,7 +146,7 @@ public class FileOperation
     {
         numBytes = bytesRW;
         file = new File(absolutePath);
-                
+        
         //Client: Read Request writes to local machine
         //Server: Write Request writes to local machine
         if ( localRead == false ) 
@@ -163,11 +163,6 @@ public class FileOperation
         else
         {
             inStream = new FileInputStream(absolutePath);
-
-            if (getNumTFTPBlocks() > 65536)
-            {
-                throw new IOException("File is too big!");
-            }
         }
     }
 }

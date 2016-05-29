@@ -44,7 +44,7 @@ public class TFTPCommon {
 	public static int TFTPListenPort = 69;
 
 	//Error Sim Listen Port
-	public static int TFTPErrorSimPort = 23;
+	public static int TFTPErrorSimPort = 70;
 
 	/**
 	 *   Send a DatagramPacket through a DatagramSocket.
@@ -120,15 +120,16 @@ public class TFTPCommon {
 	 *   @return none
 	 * 
 	 */
-	public static void sendACKPacket(int blockNum, DatagramPacket send, DatagramPacket receive, DatagramSocket socket, Verbosity verbose, String consolePrefix)
+	public static void sendACKPacket(int blockNum, int rollOver, DatagramPacket send, DatagramPacket receive, DatagramSocket socket, Verbosity verbose, String consolePrefix)
 	{
 		byte[] msg = new byte[4];
 		constructAckPacket(msg, blockNum);
 		send = new DatagramPacket(msg, msg.length, receive.getAddress(), receive.getPort());
-		System.out.println(consolePrefix + "Sending ACK " + blockNum);
+		System.out.println(consolePrefix + "Sending ACK " + (blockNum + (rollOver * 65536)));
 		printPacketDetails(send, verbose, false);
 		sendPacket(send, socket);
 	}
+
 	/**
 	 *   Send an Error Packet packet with the specified Error Code
 	 *
@@ -184,11 +185,12 @@ public class TFTPCommon {
 		int timeoutCount = 0;
 		int blockNum = 1;
 		int len = 0;
+		int rollOver = 0;
 		Boolean sendData = true;
 		byte[] dataMsg = new byte[516];
 		byte[] ackMsg = new byte[516];
 
-		while (blockNum-1 < fileOp.getNumTFTPBlocks())
+		while ((blockNum + (rollOver * 65536)) - 1 < fileOp.getNumTFTPBlocks())
 		{
 			if (sendData)
 			{
@@ -202,7 +204,7 @@ public class TFTPCommon {
 					}
 				}
 
-				System.out.println(consolePrefix + "Sending DATA " + blockNum + "/" + (fileOp.getNumTFTPBlocks()));
+				System.out.println(consolePrefix + "Sending DATA " + (blockNum + (rollOver * 65536)) + "/" + (fileOp.getNumTFTPBlocks()));
 
 				send = new DatagramPacket(dataMsg, len, address, port);
 
@@ -213,6 +215,7 @@ public class TFTPCommon {
 			// Receive the client response for the data packet we just sent
 			ackMsg = new byte[516];
 			receive = new DatagramPacket(ackMsg, ackMsg.length);
+			
 			if (timeoutCount < maxTimeout)
 			{	
 				if (verbose != Verbosity.NONE)
@@ -225,35 +228,42 @@ public class TFTPCommon {
 				} catch (SocketTimeoutException e) {
 					timeoutCount++;
 					System.out.println(consolePrefix + "Receive timed out after " + timeout + " ms");
-					System.out.println(consolePrefix + "Resending DATA " + blockNum  + ": Attempt " + timeoutCount);
+					System.out.println(consolePrefix + "Resending DATA " + (blockNum + (rollOver * 65536))  + ": Attempt " + timeoutCount);
 					sendData = true;
 				}
 			}
 			else
 			{
-				System.out.println(consolePrefix + "Maximum timeouts reached for DATA " + blockNum + ". Thread returning.");
+				System.out.println(consolePrefix + "Maximum timeouts reached for DATA " + (blockNum + (rollOver * 65536)) + ". Thread returning.");
 				return false;
 			}
 
 			if (receive.getPort() != -1)
 			{ 
-				if (validACKPacket(ackMsg, blockNum) && receive.getLength() == 4) 
+				if (receive.getPort() != port) 
 				{
-					System.out.println(consolePrefix + "Received valid ACK " + blockNum);
+					String errString = "Received packet from unknown port: " + receive.getPort();
+					sendErrorPacket(receive, sendReceiveSocket, errString, ErrorCode.UNKNOWNTID, consolePrefix, Verbosity.NONE);
+					sendData = false;
+				}
+				else if (validACKPacket(ackMsg, blockNum) && receive.getLength() == 4) 
+				{
+					System.out.println(consolePrefix + "Received valid ACK " + (blockNum + (rollOver * 65536)));
 					printPacketDetails(receive, verbose, false);
 
 					timeoutCount = 0; //Reset timeout count once a successful ACK is received
 					blockNum++;
 					sendData = true;
-					
-					if (receive.getPort() != port) {
-						String errString = "Received packet from unknown port: " + receive.getPort();
-						sendErrorPacket(receive, sendReceiveSocket, errString, ErrorCode.UNKNOWNTID, consolePrefix, Verbosity.NONE);
+
+					if (blockNum == 65536)
+					{
+						blockNum = 0;
+						rollOver++;
 					}
 				}
 				else if (getPacketType(ackMsg) == PacketType.ACK && blockNumToPacket(ackMsg) < blockNum) 
 				{
-					System.out.println(consolePrefix + "Duplicate ACK " + blockNumToPacket(ackMsg) + " received, ignoring");
+					System.out.println(consolePrefix + "Duplicate ACK " + (blockNumToPacket(ackMsg) + (rollOver * 65536)) + " received, ignoring");
 					sendData = false;
 				} 
 				else 
@@ -271,12 +281,13 @@ public class TFTPCommon {
 					}
 					else if(blockNumToPacket(ackMsg) != blockNum)
 					{
-						errString = "Expecting block number " + blockNum + " instead received " + blockNumToPacket(ackMsg);
+						errString = "Expecting block number " + (blockNum + (rollOver * 65536)) + " instead received " + (blockNumToPacket(ackMsg) + (rollOver * 65536));
 					}
 					else if(receive.getLength() != 4 && getPacketType(ackMsg) == PacketType.ACK){
 						errString = "Expecting ACK packet of length 4 instead received packet with length " + receive.getLength();
 					}
-					else{
+					else
+					{
 						errString = "An error occurred";
 					}
 
@@ -310,6 +321,7 @@ public class TFTPCommon {
 		Boolean receiveSet = client;
 		byte[] dataMsg;
 		int blockNum = 1;
+		int rollOver = 0;
 		int len = 0;
 		int port = -1;
 	
@@ -361,13 +373,13 @@ public class TFTPCommon {
 				//Duplicate DATA received (i.e. block number has already been acknowledged)
 				if (blockNumToPacket(dataMsg) < blockNum)
 				{	
-					System.out.println(consolePrefix + "Duplicate or delayed DATA " + blockNumToPacket(dataMsg) + " received, not writing to file");
-					sendACKPacket(blockNumToPacket(dataMsg), send, receive, sendReceiveSocket, verbose, consolePrefix);
+					System.out.println(consolePrefix + "Duplicate or delayed DATA " + (blockNumToPacket(dataMsg) + (rollOver * 65536)) + " received, not writing to file");
+					sendACKPacket(blockNumToPacket(dataMsg), rollOver, send, receive, sendReceiveSocket, verbose, consolePrefix);
 				}	
 				//We received the DATA packet we were expecting, look for next DATA
 				else if (blockNumToPacket(dataMsg) == blockNum)
 				{
-					System.out.println(consolePrefix + "Received DATA " + blockNum);
+					System.out.println(consolePrefix + "Received DATA " + (blockNum + (rollOver * 65536)));
 					
 					try {
 						willExit = writeDataPacket(dataMsg, len, fileOp, verbose);
@@ -384,8 +396,14 @@ public class TFTPCommon {
 						return false;
 					}
 
-					sendACKPacket(blockNum, send, receive, sendReceiveSocket, verbose, consolePrefix);					
+					sendACKPacket(blockNum, rollOver, send, receive, sendReceiveSocket, verbose, consolePrefix);					
 					blockNum++;
+
+					if (blockNum == 65536)
+					{
+						blockNum = 0;
+						rollOver++;
+					}
 				}
 			}
 
@@ -408,7 +426,7 @@ public class TFTPCommon {
 				}
 				else if (blockNumToPacket(dataMsg) != blockNum)
 				{
-					errString = "Expecting block number " + blockNum + " instead received " + blockNumToPacket(dataMsg);
+					errString = "Expecting block number " + (blockNum + (rollOver * 65536)) + " instead received " + (blockNumToPacket(dataMsg) + (rollOver * 65536));
 				}
 				else
 				{
