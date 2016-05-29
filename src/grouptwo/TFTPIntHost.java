@@ -47,21 +47,45 @@ public class TFTPIntHost
         this.verbosity = v;
     }
 
+    /**
+     *   Add a new modification to the list of pending modifications
+     *
+     *   @param  SimulatePacketInfo mod to add
+     *   @return Boolean true if successfully added
+     */
     public Boolean appendMod(SimulatePacketInfo modification)
     {
         return toModify.add(modification);
     }
 
+    /**
+     *   Remove a pending modification form the list of pending modifications
+     *
+     *   @param  int index of modification to remove
+     *   @return void
+     */
     public void removeMod(int toRemove) throws IndexOutOfBoundsException
     {
         toModify.remove(toRemove);
     }
 
+    /**
+     *   Returns number of modifications pending
+     *
+     *   @param  none
+     *   @return int size of list
+     */
     public int simulateListLength()
     {
         return toModify.size();
     }
 
+    /**
+     *   Converts pending modification list to String
+     *
+     *   @param  none
+     *   @return String
+     */
     public String simulateListToString()
     {
         String returnString = new String();
@@ -74,6 +98,14 @@ public class TFTPIntHost
         return returnString;
     }
 
+    /**
+     *   Creates a new ErrorSimulator thread for each new client, gives the new client
+     *   the current pending list of modifications then resets the list. Similar implementation
+     *   to TFTPServer's receiveClients.
+     *
+     *   @param  none
+     *   @return none
+     */
     private void processClients()
     {
         cliThread.start();
@@ -145,10 +177,19 @@ class ErrorSimulator extends Thread
         }
     }
     
+    /**
+     *   Checks each packet that is received by the error sim against the list of modifications to perform.
+     *   If the received packet is in the list, it is modified according to the list. Otherwise, the packet is
+     *   passed on with no changes
+     *
+     *   @param  none
+     *   @return none
+     */
 	private void errorSimulateSend() 
     {   
         for (SimulatePacketInfo check : simulateList)
         {   
+            //Check the packet type and packet number (if applicable, not for request) against every modification in the list
             if ( TFTPCommon.getPacketType(receivePacket.getData()) == check.getPacketType() && ( (check.getPacketType() == TFTPCommon.PacketType.REQUEST) || (check.getPacketNum() == TFTPCommon.blockNumToPacket(receivePacket.getData()) ) ) )
             {
     			if (check.getModType() == TFTPCommon.ModificationType.LOSE) 
@@ -208,13 +249,26 @@ class ErrorSimulator extends Thread
 	    }
 	}
 
-	//Do nothing with packet
+	/**
+     *   Loses a packet, this is done by ignoring the packet (not sending it)
+     *
+     *   @param  SimulatePacketInfo modification information
+     *   @return none
+     */
     private void losePacket (SimulatePacketInfo check)
     {
         System.out.println("Lose " + TFTPCommon.packetTypeAndNumber(sendPacket.getData()));
         TFTPCommon.printPacketDetails(sendPacket, verbosity, false);
     }
 
+    /**
+     *   Modify contents of a packet, this method can modify file names/modes for request packets,
+     *   length of a packet (decreasing length truncates it at new length, increasing length pads it with 0s),
+     *   opcode, block number, as well as custom byte modifications
+     *
+     *   @param  SimulatePacketInfo modification information
+     *   @return none
+     */
     private void modifyContents (SimulatePacketInfo check)
     {
         data = sendPacket.getData();
@@ -320,6 +374,13 @@ class ErrorSimulator extends Thread
         }
     }
 
+    /**
+     *   Receives packets from server and client, each packet is then checked by errorSimulateSend
+     *   to determine if it requires modifications before passing the packet to its intended target
+     *
+     *   @param  none
+     *   @return none
+     */
     private void passOnTFTP()
     {
         int port = TFTPCommon.TFTPListenPort;
@@ -408,7 +469,12 @@ class DelayDuplicatePacket extends Thread
         modType = mod;
     }
 
-    //Send the packet normally, wait a certain amount of time, then send again
+    /**
+     *   Send packet normally, wait for specified time, then send the packet again
+     *
+     *   @param  none
+     *   @return none
+     */
     public void duplicatePacket ()
     {
         System.out.println("Duplicate " + TFTPCommon.packetTypeAndNumber(send.getData()) + ", sending first instance");
@@ -440,7 +506,12 @@ class DelayDuplicatePacket extends Thread
         }   
     }
     
-    //Wait a certain amount of time then send packet
+    /**
+     *   Sleep for specified time, then send the packet again
+     *
+     *   @param  none
+     *   @return none
+     */
     public void delayPacket ()
     {
         System.out.println("Delay " + TFTPCommon.packetTypeAndNumber(send.getData()) + " by " + delayAmount + "ms");
@@ -466,7 +537,12 @@ class DelayDuplicatePacket extends Thread
         } 
     }
 
-    //Send an error 5 packet, wait for response
+    /**
+     *   Send unmodified packet on new socket (invalid TID), receive and print error
+     *
+     *   @param  none
+     *   @return none
+     */
     public void sendReceiveInvalidTID ()
     {
         System.out.println("Sending " + TFTPCommon.packetTypeAndNumber(send.getData()) + " with invalid TID");
@@ -533,6 +609,15 @@ class TFTPIntHostCommandLine extends Thread
         scIn = new String();
     }
 
+    /**
+     *   Parse scanner String to int given limits on integer size, loop until input is a number
+     *
+     *   @param  Scanner scanner being used by CLI thread
+     *   @param  int low limit for integer
+     *   @param  int high limit for integer
+     *   @param  String message to print when prompting for number
+     *   @return int parsed
+     */
     private int getIntMenu (Scanner sc, int lowLimit, int highLimit, String promptMessage)
     {
         int parsedString = -1;
@@ -624,6 +709,12 @@ class TFTPIntHostCommandLine extends Thread
         }
     }
 
+    /**
+     *   Select packet type and packet number (if applicable) of packet to be modified
+     *
+     *   @param  Scanner being used by CLI thread
+     *   @return SimulatePacketInfo containing only packet type and number, no modifications yet
+     */
     private SimulatePacketInfo selectPacket(Scanner sc)
     {
         TFTPCommon.PacketType pType = TFTPCommon.PacketType.INVALID;
@@ -668,6 +759,14 @@ class TFTPIntHostCommandLine extends Thread
         return new SimulatePacketInfo(pNum, pType);
     }
 
+    /**
+     *   Content modification sub menu, allows for modifiying opcode, filename/mode,
+     *   block number, length and manual byte modifications. Adds the newly created modification
+     *   to the list of packet modifications for the next client
+     *
+     *   @param  Scanner being used by CLI thread
+     *   @return void
+     */
     private void modifyContents(Scanner sc)
     {
         SimulatePacketInfo dataModPacket = selectPacket(sc);
@@ -770,6 +869,12 @@ class TFTPIntHostCommandLine extends Thread
         }
     }
 
+    /**
+     *   Delay a packet. Selects a packet, then asks for a delay amount
+     *
+     *   @param  Scanner being used by CLI thread
+     *   @return void
+     */
     private void delayPacket(Scanner sc)
     {
         SimulatePacketInfo delayPacket = selectPacket(sc);
@@ -784,6 +889,12 @@ class TFTPIntHostCommandLine extends Thread
         }
     }
 
+    /**
+     *   Duplicate a packet. Selects a packet, then asks for a duplicate gap
+     *
+     *   @param  Scanner being used by CLI thread
+     *   @return void
+     */
     private void duplicatePacket(Scanner sc)
     {
         SimulatePacketInfo duplicatePacket = selectPacket(sc);
@@ -798,6 +909,12 @@ class TFTPIntHostCommandLine extends Thread
         }
     }
 
+    /**
+     *   Lose a packet. Selects the packet to be lost
+     *
+     *   @param  Scanner being used by CLI thread
+     *   @return void
+     */
     private void losePacket(Scanner sc)
     {
         SimulatePacketInfo losePacket = selectPacket(sc);
@@ -810,6 +927,12 @@ class TFTPIntHostCommandLine extends Thread
         }
     }
 
+    /**
+     *   Simulate invalid TID condition. Selects the packet to send on new socket
+     *
+     *   @param  Scanner being used by CLI thread
+     *   @return void
+     */
     private void invalidTID(Scanner sc)
     {
         SimulatePacketInfo invalidTID = selectPacket(sc);
@@ -1087,6 +1210,13 @@ class SimulatePacketInfo
     }
 }
 
+
+/**
+ * ModifyByte contains information for a byte modification in a packet. It contains
+ * the byte to modify and the new value for the byte
+ *
+ * @author        Cyrus Sadeghi
+ */
 class ModifyByte
 {
     private Integer position;

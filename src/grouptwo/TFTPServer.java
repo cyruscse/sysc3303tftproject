@@ -131,6 +131,13 @@ public class TFTPServer
 		timeout = newTimeout;
 	}
 
+	/**
+	 *   Called by CLI thread, sets the overwriting setting for new transfers
+	 *
+	 *   @param  Boolean overwriting setting to set
+	 *   @return void
+	 * 
+	 */
 	public void setOverwrite(Boolean overwrite)
 	{
 		this.overwrite = overwrite;

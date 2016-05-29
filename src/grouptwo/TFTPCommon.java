@@ -744,6 +744,13 @@ public class TFTPCommon {
         return "invalid";
     }
 
+    /**
+	 *   Convert PacketType to corresponding (maximum) size of packet
+	 *
+	 *   @param  PacketType to get size for
+	 *   @return int
+	 * 
+	 */
     public static int packetTypeToPacketSize (PacketType type)
     {
     	if (type == PacketType.ACK)
@@ -887,6 +894,15 @@ public class TFTPCommon {
 		return em.length + 5;
 	}
 
+	/**
+	 *   Parses a received ERROR packet by printing its type and error message
+	 *
+	 *   @param  byte[] data contents of received error packet
+	 *   @param  String name of thread that received packet
+	 *   @param  Boolean determines whether or not to print error message in packet
+	 *   @return void
+	 * 
+	 */
 	public static void parseErrorPacket(byte[] data, String consolePrefix, Boolean detailed)
 	{
 		int i;
@@ -911,14 +927,20 @@ public class TFTPCommon {
 		}
 	}
 	
+	/**
+	 *   Convert ERROR packet data contents to ErrorCode
+	 *
+	 *   @param  byte[] data contents of received error packet
+	 *   @return ErrorCode
+	 * 
+	 */
 	public static ErrorCode getErrorType(byte[] data)
     {
         if (data[3] == 1)
         {
             return ErrorCode.FILENOTFOUND;
         }
-
-        if (data[3] == 2)
+        else if (data[3] == 2)
         {
             return ErrorCode.ACCESSVIOLATE;
         }

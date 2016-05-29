@@ -18,6 +18,11 @@ public class FileOperation
     private FileOutputStream outStream;
     private int numBytes;
 
+    /**
+     *   Exception used for indicating file errors, always constructed with a TFTPCommon ErrorCode
+     *
+     *   @author Cyrus Sadeghi
+     */
     public class FileOperationException extends Exception 
     {
         public TFTPCommon.ErrorCode error;
@@ -140,6 +145,12 @@ public class FileOperation
         inStream.close();
     }
 
+    /**
+     *   Deletes file referred to by this FileOperation
+     *
+     *   @param  none
+     *   @return boolean true if delete was successful
+     */
     public boolean delete()
     {
         return file.delete();

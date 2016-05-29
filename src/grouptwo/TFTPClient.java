@@ -14,7 +14,7 @@ import grouptwo.FileOperation;
  */
 public class TFTPClient 
 {
-	private String localFile, remoteFile, strRequestType, strVerbosity, strMode, strTimeout, strOverwrite;
+	private String localFile, remoteFile;
 	private String[] scInArr;
 	private Boolean cliRunning, clientReady, clientTransferring, overwrite;
 	private Thread tftpTransfer;
@@ -45,7 +45,13 @@ public class TFTPClient
 		remoteFile = new String();
 	}
 
-	public void clientTransferring(Boolean transferring)
+	/**
+	 *   Set client transferring status from client transfer thread, used for blocking certain CLI commands
+	 *
+	 *   @param  transferring Is the client thread transferring?
+	 *   @return void
+	 */
+	public void clientTransferring (Boolean transferring)
 	{
 		clientTransferring = transferring;
 		clientReady = transferring;
@@ -135,13 +141,13 @@ public class TFTPClient
 			else if ( scIn.equalsIgnoreCase("m") ) 
 			{
 				System.out.print("Enter mode (test, normal): ");
-				strMode = sc.nextLine();
+				scIn = sc.nextLine();
 
-				if ( strMode.equalsIgnoreCase("test") ) 
+				if ( scIn.equalsIgnoreCase("test") ) 
 				{
 					mode = TFTPCommon.Mode.TEST;
 				}
-				else if ( strMode.equalsIgnoreCase("normal") ) 
+				else if ( scIn.equalsIgnoreCase("normal") ) 
 				{
 					mode = TFTPCommon.Mode.NORMAL;
 				}
@@ -154,13 +160,13 @@ public class TFTPClient
 			else if ( scIn.equalsIgnoreCase("o") )
 			{
 				System.out.print("Enter overwrite setting (true, false): ");
-				strOverwrite = sc.nextLine();
+				scIn = sc.nextLine();
 
-				if ( strOverwrite.equalsIgnoreCase("true") )
+				if ( scIn.equalsIgnoreCase("true") )
 				{
 					overwrite = true;
 				}
-				else if ( strOverwrite.equalsIgnoreCase("false") )
+				else if ( scIn.equalsIgnoreCase("false") )
 				{
 					overwrite = false;
 				}
@@ -173,10 +179,10 @@ public class TFTPClient
 			else if ( scIn.equalsIgnoreCase("t") )
 			{
 				System.out.print("Enter timeout (integer): ");
-				strTimeout = sc.nextLine();
+				scIn = sc.nextLine();
 
 				try {
-					timeout = Integer.parseInt(strTimeout);
+					timeout = Integer.parseInt(scIn);
 				} catch (NumberFormatException e) {
 					System.out.println("Input was not a number, not changing timeout");
 				}
@@ -185,17 +191,17 @@ public class TFTPClient
 			else if ( scIn.equalsIgnoreCase("v") ) 
 			{
 				System.out.print("Enter verbosity (none, some, all): ");
-				strVerbosity = sc.nextLine();
+				scIn = sc.nextLine();
 
-				if ( strVerbosity.equalsIgnoreCase("none") ) 
+				if ( scIn.equalsIgnoreCase("none") ) 
 				{
 					verbosity = TFTPCommon.Verbosity.NONE;
 				}
-				else if ( strVerbosity.equalsIgnoreCase("some") ) 
+				else if ( scIn.equalsIgnoreCase("some") ) 
 				{
 					verbosity = TFTPCommon.Verbosity.SOME;
 				}
-				else if ( strVerbosity.equalsIgnoreCase("all") )
+				else if ( scIn.equalsIgnoreCase("all") )
 				{
 					verbosity = TFTPCommon.Verbosity.ALL;
 				}

@@ -83,31 +83,65 @@ public class ClientConnectionThread implements Runnable {
 
 		// If it's a read, send back DATA (03) block 1
 		// If it's a write, send back ACK (04) block 0
-		// Otherwise, ignore it
-		if (data[0]!=0) requestType = TFTPCommon.Request.ERROR; // bad
-		else if (data[1]==1) requestType = TFTPCommon.Request.READ; // could be read
-		else if (data[1]==2) requestType = TFTPCommon.Request.WRITE; // could be write
-		else requestType = TFTPCommon.Request.ERROR; // bad
-
-		if (requestType != TFTPCommon.Request.ERROR) { // check for filename
-			// search for next all 0 byte
-			for(j=2;j<len;j++) {
-				if (data[j] == 0) break;
-			}
-			if (j==len) requestType = TFTPCommon.Request.ERROR; // didn't find a 0 byte
-			if (j==2) requestType = TFTPCommon.Request.ERROR; // filename is 0 bytes long
-			// otherwise, extract filename
-			localName = new String(data,2,j-2);
-			
+		// Otherwise, send back an ERROR packet
+		if (data[0] != 0)
+		{
+			requestType = TFTPCommon.Request.ERROR;
+		}
+		else if (data[1] == 1) 
+		{
+			requestType = TFTPCommon.Request.READ; // could be read
+		}
+		else if (data[1] == 2) 
+		{
+			requestType = TFTPCommon.Request.WRITE; // could be write
+		}
+		
+		else
+		{ 
+			requestType = TFTPCommon.Request.ERROR;
 		}
 
-		if(requestType!= TFTPCommon.Request.ERROR) { // check for mode
-			// search for next all 0 byte
-			for(k=j+1;k<len;k++) { 
-				if (data[k] == 0) break;
+		if (requestType != TFTPCommon.Request.ERROR)  // check for filename
+		{
+			for (j = 2; j < len; j++)
+			{
+				if (data[j] == 0)
+				{
+					break;
+				}
 			}
-			if (k==len) requestType = TFTPCommon.Request.ERROR; // didn't find a 0 byte
-			if (k==j+1) requestType = TFTPCommon.Request.ERROR; // mode is 0 bytes long
+			
+			if (j == len) 
+			{
+				requestType = TFTPCommon.Request.ERROR; // didn't find 0 byte
+			}
+			if (j == 2) 
+			{
+				requestType = TFTPCommon.Request.ERROR; // filename is 0 bytes long
+			}
+
+			localName = new String(data,2,j-2);
+		}
+
+		if(requestType!= TFTPCommon.Request.ERROR) // check for mode
+		{
+			for (k = j + 1; k < len; k++)
+			{ 
+				if (data[k] == 0) 
+				{
+					break;
+				}
+			}
+			
+			if (k == len) 
+			{
+				requestType = TFTPCommon.Request.ERROR; // didn't find a 0 byte
+			}
+			if (k == j + 1) 
+			{
+				requestType = TFTPCommon.Request.ERROR; // mode is 0 bytes long
+			}
 
 			mode = new String(data,j+1,k-j-1);
 
@@ -117,7 +151,10 @@ public class ClientConnectionThread implements Runnable {
 			}
 		}
 
-		if(k!=len-1) requestType = TFTPCommon.Request.ERROR; // other stuff at end of packet
+		if (k != len-1)
+		{
+			requestType = TFTPCommon.Request.ERROR; // other stuff at end of packet
+		}
 
 		// If the request from the CLIENT is a read request, then we have to read blocks from 
 		// the local file on the server, create DATA packets, send them to the client, and
@@ -196,7 +233,9 @@ public class ClientConnectionThread implements Runnable {
 		{
 			System.out.println(consolePrefix + "Received invalid request, sending ERROR");
 			TFTPCommon.sendErrorPacket(receivePacket, sendReceiveSocket, "Bad request packet format", TFTPCommon.ErrorCode.ILLEGAL, consolePrefix, verbose);
+			
 			System.out.println(consolePrefix + "Shutting down");
+			sendReceiveSocket.close();
 			parent.threadDone(Thread.currentThread());
 			return;
 		}
