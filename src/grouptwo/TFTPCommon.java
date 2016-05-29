@@ -46,6 +46,9 @@ public class TFTPCommon {
 	//Error Sim Listen Port
 	public static int TFTPErrorSimPort = 23;
 
+	//Max packet size (516 for most, 1000 is for error sim)
+	public static int maxPacketSize = 1000;
+
 	/**
 	 *   Send a DatagramPacket through a DatagramSocket.
 	 *
@@ -187,8 +190,8 @@ public class TFTPCommon {
 		int len = 0;
 		int rollOver = 0;
 		Boolean sendData = true;
-		byte[] dataMsg = new byte[516];
-		byte[] ackMsg = new byte[516];
+		byte[] dataMsg = new byte[maxPacketSize];
+		byte[] ackMsg = new byte[maxPacketSize];
 
 		while ((blockNum + (rollOver * 65536)) - 1 < fileOp.getNumTFTPBlocks())
 		{
@@ -196,7 +199,7 @@ public class TFTPCommon {
 			{
 				if (timeoutCount == 0)
 				{
-					dataMsg = new byte[516];
+					dataMsg = new byte[maxPacketSize];
 					try {
 						len = constructDataPacket(dataMsg, blockNum, fileOp);
 					} catch (FileOperation.FileOperationException e) {
@@ -213,7 +216,7 @@ public class TFTPCommon {
 			}
 
 			// Receive the client response for the data packet we just sent
-			ackMsg = new byte[516];
+			ackMsg = new byte[maxPacketSize];
 			receive = new DatagramPacket(ackMsg, ackMsg.length);
 			
 			if (timeoutCount < maxTimeout)
@@ -328,7 +331,7 @@ public class TFTPCommon {
 		
 		while (writingFile)
 		{
-			dataMsg = new byte[516];
+			dataMsg = new byte[maxPacketSize];
 			
 			if (!receiveSet)
 			{
@@ -368,7 +371,7 @@ public class TFTPCommon {
 			}
 
 			//We received a DATA packet but it is not the block number we were expecting (i.e. delayed/lost DATA)
-			else if (getPacketType(dataMsg) == PacketType.DATA && receive.getLength() >= 4) 
+			else if (getPacketType(dataMsg) == PacketType.DATA && receive.getLength() >= 4 && receive.getLength() <= 516) 
 			{
 				//Duplicate DATA received (i.e. block number has already been acknowledged)
 				if (blockNumToPacket(dataMsg) < blockNum)
@@ -411,9 +414,13 @@ public class TFTPCommon {
 			{
 				String errString = "";
 
-				if(receive.getLength() < 4)
+				if (receive.getLength() < 4)
 				{
 					errString = "The packet is too small";
+				}
+				else if (receive.getLength() > 516)
+				{
+					errString = "The packet is too big";
 				}
 				else if (getPacketType(dataMsg) == PacketType.ERROR)
 				{

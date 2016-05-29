@@ -395,7 +395,7 @@ class ErrorSimulator extends Thread
 
             errorSimulateSend();
 
-            data = new byte[516];
+            data = new byte[TFTPCommon.maxPacketSize];
                 
             receivePacket = new DatagramPacket(data, data.length);
 
@@ -464,7 +464,7 @@ class DelayDuplicatePacket extends Thread
         }
 
         send = sendPacket;
-        data = new byte[516];
+        data = new byte[TFTPCommon.maxPacketSize];
         receive = new DatagramPacket(data, data.length);
         socket =  sendReceiveSocket;
         delayAmount = delayDuplicateAmount;
@@ -836,14 +836,14 @@ class TFTPIntHostCommandLine extends Thread
             if ( scIn.equalsIgnoreCase("length") )
             {
                 System.out.println("Note: If the new length is greater than the old length, the packet gets padded with 0s. If the new length is smaller than the old length, the packet gets truncated");
-                newLen = getIntMenu(sc, 0, 516, "Enter new length (as integer, 0-516): ");
+                newLen = getIntMenu(sc, 0, TFTPCommon.maxPacketSize, "Enter new length (as integer, 0-1000): ");
                 dataModPacket.setLength(newLen);
                 dataModPacket.addContentModType(TFTPCommon.ContentSubmod.LENGTH);
             }
 
             else if ( scIn.equalsIgnoreCase("manual") )
             {
-                Integer position = getIntMenu(sc, 0, 516, "Enter byte position to modify (as integer, 0-516): ");
+                Integer position = getIntMenu(sc, 0, TFTPCommon.maxPacketSize, "Enter byte position to modify (as integer, 0-1000): ");
                 Integer value = getIntMenu(sc, 0, 255, "Enter new value for byte: ");
 
                 ModifyByte modByte = new ModifyByte(position, value.byteValue());

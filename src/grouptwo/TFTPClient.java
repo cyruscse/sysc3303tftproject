@@ -341,7 +341,7 @@ class TFTPClientTransfer extends Thread
 			len = TFTPCommon.constructReqPacket(msg, 2, remoteName, fileMode);
 		}
 
-		data = new byte[516];
+		data = new byte[TFTPCommon.maxPacketSize];
 
 		receivePacket = new DatagramPacket(data, data.length);
 
