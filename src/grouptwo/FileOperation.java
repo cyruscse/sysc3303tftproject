@@ -72,16 +72,9 @@ public class FileOperation
     *   @param  int number of bytes preceding data block (i.e. opcode and block number), read starts after this many bytes
     *   @return int number of bytes read
     */
-    public int readNextDataPacket(byte[] data, int dataOffset) throws IOException, FileOperationException 
+    public int readNextDataPacket(byte[] data, int dataOffset) throws IOException
     {
         int readAmount = numBytes;
-
-        if ( !file.canRead() )
-        {
-            closeFileRead();
-            file.delete();
-            throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE, "access violation");
-        }
 
         if (inStream.available() < readAmount)
         {
@@ -165,11 +158,17 @@ public class FileOperation
     {
         numBytes = bytesRW;
         file = new File(absolutePath);
+        System.out.println("file: " + file.canRead() + " " + file.canWrite() + " " + file.exists());
         
         //Client: Read Request writes to local machine
         //Server: Write Request writes to local machine
         if ( localRead == false ) 
         {
+            if (file.exists() && !file.canWrite())
+            {
+                throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE, "file exists and is not writable");
+            }
+
             if (overwrite)
             {
                 file.delete();
@@ -182,10 +181,16 @@ public class FileOperation
             //Constructor: Path, Append (allows us to make a file out of packets)
             outStream = new FileOutputStream(absolutePath, true);
         }
+       
         //Client: Write Request reads from local machine
         //Server: Read Request reads from local machine
         else
         {
+            if (file.exists() && !file.canRead())
+            {
+                throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE, "File is not readable. Access violation");
+            }
+
             inStream = new FileInputStream(absolutePath);
         }
     }
