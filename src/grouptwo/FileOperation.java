@@ -110,14 +110,14 @@ public class FileOperation
         {
             file.delete();
             finalizeFileWrite();
-            throw new FileOperationException(TFTPCommon.ErrorCode.DISKFULL, "disk full"); 
+            throw new FileOperationException(TFTPCommon.ErrorCode.DISKFULL, "Destination disk is full"); 
         }
 
         if ( !file.canWrite() )
         {
             file.delete();
             finalizeFileWrite();
-            throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE, "access violation");
+            throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE, "File: \"" + file.getName() + "\" is not writeable. Access violation");
         }
 
         outStream.write(data, dataOffset, len);
@@ -176,7 +176,7 @@ public class FileOperation
         {
             if (file.exists() && !file.canWrite())
             {
-                throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE, "file exists and is not writable");
+                throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE, "File: \"" + file.getName() + "\" exists and is not writable");
             }
 
             if (overwrite)
@@ -186,7 +186,7 @@ public class FileOperation
 
             if (file.exists())
             {
-                throw new FileOperationException(TFTPCommon.ErrorCode.FILEEXISTS, "file exists");
+                throw new FileOperationException(TFTPCommon.ErrorCode.FILEEXISTS, "File: \"" + file.getName() + "\" already exists");
             }
             //Constructor: Path, Append (allows us to make a file out of packets)
             outStream = new FileOutputStream(absolutePath, true);
@@ -198,7 +198,7 @@ public class FileOperation
         {
             if (file.exists() && !file.canRead())
             {
-                throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE, "File is not readable. Access violation");
+                throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE, "File: \"" + file.getName() + "\" is not readable. Access violation.");
             }
 
             inStream = new FileInputStream(absolutePath);
