@@ -939,6 +939,12 @@ class TFTPIntHostCommandLine extends Thread
     {
         SimulatePacketInfo invalidTID = selectPacket(sc);
 
+        if (invalidTID.getPacketType() == TFTPCommon.PacketType.REQUEST)
+        {
+            System.out.println("Can't invalid TID on a request, modification cancelled");
+            return;
+        }
+
         invalidTID.setModType(TFTPCommon.ModificationType.INVALIDTID);
 
         if (!parentSimulator.appendMod(invalidTID))
