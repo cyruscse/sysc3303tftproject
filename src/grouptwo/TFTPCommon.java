@@ -147,11 +147,12 @@ public class TFTPCommon {
 	 */
 	public static void sendErrorPacket(DatagramPacket receive, DatagramSocket socket, String errString, ErrorCode errCode, String consolePrefix, Verbosity verbose)
 	{		
-		byte[] errMsg = new byte[200];
+		byte[] errMsg = new byte[maxPacketSize];
 		int errlen = constructErrorPacket(errMsg, errCode, errString);
 		DatagramPacket sendErr = new DatagramPacket(errMsg, errlen, receive.getAddress(), receive.getPort());	
 		System.out.println(consolePrefix + "Sending ERROR Packet: " + errString);
 		System.out.println(consolePrefix + "ERROR packet details:");
+		System.out.println(consolePrefix + "Error: " + errMsg[3]);
 		printPacketDetails(sendErr, Verbosity.ALL, false);
 		sendPacket(sendErr, socket);
 	}
@@ -262,7 +263,10 @@ public class TFTPCommon {
 				{
 					String errString = "";
 
-					if (getPacketType(ackMsg) == PacketType.ERROR)
+					System.out.println(consolePrefix + "Received invalid packet:");
+					printPacketDetails(receive, Verbosity.ALL, false);
+
+					if (validERRORPacket(receive))
 					{
 						parseErrorPacket(receive, consolePrefix);
 						return false;
@@ -393,7 +397,10 @@ public class TFTPCommon {
 			{
 				String errString = "";
 
-				if (getPacketType(dataMsg) == PacketType.ERROR)
+				System.out.println(consolePrefix + "Received invalid packet:");
+				printPacketDetails(receive, Verbosity.ALL, false);
+
+				if (validERRORPacket(receive))
 				{
 					parseErrorPacket(receive, consolePrefix);
 					return false;
@@ -1014,5 +1021,10 @@ public class TFTPCommon {
 	public static Boolean validACKPacket(DatagramPacket packet, int blockNum)
 	{
 		return ( getPacketType(packet.getData()) == PacketType.ACK && blockNumToPacket(packet.getData()) == blockNum && packet.getLength() == 4 );
+	}
+
+	public static Boolean validERRORPacket(DatagramPacket packet)
+	{
+		return ( packet.getLength() > 4 && getPacketType(packet.getData()) == PacketType.ERROR && packet.getData()[packet.getLength() - 1] == 0 && blockNumToPacket(packet.getData()) < 7 && blockNumToPacket(packet.getData()) > 0);
 	}
 }

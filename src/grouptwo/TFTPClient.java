@@ -372,9 +372,16 @@ class TFTPClientTransfer extends Thread
 				{
 					return true;
 				}
-				else if (TFTPCommon.getPacketType(receivePacket.getData()) == TFTPCommon.PacketType.ERROR)
+				else if (TFTPCommon.validERRORPacket(receivePacket))
 				{
 					TFTPCommon.parseErrorPacket(receivePacket, consolePrefix);
+					return false;
+				}
+				else
+				{
+					System.out.println(consolePrefix + "Received invalid packet:");
+					TFTPCommon.printPacketDetails(receivePacket, TFTPCommon.Verbosity.ALL, false);
+					TFTPCommon.sendErrorPacket(receivePacket, sendReceiveSocket, "Invalid request response received from server", TFTPCommon.ErrorCode.ILLEGAL, consolePrefix, verbose);
 					return false;
 				}
 			} 
