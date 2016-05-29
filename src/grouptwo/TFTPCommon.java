@@ -44,7 +44,7 @@ public class TFTPCommon {
 	public static int TFTPListenPort = 69;
 
 	//Error Sim Listen Port
-	public static int TFTPErrorSimPort = 70;
+	public static int TFTPErrorSimPort = 23;
 
 	/**
 	 *   Send a DatagramPacket through a DatagramSocket.
