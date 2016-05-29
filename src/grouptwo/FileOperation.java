@@ -158,7 +158,6 @@ public class FileOperation
     {
         numBytes = bytesRW;
         file = new File(absolutePath);
-        System.out.println("file: " + file.canRead() + " " + file.canWrite() + " " + file.exists());
         
         //Client: Read Request writes to local machine
         //Server: Write Request writes to local machine

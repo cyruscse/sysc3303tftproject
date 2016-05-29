@@ -41,10 +41,10 @@ public class TFTPCommon {
 	public static enum ContentSubmod { INVALID, MANUAL, OPCODE, BLOCKNUM, LENGTH, FILENAME, FILEMODE };
 
 	//Server Listen Port
-	public static int TFTPListenPort = 1069;
+	public static int TFTPListenPort = 69;
 
 	//Error Sim Listen Port
-	public static int TFTPErrorSimPort = 1070;
+	public static int TFTPErrorSimPort = 23;
 
 	/**
 	 *   Send a DatagramPacket through a DatagramSocket.
