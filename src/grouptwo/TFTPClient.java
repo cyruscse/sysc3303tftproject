@@ -22,6 +22,7 @@ public class TFTPClient
 	private TFTPCommon.Verbosity verbosity;
 	private TFTPCommon.Mode mode;
 	private int timeout;
+	private InetAddress serverAddress;
 
 	/**
 	 *   Constructor for TFTPClient, initializes data that will be used in CLI
@@ -40,6 +41,7 @@ public class TFTPClient
 		mode = TFTPCommon.Mode.TEST;
 		requestType = TFTPCommon.Request.ERROR;
 		tftpTransfer = new Thread();
+		serverAddress = InetAddress.getLoopbackAddress();
 
 		localFile = new String();
 		remoteFile = new String();
@@ -86,7 +88,8 @@ public class TFTPClient
 				System.out.println("Enter transfer as string, with file names in quotes");
 				System.out.println("(i.e. read \"readFile.txt\" to \"dest.txt\", write \"writeFile.txt\" to \"dest2.txt\"");
 				System.out.println("");
-				System.out.println("--Options--");							
+				System.out.println("--Options--");
+				System.out.println("i: Set IP address of TFTP Server (current: " + serverAddress + ")");							
 				System.out.println("m: Set mode (current: " + TFTPCommon.modeToString(mode) + ")");
 				System.out.println("o: Overwrite existing files (current: " + overwrite + ")");
 				System.out.println("t: Set retransmission timeout (current: " + timeout + ")");
@@ -132,7 +135,7 @@ public class TFTPClient
 
 				if (remoteFile.length() > 0 && localFile.length() > 0 && requestType != TFTPCommon.Request.ERROR)
 				{
-					tftpTransfer = new TFTPClientTransfer("clientTransfer", remoteFile, localFile, this, requestType, mode, verbosity, timeout, overwrite);
+					tftpTransfer = new TFTPClientTransfer("clientTransfer", serverAddress, remoteFile, localFile, this, requestType, mode, verbosity, timeout, overwrite);
 					tftpTransfer.start();
 					printMenu = false;
 				}
@@ -278,11 +281,12 @@ class TFTPClientTransfer extends Thread
 	 *   @param  Verbosity verbosity of info (ranging from none to full packet details)
 	 *   @return TFTPClientTransfer
 	 */
-	public TFTPClientTransfer(String threadName, String remoteFile, String localFile, TFTPClient cliThread, TFTPCommon.Request transferType, TFTPCommon.Mode runMode, TFTPCommon.Verbosity verMode, int reTimeout, Boolean overwrite)
+	public TFTPClientTransfer(String threadName, InetAddress serverAddress, String remoteFile, String localFile, TFTPClient cliThread, TFTPCommon.Request transferType, TFTPCommon.Mode runMode, TFTPCommon.Verbosity verMode, int reTimeout, Boolean overwrite)
 	{
 		super(threadName);
 
 		fileMode = "octet";
+		this.serverAddress = serverAddress;
 		remoteName = new String(remoteFile);
 		localName = new String(localFile);
 		requestType = transferType;
@@ -293,13 +297,6 @@ class TFTPClientTransfer extends Thread
 		this.overwrite = overwrite;
 		maxTimeout = 10;
 		hardTimeout = 60000;
-		
-		try {
-			serverAddress = InetAddress.getLocalHost();
-		} catch (UnknownHostException e) {
-			e.printStackTrace();
-			System.exit(1);
-		}
 
 		try {
 			sendReceiveSocket = new DatagramSocket();
@@ -363,7 +360,7 @@ class TFTPClientTransfer extends Thread
 				TFTPCommon.receivePacketWTimeout(receivePacket, sendReceiveSocket, timeout);
 				sendPort = receivePacket.getPort();
 
-				if (TFTPCommon.validACKPacket(receivePacket.getData(), 0))
+				if ( ( requestType == TFTPCommon.Request.WRITE && TFTPCommon.validACKPacket(receivePacket.getData(), 0) ) || ( requestType == TFTPCommon.Request.READ && TFTPCommon.validDATAPacket(receivePacket.getData(), 1) ) )
 				{
 					return true;
 				}

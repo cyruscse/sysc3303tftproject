@@ -248,7 +248,7 @@ public class ClientConnectionThread implements Runnable {
 		{
 			System.out.println(consolePrefix + "Error occurred, transfer incomplete");
 
-			if ( !fileOp.delete() && requestType == TFTPCommon.Request.WRITE )
+			if ( requestType == TFTPCommon.Request.WRITE && !fileOp.delete() )
 			{
 				System.out.println("Failed to delete incomplete file");
 			}
