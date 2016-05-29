@@ -620,7 +620,7 @@ class TFTPIntHostCommandLine extends Thread
      *   @param  String message to print when prompting for number
      *   @return int parsed
      */
-    private int getIntMenu (Scanner sc, int lowLimit, int highLimit, String promptMessage)
+    private int getIntMenu (Scanner sc, int lowLimit, int highLimit, int blackList, String promptMessage)
     {
         int parsedString = -1;
 
@@ -639,6 +639,10 @@ class TFTPIntHostCommandLine extends Thread
             if (parsedString < lowLimit || parsedString > highLimit)
             {
                 System.out.println("Input out of range, try again.");
+            }
+            else if (parsedString == blackList)
+            {
+                System.out.println("Input invalid, try again");
             }
             else
             {
@@ -721,6 +725,10 @@ class TFTPIntHostCommandLine extends Thread
     {
         TFTPCommon.PacketType pType = TFTPCommon.PacketType.INVALID;
         int pNum = -1;
+        int highLimit = 65535;
+        int lowLimit = 0;
+        int blackList = -1;
+        String promptMessage = "Enter packet number: ";
 
         while (pType == TFTPCommon.PacketType.INVALID)
         {
@@ -745,6 +753,10 @@ class TFTPIntHostCommandLine extends Thread
             else if ( scIn.equalsIgnoreCase("error") )
             {
                 pType = TFTPCommon.PacketType.ERROR;
+                promptMessage = "Enter error code: ";
+                lowLimit = 1;
+                highLimit = 6;
+                blackList = 5;
             }
             else if ( scIn.equalsIgnoreCase("r") )
             {
@@ -756,7 +768,7 @@ class TFTPIntHostCommandLine extends Thread
             }
         }
 
-        pNum = getIntMenu(sc, 0, 65535, "Enter packet number: ");
+        pNum = getIntMenu(sc, lowLimit, highLimit, blackList, promptMessage);
 
         return new SimulatePacketInfo(pNum, pType);
     }
@@ -805,7 +817,7 @@ class TFTPIntHostCommandLine extends Thread
 
             if ( scIn.equalsIgnoreCase("opcode") )
             {
-                opcode = getIntMenu(sc, 0, 512, "Enter new opcode (as bytes, i.e. 02, 03, etc.): ");
+                opcode = getIntMenu(sc, 0, 512, -1, "Enter new opcode (as bytes, i.e. 02, 03, etc.): ");
                 dataModPacket.setOpcode(opcode);
                 dataModPacket.addContentModType(TFTPCommon.ContentSubmod.OPCODE);
             }
@@ -828,7 +840,7 @@ class TFTPIntHostCommandLine extends Thread
 
             else if ( scIn.equalsIgnoreCase("block") )
             {
-                blockNum = getIntMenu(sc, 0, 512, "Enter new block number (as integer, 0-512): ");
+                blockNum = getIntMenu(sc, 0, 512, -1, "Enter new block number (as integer, 0-512): ");
                 dataModPacket.setBlockNum(blockNum);
                 dataModPacket.addContentModType(TFTPCommon.ContentSubmod.BLOCKNUM);
             }
@@ -836,15 +848,15 @@ class TFTPIntHostCommandLine extends Thread
             if ( scIn.equalsIgnoreCase("length") )
             {
                 System.out.println("Note: If the new length is greater than the old length, the packet gets padded with 0s. If the new length is smaller than the old length, the packet gets truncated");
-                newLen = getIntMenu(sc, 0, TFTPCommon.maxPacketSize, "Enter new length (as integer, 0-1000): ");
+                newLen = getIntMenu(sc, 0, TFTPCommon.maxPacketSize, -1, "Enter new length (as integer, 0-1000): ");
                 dataModPacket.setLength(newLen);
                 dataModPacket.addContentModType(TFTPCommon.ContentSubmod.LENGTH);
             }
 
             else if ( scIn.equalsIgnoreCase("manual") )
             {
-                Integer position = getIntMenu(sc, 0, TFTPCommon.maxPacketSize, "Enter byte position to modify (as integer, 0-1000): ");
-                Integer value = getIntMenu(sc, 0, 255, "Enter new value for byte: ");
+                Integer position = getIntMenu(sc, 0, TFTPCommon.maxPacketSize, -1, "Enter byte position to modify (as integer, 0-1000): ");
+                Integer value = getIntMenu(sc, 0, 255, -1, "Enter new value for byte: ");
 
                 ModifyByte modByte = new ModifyByte(position, value.byteValue());
                 dataModPacket.addModByte(modByte);
@@ -880,7 +892,7 @@ class TFTPIntHostCommandLine extends Thread
     private void delayPacket(Scanner sc)
     {
         SimulatePacketInfo delayPacket = selectPacket(sc);
-        int delayAmount = getIntMenu(sc, 0, 100000, "Enter amount to delay packet (ms): ");
+        int delayAmount = getIntMenu(sc, 0, 100000, -1, "Enter amount to delay packet (ms): ");
         
         delayPacket.setModType(TFTPCommon.ModificationType.DELAY);
         delayPacket.setDelayDuplicateGap(delayAmount);
@@ -900,7 +912,7 @@ class TFTPIntHostCommandLine extends Thread
     private void duplicatePacket(Scanner sc)
     {
         SimulatePacketInfo duplicatePacket = selectPacket(sc);
-        int duplicateGap = getIntMenu(sc, 0, 100000, "Enter gap between duplicated packets (ms): ");
+        int duplicateGap = getIntMenu(sc, 0, 100000, -1, "Enter gap between duplicated packets (ms): ");
         
         duplicatePacket.setModType(TFTPCommon.ModificationType.DUPLICATE);
         duplicatePacket.setDelayDuplicateGap(duplicateGap);
