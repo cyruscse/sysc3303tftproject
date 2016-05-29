@@ -190,8 +190,6 @@ public class TFTPCommon {
 		byte[] dataMsg = new byte[516];
 		byte[] ackMsg = new byte[516];
 
-		System.out.println("client address is " + address);
-
 		while ((blockNum + (rollOver * 65536)) - 1 < fileOp.getNumTFTPBlocks())
 		{
 			if (sendData)
