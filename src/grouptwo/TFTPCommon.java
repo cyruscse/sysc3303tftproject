@@ -238,7 +238,7 @@ public class TFTPCommon {
 					sendErrorPacket(receive, sendReceiveSocket, errString, ErrorCode.UNKNOWNTID, consolePrefix, Verbosity.NONE);
 					sendData = false;
 				}
-				else if (validACKPacket(ackMsg, blockNum) && receive.getLength() == 4) 
+				else if (validACKPacket(receive, blockNum)) 
 				{
 					System.out.println(consolePrefix + "Received valid ACK " + (blockNum + (rollOver * 65536)));
 					printPacketDetails(receive, verbose, false);
@@ -361,7 +361,7 @@ public class TFTPCommon {
 			}
 
 			//We received a DATA packet but it is not the block number we were expecting (i.e. delayed/lost DATA)
-			else if (getPacketType(dataMsg) == PacketType.DATA && receive.getLength() >= 4 && receive.getLength() <= 516) 
+			else if (validDATAPacket(receive)) 
 			{
 				//Duplicate DATA received (i.e. block number has already been acknowledged)
 				if (blockNumToPacket(dataMsg) < blockNum)
@@ -378,7 +378,6 @@ public class TFTPCommon {
 						willExit = writeDataPacket(dataMsg, len, fileOp, verbose);
 					} catch (FileOperation.FileOperationException e) {
 						sendErrorPacket(receive, sendReceiveSocket, e.toString(), e.error, consolePrefix, verbose);
-
 						return false;
 					}
 
@@ -1000,9 +999,9 @@ public class TFTPCommon {
 	 *   @param  int length of data
 	 *   @return Boolean indicating if DATA is valid or not
 	 */
-	public static Boolean validDATAPacket(byte[] data, int blockNum)
+	public static Boolean validDATAPacket(DatagramPacket packet)
 	{
-		return ( getPacketType(data) == PacketType.DATA && blockNumToPacket(data) == blockNum );
+		return ( getPacketType(packet.getData()) == PacketType.DATA && packet.getLength() > 3 && packet.getLength() < 517 );
 	}
 	
 	/**
@@ -1012,8 +1011,8 @@ public class TFTPCommon {
 	 *   @param  int length of data
 	 *   @return Boolean indicating if ACK is valid or not
 	 */
-	public static Boolean validACKPacket(byte[] data, int blockNum)
+	public static Boolean validACKPacket(DatagramPacket packet, int blockNum)
 	{
-		return ( getPacketType(data) == PacketType.ACK && blockNumToPacket(data) == blockNum );
+		return ( getPacketType(packet.getData()) == PacketType.ACK && blockNumToPacket(packet.getData()) == blockNum && packet.getLength() == 4 );
 	}
 }

@@ -368,7 +368,7 @@ class TFTPClientTransfer extends Thread
 				TFTPCommon.receivePacketWTimeout(receivePacket, sendReceiveSocket, timeout);
 				sendPort = receivePacket.getPort();
 
-				if ( ( requestType == TFTPCommon.Request.WRITE && TFTPCommon.validACKPacket(receivePacket.getData(), 0) ) || ( requestType == TFTPCommon.Request.READ && TFTPCommon.validDATAPacket(receivePacket.getData(), 1) ) )
+				if ( ( requestType == TFTPCommon.Request.WRITE && TFTPCommon.validACKPacket(receivePacket, 0) ) || ( requestType == TFTPCommon.Request.READ && TFTPCommon.validDATAPacket(receivePacket) ) )
 				{
 					return true;
 				}
@@ -439,31 +439,32 @@ class TFTPClientTransfer extends Thread
 			}
 		}
 
-		if (!sendRequestPacket(msg))
+		try 
 		{
-			try 
+			if (!sendRequestPacket(msg))
 			{
 				System.out.println(consolePrefix + "Cancelling transfer");
-				sendReceiveSocket.close();
-			}
-			catch (SocketTimeoutException e) 
-			{
-				sendReceiveSocket.close();
-			}
+			 	sendReceiveSocket.close();
 
-			if ( requestType == TFTPCommon.Request.READ )
-			{
-				if (fileOp.delete())
+				if ( requestType == TFTPCommon.Request.READ )
 				{
-					System.out.println(consolePrefix + "Incomplete file \"" + localName + "\" deleted");
+					if (fileOp.delete())
+					{
+						System.out.println(consolePrefix + "Incomplete file \"" + localName + "\" deleted");
+					}
+					else
+					{
+						System.out.println(consolePrefix + "Failed to delete incomplete file \"" + localName + "\"");
+					}
 				}
-				else
-				{
-					System.out.println(consolePrefix + "Failed to delete incomplete file \"" + localName + "\"");
-				}
-			}
+				return;
+			} 
+		}
+		catch (SocketTimeoutException e)
+		{
+			e.printStackTrace();
 			return;
-		} 
+		}
 
 		len = receivePacket.getLength();
 
