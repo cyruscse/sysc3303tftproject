@@ -149,21 +149,10 @@ public class TFTPCommon {
 	{		
 		byte[] errMsg = new byte[200];
 		int errlen = constructErrorPacket(errMsg, errCode, errString);
-		DatagramPacket sendErr = new DatagramPacket(errMsg, errlen, receive.getAddress(), receive.getPort());
-
-		
-		System.out.println(consolePrefix + errString);
-		
-		if(verbose != Verbosity.NONE)
-		{
-			System.out.println(consolePrefix + "Sending ERROR packet to port " + receive.getPort());
-		}
-		else
-		{
-			System.out.println(consolePrefix + "Sending ERROR packet");
-		}
-
-		printPacketDetails(sendErr, verbose, false);
+		DatagramPacket sendErr = new DatagramPacket(errMsg, errlen, receive.getAddress(), receive.getPort());	
+		System.out.println(consolePrefix + "Sending ERROR Packet: " + errString);
+		System.out.println(consolePrefix + "ERROR packet details:");
+		printPacketDetails(sendErr, Verbosity.ALL, false);
 		sendPacket(sendErr, socket);
 	}
 	
@@ -245,7 +234,7 @@ public class TFTPCommon {
 			{ 
 				if (receive.getPort() != port) 
 				{
-					String errString = "Received packet from unknown port: " + receive.getPort();
+					String errString = "Received packet from invalid TID: " + receive.getPort() + " was expecting TID " + port;
 					sendErrorPacket(receive, sendReceiveSocket, errString, ErrorCode.UNKNOWNTID, consolePrefix, Verbosity.NONE);
 					sendData = false;
 				}
@@ -280,13 +269,14 @@ public class TFTPCommon {
 					}
 					else if (getPacketType(ackMsg) != PacketType.ACK)
 					{
-						errString = "Expecting ACK, received invalid Opcode";
+						errString = "Expecting ACK, received invalid opcode: " + ackMsg[0] + " " + ackMsg[1];
 					}
 					else if(blockNumToPacket(ackMsg) != blockNum)
 					{
 						errString = "Expecting block number " + (blockNum + (rollOver * 65536)) + " instead received " + (blockNumToPacket(ackMsg) + (rollOver * 65536));
 					}
-					else if(receive.getLength() != 4 && getPacketType(ackMsg) == PacketType.ACK){
+					else if(receive.getLength() != 4 && getPacketType(ackMsg) == PacketType.ACK)
+					{
 						errString = "Expecting ACK packet of length 4 instead received packet with length " + receive.getLength();
 					}
 					else
@@ -366,7 +356,7 @@ public class TFTPCommon {
 			
 		    if (receive.getPort() != port) 
 		    {
-				String errString = "Received packet from unknown port: " + receive.getPort();
+				String errString = "Received packet from invalid TID: " + receive.getPort() + " was expecting TID " + port;
 				sendErrorPacket(receive, sendReceiveSocket, errString, ErrorCode.UNKNOWNTID, consolePrefix, Verbosity.NONE);
 			}
 
@@ -387,14 +377,7 @@ public class TFTPCommon {
 					try {
 						willExit = writeDataPacket(dataMsg, len, fileOp, verbose);
 					} catch (FileOperation.FileOperationException e) {
-						if (e.error == ErrorCode.ACCESSVIOLATE)
-						{
-							sendErrorPacket(receive, sendReceiveSocket, "Access violation while trying to write to file", e.error, consolePrefix, verbose);
-						}
-						else if (e.error == ErrorCode.DISKFULL)
-						{
-							sendErrorPacket(receive, sendReceiveSocket, "Couldn't write to file, disk is full", e.error, consolePrefix, verbose);
-						}
+						sendErrorPacket(receive, sendReceiveSocket, e.toString(), e.error, consolePrefix, verbose);
 
 						return false;
 					}
@@ -414,13 +397,9 @@ public class TFTPCommon {
 			{
 				String errString = "";
 
-				if (receive.getLength() < 4)
+				if (receive.getLength() < 4 || receive.getLength() > 516)
 				{
-					errString = "The packet is too small";
-				}
-				else if (receive.getLength() > 516)
-				{
-					errString = "The packet is too big";
+					errString = "Expecting DATA packet of length 4-516 instead received packet with length " + receive.getLength();
 				}
 				else if (getPacketType(dataMsg) == PacketType.ERROR)
 				{
@@ -429,7 +408,7 @@ public class TFTPCommon {
 				}
 				else if (getPacketType(dataMsg) != PacketType.DATA)
 				{
-					errString = "Expecting DATA, received invalid Opcode";
+					errString = "Expecting DATA, received invalid opcode: " + dataMsg[0] + " " + dataMsg[1];
 				}
 				else if (blockNumToPacket(dataMsg) != blockNum)
 				{
