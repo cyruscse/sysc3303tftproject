@@ -43,11 +43,12 @@ public class ClientConnectionThread implements Runnable {
 	//maxTimeout - number of timeouts to wait before giving up
 	private int maxTimeout;
 	private Boolean overwrite;
-	private final String consolePrefix = ("Server Thread " + (threadNumber + 1) + ": ");
+	private final String consolePrefix;
 
 	public ClientConnectionThread(DatagramPacket receivePckt, TFTPServer parent, TFTPCommon.Verbosity verbosity, int threadNumber, int reTimeout, Boolean overwrite) 
 	{
 		this.threadNumber = threadNumber;
+		consolePrefix = ("Server Thread " + (threadNumber ) + ": ");
 		receivePacket = receivePckt;
 		this.parent = parent;
 		port = receivePckt.getPort();
