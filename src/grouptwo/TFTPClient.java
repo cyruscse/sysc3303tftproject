@@ -393,7 +393,8 @@ class TFTPClientTransfer extends Thread
 			}
 		}
 
-		throw new SocketTimeoutException("Client: Maximum requests reached, cancelling transfer");
+		System.out.println("Client: Maximum requests reached, cancelling transfer");
+		return false;
 	}
 
 	/**
