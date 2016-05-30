@@ -374,6 +374,8 @@ class TFTPClientTransfer extends Thread
 				}
 				else if (TFTPCommon.validERRORPacket(receivePacket))
 				{
+					System.out.println(consolePrefix + "Received error packet:");
+					TFTPCommon.printPacketDetails(receivePacket, TFTPCommon.Verbosity.ALL, false);
 					TFTPCommon.parseErrorPacket(receivePacket, consolePrefix);
 					return false;
 				}

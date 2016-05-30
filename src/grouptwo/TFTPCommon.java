@@ -277,7 +277,7 @@ public class TFTPCommon {
 					}
 					else if (getPacketType(ackMsg) != PacketType.ACK)
 					{
-						errString = "Expecting ACK, received invalid opcode: " + ackMsg[0] + " " + ackMsg[1];
+						errString = "Expecting ACK, received invalid opcode: " + ackMsg[0] + "" + ackMsg[1];
 					}
 					else if (blockNumToPacket(ackMsg) != blockNum)
 					{
@@ -411,7 +411,7 @@ public class TFTPCommon {
 				}
 				else if (getPacketType(dataMsg) != PacketType.DATA)
 				{
-					errString = "Expecting DATA, received invalid opcode: " + dataMsg[0] + " " + dataMsg[1];
+					errString = "Expecting DATA, received invalid opcode: " + dataMsg[0] + "" + dataMsg[1];
 				}
 				else if (blockNumToPacket(dataMsg) != blockNum)
 				{
@@ -908,8 +908,6 @@ public class TFTPCommon {
 		String errorMessage = new String(data, 4, i - 2);
 
 		System.out.println(consolePrefix + "Received error " + errorOpcodeToString(data) + " with message \"" + errorMessage.trim() + "\"");
-
-		printPacketDetails(packet, Verbosity.ALL, false);
 	}
 	
 	/**
