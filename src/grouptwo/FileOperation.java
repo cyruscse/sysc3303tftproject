@@ -155,12 +155,17 @@ public class FileOperation
      */
     public boolean delete()
     {
+        if (!file.exists())
+        {
+            return true;
+        }
+        
         try {
         	outStream.close();
-	    	Files.delete(file.toPath());
+	    	Files.delete(FileSystems.getDefault().getPath(file.getAbsolutePath()));
 	    	return true;
 	    } catch (IOException e) {
-	    	e.printStackTrace();
+            e.printStackTrace();
 	    	return false;
 	    }
     }
