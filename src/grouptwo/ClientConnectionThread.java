@@ -73,6 +73,7 @@ public class ClientConnectionThread implements Runnable {
 		byte[] data, msg, response;
 		int len, j = 0, k = 0;
 		Boolean sendReceiveStatus = false;
+		TFTPCommon.ContentSubmod requestError = TFTPCommon.ContentSubmod.INVALID;
 
 		if (verbose == TFTPCommon.Verbosity.ALL)
 		{
@@ -88,6 +89,7 @@ public class ClientConnectionThread implements Runnable {
 		if (data[0] != 0)
 		{
 			requestType = TFTPCommon.Request.ERROR;
+			requestError = TFTPCommon.ContentSubmod.OPCODE;
 		}
 		else if (data[1] == 1) 
 		{
@@ -97,10 +99,10 @@ public class ClientConnectionThread implements Runnable {
 		{
 			requestType = TFTPCommon.Request.WRITE; // could be write
 		}
-		
 		else
 		{ 
 			requestType = TFTPCommon.Request.ERROR;
+			requestError = TFTPCommon.ContentSubmod.OPCODE;
 		}
 
 		if (requestType != TFTPCommon.Request.ERROR)  // check for filename
@@ -125,7 +127,7 @@ public class ClientConnectionThread implements Runnable {
 			localName = new String(data,2,j-2);
 		}
 
-		if(requestType!= TFTPCommon.Request.ERROR) // check for mode
+		if(requestType != TFTPCommon.Request.ERROR) // check for mode
 		{
 			for (k = j + 1; k < len; k++)
 			{ 
@@ -149,6 +151,7 @@ public class ClientConnectionThread implements Runnable {
 			if ( !mode.equalsIgnoreCase("octet") && !mode.equalsIgnoreCase("netascii")) 
 			{
 				requestType = TFTPCommon.Request.ERROR; // mode was not passed correctly
+				requestError = TFTPCommon.ContentSubmod.FILEMODE;
 			}
 		}
 
@@ -227,8 +230,23 @@ public class ClientConnectionThread implements Runnable {
 		} 
 		else 
 		{
+			String errorString = new String();
 			System.out.println(consolePrefix + "Received invalid request, sending ERROR");
-			TFTPCommon.sendErrorPacket(receivePacket, sendReceiveSocket, "Bad request packet format", TFTPCommon.ErrorCode.ILLEGAL, consolePrefix, verbose);
+			
+			if (requestError == TFTPCommon.ContentSubmod.OPCODE)
+			{
+				errorString = "Request packet has invalid opcode: " + data[0] + "" + data[1];
+			}
+			else if (requestError == TFTPCommon.ContentSubmod.FILEMODE)
+			{
+				errorString = "Request packet has invalid file mode: " + mode;
+			}
+			else
+			{
+				errorString = "Request packet format incorrect";
+			}
+
+			TFTPCommon.sendErrorPacket(receivePacket, sendReceiveSocket, errorString, TFTPCommon.ErrorCode.ILLEGAL, consolePrefix, verbose);
 			
 			System.out.println(consolePrefix + "Shutting down");
 			sendReceiveSocket.close();

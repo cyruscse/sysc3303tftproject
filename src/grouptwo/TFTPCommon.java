@@ -907,8 +907,7 @@ public class TFTPCommon {
 		}
 
 		String errorMessage = new String(data, 4, i - 2);
-
-		System.out.println(consolePrefix + "Received error " + errorOpcodeToString(data) + " with message \"" + errorMessage.trim() + "\"");
+		System.out.println(consolePrefix + "Received error " + errorOpcodeToString(data) + " opcode (" + data[2] + "" + data[3] + ") with message \"" + errorMessage.trim() + "\"");
 	}
 	
 	/**
