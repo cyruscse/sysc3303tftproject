@@ -471,7 +471,7 @@ class TFTPClientTransfer extends Thread
 		}
 		catch (SocketTimeoutException e)
 		{
-			e.printStackTrace();
+			sendReceiveSocket.close();
 			return;
 		}
 
