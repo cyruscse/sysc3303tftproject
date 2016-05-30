@@ -179,11 +179,12 @@ public class TFTPCommon {
 		int blockNum = 1;
 		int len = 0;
 		int rollOver = 0;
+		int tftpBlocks = fileOp.getNumTFTPBlocks();
 		Boolean sendData = true;
 		byte[] dataMsg = new byte[maxPacketSize];
 		byte[] ackMsg = new byte[maxPacketSize];
 
-		while ((blockNum + (rollOver * 65536)) - 1 < fileOp.getNumTFTPBlocks())
+		while ((blockNum + (rollOver * 65536)) - 1 < tftpBlocks)
 		{
 			if (sendData)
 			{
@@ -197,7 +198,7 @@ public class TFTPCommon {
 					}
 				}
 
-				System.out.println(consolePrefix + "Sending DATA " + (blockNum + (rollOver * 65536)) + "/" + (fileOp.getNumTFTPBlocks()));
+				System.out.println(consolePrefix + "Sending DATA " + (blockNum + (rollOver * 65536)) + "/" + tftpBlocks);
 
 				send = new DatagramPacket(dataMsg, len, address, port);
 
