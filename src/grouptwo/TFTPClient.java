@@ -487,15 +487,11 @@ class TFTPClientTransfer extends Thread
 		{		
 			sendReceiveStatus = TFTPCommon.sendDataWTimeout(sendPacket, receivePacket, sendReceiveSocket, serverAddress, timeout, maxTimeout, sendPort, fileOp, verbose, consolePrefix);
 
-			//Close file now that we are done sending it to server
-			if (sendReceiveStatus)
-			{
-				try {
-					fileOp.closeFileRead();
-				} catch (IOException e) {
-					e.printStackTrace();
-					System.exit(1);
-				}
+			try {
+				fileOp.closeFileRead();
+			} catch (IOException e) {
+				e.printStackTrace();
+				System.exit(1);
 			}
 	    }
 

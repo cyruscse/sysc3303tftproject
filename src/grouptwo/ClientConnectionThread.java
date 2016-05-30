@@ -181,16 +181,12 @@ public class ClientConnectionThread implements Runnable {
 			}
 
 			sendReceiveStatus = TFTPCommon.sendDataWTimeout(sendPacket, receivePacket, sendReceiveSocket, clientAddress, timeout, maxTimeout, port, fileOp, verbose, consolePrefix);
-
-			//Close file now that we are done sending it to client
-			if (sendReceiveStatus)
-			{
-				try {
-					fileOp.closeFileRead();
-				} catch (IOException e) {
-					e.printStackTrace();
-					System.exit(1);
-				}
+			
+			try {
+				fileOp.closeFileRead();
+			} catch (IOException e) {
+				e.printStackTrace();
+				System.exit(1);
 			}
 		} 
 

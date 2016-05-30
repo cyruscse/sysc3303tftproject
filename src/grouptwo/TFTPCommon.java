@@ -41,10 +41,10 @@ public class TFTPCommon {
 	public static enum ContentSubmod { INVALID, MANUAL, OPCODE, BLOCKNUM, LENGTH, FILENAME, FILEMODE };
 
 	//Server Listen Port
-	public static int TFTPListenPort = 69;
+	public static int TFTPListenPort = 1069;
 
 	//Error Sim Listen Port
-	public static int TFTPErrorSimPort = 23;
+	public static int TFTPErrorSimPort = 1070;
 
 	//Max packet size (516 for most, 1000 is for error sim)
 	public static int maxPacketSize = 1000;
