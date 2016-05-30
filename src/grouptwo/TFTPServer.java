@@ -16,6 +16,7 @@ public class TFTPServer
 	private DatagramSocket receiveSocket;
 	private DatagramPacket receivePacket;
 	private List<Thread> clients;
+	private List<Integer> clientPorts;
 	private TFTPServerCommandLine cliThread;
 	private Integer runningClientCount;
 	private TFTPCommon.Verbosity verbosity;
@@ -39,6 +40,7 @@ public class TFTPServer
 		}
 
 		clients = new ArrayList<Thread>();
+		clientPorts = new ArrayList<Integer>();
 		runningClientCount = 0;
 		timeout = 1000;
 		acceptConnections = true;
@@ -99,9 +101,17 @@ public class TFTPServer
 
 					TFTPCommon.printPacketDetails(receivePacket, verbosity, true);
 
-					Thread client = new Thread(new ClientConnectionThread(receivePacket, this, verbosity, clients.size() + 1, timeout, overwrite));
-					client.start();
-					clients.add(client);
+					if (!clientPorts.contains(receivePacket.getPort()))
+					{
+						Thread client = new Thread(new ClientConnectionThread(receivePacket, this, verbosity, clients.size() + 1, timeout, overwrite));
+						clients.add(client);
+						clientPorts.add(receivePacket.getPort());
+						client.start();
+					}
+					else
+					{
+						System.out.println("Server: Duplicate request received from port " + receivePacket.getPort() + ". Ignoring");
+					}
 				}
 			}
 		}
