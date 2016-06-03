@@ -99,8 +99,6 @@ public class TFTPServer
 				{
 					System.out.println("Server: Packet received.");
 
-					TFTPCommon.printPacketDetails(receivePacket, verbosity, true);
-
 					if (!clientPorts.contains(receivePacket.getPort()))
 					{
 						Thread client = new Thread(new ClientConnectionThread(receivePacket, this, verbosity, clients.size() + 1, timeout, overwrite));

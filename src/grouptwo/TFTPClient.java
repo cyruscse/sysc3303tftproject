@@ -334,11 +334,11 @@ class TFTPClientTransfer extends Thread
 
 		if ( requestType == TFTPCommon.Request.READ ) 
 		{
-			len = TFTPCommon.constructReqPacket(msg, 1, remoteName, fileMode);
+			len = TFTPCommon.constructReqPacket(msg, 1, remoteName, fileMode, false, false);
 		}
 		else 
 		{
-			len = TFTPCommon.constructReqPacket(msg, 2, remoteName, fileMode);
+			len = TFTPCommon.constructReqPacket(msg, 2, remoteName, fileMode, false, false);
 		}
 
 		data = new byte[TFTPCommon.maxPacketSize];
@@ -353,7 +353,7 @@ class TFTPClientTransfer extends Thread
 			}
 
 			sendPacket = new DatagramPacket(msg, len, serverAddress, sendPort);
-			TFTPCommon.printPacketDetails(sendPacket, verbose, true);
+			TFTPCommon.printPacketDetails(sendPacket, consolePrefix, verbose, true);
 
 			// Send the datagram packet to the server via the send/receive socket.
 			try {
@@ -375,14 +375,14 @@ class TFTPClientTransfer extends Thread
 				else if (TFTPCommon.validERRORPacket(receivePacket))
 				{
 					System.out.println(consolePrefix + "Received error packet:");
-					TFTPCommon.printPacketDetails(receivePacket, TFTPCommon.Verbosity.ALL, false);
+					TFTPCommon.printPacketDetails(receivePacket, consolePrefix, TFTPCommon.Verbosity.ALL, false);
 					TFTPCommon.parseErrorPacket(receivePacket, consolePrefix);
 					return false;
 				}
 				else
 				{
 					System.out.println(consolePrefix + "Received invalid packet:");
-					TFTPCommon.printPacketDetails(receivePacket, TFTPCommon.Verbosity.ALL, false);
+					TFTPCommon.printPacketDetails(receivePacket, consolePrefix, TFTPCommon.Verbosity.ALL, false);
 					TFTPCommon.sendErrorPacket(receivePacket, sendReceiveSocket, "Invalid request response received from server", TFTPCommon.ErrorCode.ILLEGAL, consolePrefix, verbose);
 					return false;
 				}
@@ -478,7 +478,7 @@ class TFTPClientTransfer extends Thread
 
 		len = receivePacket.getLength();
 
-		TFTPCommon.printPacketDetails(receivePacket, verbose, false);
+		TFTPCommon.printPacketDetails(receivePacket, consolePrefix, verbose, false);
 
 		System.out.println("Client: Beginning file transfer");
 		parent.clientTransferring(true);

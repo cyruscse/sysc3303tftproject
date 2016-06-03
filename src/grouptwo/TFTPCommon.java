@@ -129,7 +129,7 @@ public class TFTPCommon {
 		constructAckPacket(msg, blockNum);
 		send = new DatagramPacket(msg, msg.length, receive.getAddress(), receive.getPort());
 		System.out.println(consolePrefix + "Sending ACK " + (blockNum + (rollOver * 65536)));
-		printPacketDetails(send, verbose, false);
+		printPacketDetails(send, consolePrefix, verbose, false);
 		sendPacket(send, socket);
 	}
 
@@ -153,7 +153,7 @@ public class TFTPCommon {
 		System.out.println(consolePrefix + "Sending ERROR Packet: " + errString);
 		System.out.println(consolePrefix + "ERROR packet details:");
 		System.out.println(consolePrefix + "Error: " + errMsg[3]);
-		printPacketDetails(sendErr, Verbosity.ALL, false);
+		printPacketDetails(sendErr, consolePrefix, Verbosity.ALL, false);
 		sendPacket(sendErr, socket);
 	}
 	
@@ -202,7 +202,7 @@ public class TFTPCommon {
 
 				send = new DatagramPacket(dataMsg, len, address, port);
 
-				printPacketDetails(send, verbose, false);
+				printPacketDetails(send, consolePrefix, verbose, false);
 				sendPacket(send, sendReceiveSocket);
 			}
 
@@ -243,7 +243,7 @@ public class TFTPCommon {
 				else if (validACKPacket(receive, blockNum)) 
 				{
 					System.out.println(consolePrefix + "Received valid ACK " + (blockNum + (rollOver * 65536)));
-					printPacketDetails(receive, verbose, false);
+					printPacketDetails(receive, consolePrefix, verbose, false);
 
 					timeoutCount = 0; //Reset timeout count once a successful ACK is received
 					blockNum++;
@@ -265,7 +265,7 @@ public class TFTPCommon {
 					String errString = "";
 
 					System.out.println(consolePrefix + "Received invalid packet:");
-					printPacketDetails(receive, Verbosity.ALL, false);
+					printPacketDetails(receive, consolePrefix, Verbosity.ALL, false);
 
 					if (validERRORPacket(receive))
 					{
@@ -352,7 +352,7 @@ public class TFTPCommon {
 
 			len = receive.getLength();
 			
-			printPacketDetails(receive, verbose, false);
+			printPacketDetails(receive, consolePrefix, verbose, false);
 
 			if (port == -1)
 			{
@@ -399,7 +399,7 @@ public class TFTPCommon {
 				String errString = "";
 
 				System.out.println(consolePrefix + "Received invalid packet:");
-				printPacketDetails(receive, Verbosity.ALL, false);
+				printPacketDetails(receive, consolePrefix, Verbosity.ALL, false);
 
 				if (validERRORPacket(receive))
 				{
@@ -446,7 +446,7 @@ public class TFTPCommon {
 	 *   @param	 Boolean to decide to print the packet data as a string or not
 	 *   @return none
 	 */
-	public static void printPacketDetails(DatagramPacket packet, Verbosity verbosity, Boolean printAsString) 
+	public static void printPacketDetails(DatagramPacket packet, String consolePrefix, Verbosity verbosity, Boolean printAsString) 
 	{
 		int j;
 
@@ -474,7 +474,7 @@ public class TFTPCommon {
 
 			if (verbosity == TFTPCommon.Verbosity.ALL)
 			{ 
-				System.out.println("Client: request packet contains " + sending);
+				System.out.println(consolePrefix + "request packet contains " + sending);
 			}
 		}		
 	}
@@ -735,31 +735,6 @@ public class TFTPCommon {
     }
 
     /**
-	 *   Convert PacketType to corresponding (maximum) size of packet
-	 *
-	 *   @param  PacketType to get size for
-	 *   @return int
-	 * 
-	 */
-    public static int packetTypeToPacketSize (PacketType type)
-    {
-    	if (type == PacketType.ACK)
-    	{
-    		return 4;
-    	}
-    	else if (type == PacketType.DATA)
-    	{
-    		return 516;
-    	}
-    	else if (type == PacketType.REQUEST || type == PacketType.ERROR)
-    	{
-    		return 100;
-    	}
-
-  		return 100;
-    }
-
-    /**
 	 *   Constructs WRQ or RRQ packet
 	 *
 	 *   @param  byte[] array to store packet data in
@@ -768,21 +743,31 @@ public class TFTPCommon {
 	 *   @param  String filemode for read or write
 	 *   @return int length of packet
 	 */
-    public static int constructReqPacket(byte[] msg, int opcode, String fileName, String fileMode)
+    public static int constructReqPacket(byte[] msg, int opcode, String fileName, String fileMode, Boolean rmName, Boolean rmMode)
     {
     	byte[] fn, md;
+    	int len = 2;
 
     	msg[0] = (byte) (opcode / 10);
     	msg[1] = (byte) (opcode % 10);
 
-    	fn = fileName.getBytes();
-    	System.arraycopy(fn, 0, msg, 2, fn.length);
-    	msg[fn.length+2] = 0;
-    	md = fileMode.getBytes();
-    	System.arraycopy(md, 0, msg, fn.length+3, md.length);
-    	msg[fn.length+md.length+3] = 0;
+    	if (!rmName)
+    	{
+    		fn = fileName.getBytes();
+    		System.arraycopy(fn, 0, msg, len, fn.length);
+    		msg[fn.length + len] = 0;
+    		len += (fn.length + 1);
+    	}
+    	
+    	if (!rmMode)
+    	{
+    		md = fileMode.getBytes();
+    		System.arraycopy(md, 0, msg, len, md.length);
+    		msg[len + md.length] = 0;
+    		len += (md.length + 1);
+    	}
 
-    	return (fn.length + md.length + 4);
+    	return len;
     }
 
 	/**

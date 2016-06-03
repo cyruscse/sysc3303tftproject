@@ -127,7 +127,7 @@ public class ClientConnectionThread implements Runnable {
 			localName = new String(data,2,j-2);
 		}
 
-		if(requestType != TFTPCommon.Request.ERROR) // check for mode
+		if (requestType != TFTPCommon.Request.ERROR) // check for mode
 		{
 			for (k = j + 1; k < len; k++)
 			{ 
@@ -148,7 +148,7 @@ public class ClientConnectionThread implements Runnable {
 
 			mode = new String(data,j+1,k-j-1);
 
-			if ( !mode.equalsIgnoreCase("octet") && !mode.equalsIgnoreCase("netascii")) 
+			if ( !mode.equalsIgnoreCase("octet") && !mode.equalsIgnoreCase("netascii") && requestType != TFTPCommon.Request.ERROR ) 
 			{
 				requestType = TFTPCommon.Request.ERROR; // mode was not passed correctly
 				requestError = TFTPCommon.ContentSubmod.FILEMODE;
@@ -165,6 +165,8 @@ public class ClientConnectionThread implements Runnable {
 		// then make sure we receive an ACK packet for the block we just sent.
 		if (requestType == TFTPCommon.Request.READ)
 		{
+			TFTPCommon.printPacketDetails(receivePacket, consolePrefix, verbose, true);
+
 			try {
 				fileOp = new FileOperation(localName, true, 512, overwrite); 
 			} catch (FileNotFoundException e) {
@@ -195,6 +197,8 @@ public class ClientConnectionThread implements Runnable {
 
 		else if (requestType == TFTPCommon.Request.WRITE)
 		{
+			TFTPCommon.printPacketDetails(receivePacket, consolePrefix, verbose, true);
+
 			try {
 				fileOp = new FileOperation(localName, false, 512, overwrite);
 			} catch (FileNotFoundException e) {
@@ -231,7 +235,8 @@ public class ClientConnectionThread implements Runnable {
 		else 
 		{
 			String errorString = new String();
-			System.out.println(consolePrefix + "Received invalid request, sending ERROR");
+			System.out.println(consolePrefix + "Received invalid request:");
+			TFTPCommon.printPacketDetails(receivePacket, consolePrefix, TFTPCommon.Verbosity.ALL, true);
 			
 			if (requestError == TFTPCommon.ContentSubmod.OPCODE)
 			{
@@ -240,6 +245,10 @@ public class ClientConnectionThread implements Runnable {
 			else if (requestError == TFTPCommon.ContentSubmod.FILEMODE)
 			{
 				errorString = "Request packet has invalid file mode: " + mode;
+			}
+			else if (requestError == TFTPCommon.ContentSubmod.INVALID)
+			{
+				errorString = "Request packet missing file name or file mode";
 			}
 			else
 			{
