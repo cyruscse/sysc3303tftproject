@@ -89,7 +89,16 @@ public class TFTPClient
 				System.out.println("(i.e. read \"readFile.txt\" to \"dest.txt\", write \"writeFile.txt\" to \"dest2.txt\"");
 				System.out.println("");
 				System.out.println("--Options--");
-				System.out.println("i: Set IP address of TFTP Server (current: " + serverAddress + ")");							
+				
+				if ( mode == TFTPCommon.Mode.NORMAL )
+				{
+					System.out.println("i: Set IP address of TFTP Server (current: " + serverAddress + ")");							
+				}
+				else
+				{
+					System.out.println("i: Set IP address of error sim (current: " + serverAddress + ")");
+				}
+				
 				System.out.println("m: Set mode (current: " + TFTPCommon.modeToString(mode) + ")");
 				System.out.println("o: Overwrite existing files (current: " + overwrite + ")");
 				System.out.println("t: Set retransmission timeout (current: " + timeout + ")");
@@ -143,7 +152,7 @@ public class TFTPClient
 
 			else if ( scIn.equalsIgnoreCase("i") )
 			{
-				System.out.print("Enter IP address of server: ");
+				System.out.print("Enter IP address: ");
 				scIn = sc.nextLine();
 
 				try

@@ -21,6 +21,7 @@ public class TFTPIntHost
     private byte [] data;
     private List<SimulatePacketInfo> toModify;
     private Integer runningErrorSimCount;
+    private InetAddress serverAddress;
 
     public TFTPIntHost()
     {
@@ -32,6 +33,7 @@ public class TFTPIntHost
         }
 
         verbosity = TFTPCommon.Verbosity.NONE;
+        serverAddress = InetAddress.getLoopbackAddress();
         toModify = new ArrayList<SimulatePacketInfo>();
         runningErrorSimCount = 0;
         cliThread = new TFTPIntHostCommandLine(this);
@@ -98,6 +100,22 @@ public class TFTPIntHost
         }
 
         return returnString;
+    }
+
+    public List<SimulatePacketInfo> getSimulateList()
+    {
+        return toModify;
+    }
+
+    /**
+     *   Set address of TFTP Server (if error sim and client are on same machine)
+     *
+     *   @param  InetAddress
+     *   @return void
+     */
+    public void setAddress(InetAddress address)
+    {
+        serverAddress = address;
     }
 
     /**
@@ -607,6 +625,7 @@ class TFTPIntHostCommandLine extends Thread
 {
     private TFTPCommon.Verbosity verbosity;
     private TFTPIntHost parentSimulator;
+    private InetAddress serverAddress = InetAddress.getLoopbackAddress();
     private Boolean cliRunning;
     private String scIn;
 
@@ -658,20 +677,34 @@ class TFTPIntHostCommandLine extends Thread
         }
     }
 
+    private void setServerAddress (Scanner sc)
+    {
+        System.out.print("Enter IP address: ");
+        scIn = sc.nextLine();
+
+        try
+        {
+            serverAddress = InetAddress.getByName(scIn);
+            parentSimulator.setAddress(serverAddress);
+        } 
+        catch (UnknownHostException e)
+        {
+            System.out.println("Invalid IP address");
+        }
+    }
+
     private void deletePendingMod (Scanner sc)
     {
-        int modToDelete, simulateListSize;
-        Scanner simulateListSc;
+        int modToDelete;
+        List<SimulatePacketInfo> modList;
 
         while ( true )
         {
-            simulateListSize = parentSimulator.simulateListLength();
-            simulateListSc = new Scanner(parentSimulator.simulateListToString());
+            modList = parentSimulator.getSimulateList();
 
-            if (simulateListSize == 0)
+            if (modList.size() == 0)
             {
                 System.out.println("There are no pending modifications");
-                simulateListSc.close();
                 return;
             }
 
@@ -680,23 +713,19 @@ class TFTPIntHostCommandLine extends Thread
 
             System.out.println("List of Pending Modifications");
 
-            for (int i = 0; i < simulateListSize; i++)
+            for (int i = 0; i < modList.size(); i++)
             {
-                if (simulateListSc.hasNextLine())
-                {
-                    System.out.println((i + 1) + ". " + simulateListSc.nextLine());
-                }
+                System.out.println((i + 1) + ". " + modList.get(i));
             }
 
             while (modToDelete <= 0)
             {
-                System.out.print("Please enter a number (or r to return): ");
+                System.out.print("Enter a number (or r to return): ");
 
                 scIn = sc.nextLine();
 
                 if (scIn.equalsIgnoreCase("r"))
                 {
-                    simulateListSc.close();
                     return;
                 }
                 else
@@ -711,7 +740,7 @@ class TFTPIntHostCommandLine extends Thread
 
             modToDelete--;
 
-            if (modToDelete <= simulateListSize && simulateListSize == parentSimulator.simulateListLength())
+            if (modToDelete <= modList.size() && modList.size() == parentSimulator.simulateListLength())
             {
                 try {
                     parentSimulator.removeMod(modToDelete);
@@ -1016,6 +1045,7 @@ class TFTPIntHostCommandLine extends Thread
             System.out.println("lose: Lose packet");
             System.out.println("tid: Send packet with invalid TID");
             System.out.println("c: Cancel pending modification");
+            System.out.println("i: Set IP address of TFTP Server (current: " + serverAddress + ")");
             System.out.println("p: Print modifications");
             System.out.println("v: Set verbosity (current: " + TFTPCommon.verbosityToString(verbosity) + ")");
             System.out.println("q: Quit");
@@ -1045,6 +1075,10 @@ class TFTPIntHostCommandLine extends Thread
             else if ( scIn.equalsIgnoreCase("c") )
             {
                 deletePendingMod(sc);
+            }
+            else if ( scIn.equalsIgnoreCase("i") )
+            {
+                setServerAddress(sc);
             }
             else if ( scIn.equalsIgnoreCase("p") )
             {
