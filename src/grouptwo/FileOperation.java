@@ -18,7 +18,6 @@ public class FileOperation
     private File file;
     private FileInputStream inStream;
     private FileOutputStream outStream;
-    private FileLock inLock;
     private int numBytes;
 
     /**
@@ -145,7 +144,6 @@ public class FileOperation
     */
     public void closeFileRead() throws IOException
     {
-        inLock.release();
         inStream.close();
     }
 
