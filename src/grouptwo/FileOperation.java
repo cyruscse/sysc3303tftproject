@@ -184,8 +184,6 @@ public class FileOperation
         numBytes = bytesRW;
         file = new File(absolutePath);
         
-        //Client: Read Request writes to local machine
-        //Server: Write Request writes to local machine
         if ( localRead == false ) 
         {
             if (file.exists() && !Files.isWritable(FileSystems.getDefault().getPath(file.getAbsolutePath())))
@@ -206,12 +204,10 @@ public class FileOperation
             {
                 throw new FileOperationException(TFTPCommon.ErrorCode.FILEEXISTS, "File: \"" + file.getName() + "\" already exists");
             }
-            //Constructor: Path, Append (allows us to make a file out of packets)
+
             outStream = new FileOutputStream(absolutePath, true);
         }
        
-        //Client: Write Request reads from local machine
-        //Server: Read Request reads from local machine
         else
         {
             if (file.exists() && !Files.isReadable(FileSystems.getDefault().getPath(file.getAbsolutePath())))
@@ -219,7 +215,7 @@ public class FileOperation
                 throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE, "File: \"" + file.getName() + "\" is not readable. Access violation.");
             }
 
-            inStream = new FileInputStream(absolutePath);
+            inStream = new FileInputStream(file);
         }
     }
 }

@@ -142,6 +142,12 @@ public class TFTPClient
 					}
 				}
 
+				if (localFile.equalsIgnoreCase(remoteFile))
+				{
+					System.out.println("Can't use same file for read and write");
+					requestType = TFTPCommon.Request.ERROR;
+				}
+
 				if (remoteFile.length() > 0 && localFile.length() > 0 && requestType != TFTPCommon.Request.ERROR)
 				{
 					tftpTransfer = new TFTPClientTransfer("clientTransfer", serverAddress, remoteFile, localFile, this, requestType, mode, verbosity, timeout, overwrite);
