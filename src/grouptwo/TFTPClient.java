@@ -152,7 +152,7 @@ public class TFTPClient
 
 			else if ( scIn.equalsIgnoreCase("i") )
 			{
-				System.out.print("Enter IP address: ");
+				System.out.print("Enter IP address (enter nothing for localhost): ");
 				scIn = sc.nextLine();
 
 				try

@@ -102,6 +102,14 @@ public class TFTPIntHost
         return returnString;
     }
 
+    /**
+     *   Get list of pending packet modifications
+     *   Used for removing pending mods in CLI
+     *
+     *   @param  void
+     *   @return List<SimulatePacketInfo>
+     */
+
     public List<SimulatePacketInfo> getSimulateList()
     {
         return toModify;
@@ -145,7 +153,7 @@ public class TFTPIntHost
             }
 
             runningErrorSimCount++;
-            Thread client = new Thread(new ErrorSimulator(receivePacket, verbosity, toModify, runningErrorSimCount, this));
+            Thread client = new Thread(new ErrorSimulator(receivePacket, serverAddress, verbosity, toModify, runningErrorSimCount, this));
             client.start();
             toModify = new ArrayList<SimulatePacketInfo>();
         }
@@ -179,11 +187,11 @@ class ErrorSimulator extends Thread
     private String consolePrefix;
     private TFTPIntHost parent;
 
-    public ErrorSimulator(DatagramPacket firstPacket, TFTPCommon.Verbosity verbose, List<SimulatePacketInfo> simulateList, Integer errorSimNum, TFTPIntHost intHost)
+    public ErrorSimulator(DatagramPacket firstPacket, InetAddress serverAddress, TFTPCommon.Verbosity verbose, List<SimulatePacketInfo> simulateList, Integer errorSimNum, TFTPIntHost intHost)
     {
         clientAddress = firstPacket.getAddress();
         clientPort = firstPacket.getPort();
-        serverAddress = InetAddress.getLoopbackAddress();
+        this.serverAddress = serverAddress;
         serverPort = 0;
         len = firstPacket.getLength();
         data = firstPacket.getData();
@@ -414,7 +422,7 @@ class ErrorSimulator extends Thread
         {
             sendPacket = new DatagramPacket(data, len, address, port);
             len = sendPacket.getLength();
-            TFTPCommon.printPacketDetails(sendPacket, consolePrefix, verbosity, false);
+            TFTPCommon.printPacketDetails(receivePacket, consolePrefix, verbosity, false);
 
             errorSimulateSend();
 
@@ -444,7 +452,7 @@ class ErrorSimulator extends Thread
             else if (receivePacket.getPort() == clientPort)
             {
                 port = serverPort;
-                address = InetAddress.getLoopbackAddress();
+                address = serverAddress;
             }
             else
             {
