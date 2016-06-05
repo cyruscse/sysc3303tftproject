@@ -165,7 +165,7 @@ public class ClientConnectionThread implements Runnable {
 		// then make sure we receive an ACK packet for the block we just sent.
 		if (requestType == TFTPCommon.Request.READ)
 		{
-			TFTPCommon.printPacketDetails(receivePacket, consolePrefix, verbose, true);
+			TFTPCommon.printPacketDetails(receivePacket, consolePrefix, verbose, false, true);
 
 			try {
 				fileOp = new FileOperation(localName, true, 512, overwrite); 
@@ -197,7 +197,7 @@ public class ClientConnectionThread implements Runnable {
 
 		else if (requestType == TFTPCommon.Request.WRITE)
 		{
-			TFTPCommon.printPacketDetails(receivePacket, consolePrefix, verbose, true);
+			TFTPCommon.printPacketDetails(receivePacket, consolePrefix, verbose, false, true);
 
 			try {
 				fileOp = new FileOperation(localName, false, 512, overwrite);
@@ -236,7 +236,7 @@ public class ClientConnectionThread implements Runnable {
 		{
 			String errorString = new String();
 			System.out.println(consolePrefix + "Received invalid request:");
-			TFTPCommon.printPacketDetails(receivePacket, consolePrefix, TFTPCommon.Verbosity.ALL, true);
+			TFTPCommon.printPacketDetails(receivePacket, consolePrefix, TFTPCommon.Verbosity.ALL, false, true);
 			
 			if (requestError == TFTPCommon.ContentSubmod.OPCODE)
 			{

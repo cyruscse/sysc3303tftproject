@@ -129,7 +129,7 @@ public class TFTPCommon {
 		constructAckPacket(msg, blockNum);
 		send = new DatagramPacket(msg, msg.length, receive.getAddress(), receive.getPort());
 		System.out.println(consolePrefix + "Sending ACK " + (blockNum + (rollOver * 65536)));
-		printPacketDetails(send, consolePrefix, verbose, false);
+		printPacketDetails(send, consolePrefix, verbose, true, false);
 		sendPacket(send, socket);
 	}
 
@@ -153,7 +153,7 @@ public class TFTPCommon {
 		System.out.println(consolePrefix + "Sending ERROR Packet: " + errString);
 		System.out.println(consolePrefix + "ERROR packet details:");
 		System.out.println(consolePrefix + "Error: " + errMsg[3]);
-		printPacketDetails(sendErr, consolePrefix, Verbosity.ALL, false);
+		printPacketDetails(sendErr, consolePrefix, Verbosity.ALL, true, false);
 		sendPacket(sendErr, socket);
 	}
 	
@@ -202,7 +202,7 @@ public class TFTPCommon {
 
 				send = new DatagramPacket(dataMsg, len, address, port);
 
-				printPacketDetails(send, consolePrefix, verbose, false);
+				printPacketDetails(send, consolePrefix, verbose, true, false);
 				sendPacket(send, sendReceiveSocket);
 			}
 
@@ -243,7 +243,7 @@ public class TFTPCommon {
 				else if (validACKPacket(receive, blockNum)) 
 				{
 					System.out.println(consolePrefix + "Received valid ACK " + (blockNum + (rollOver * 65536)));
-					printPacketDetails(receive, consolePrefix, verbose, false);
+					printPacketDetails(receive, consolePrefix, verbose, false, false);
 
 					timeoutCount = 0; //Reset timeout count once a successful ACK is received
 					blockNum++;
@@ -265,7 +265,7 @@ public class TFTPCommon {
 					String errString = "";
 
 					System.out.println(consolePrefix + "Received invalid packet:");
-					printPacketDetails(receive, consolePrefix, Verbosity.ALL, false);
+					printPacketDetails(receive, consolePrefix, Verbosity.ALL, false, false);
 
 					if (validERRORPacket(receive))
 					{
@@ -352,7 +352,7 @@ public class TFTPCommon {
 
 			len = receive.getLength();
 			
-			printPacketDetails(receive, consolePrefix, verbose, false);
+			printPacketDetails(receive, consolePrefix, verbose, false, false);
 
 			if (port == -1)
 			{
@@ -399,7 +399,7 @@ public class TFTPCommon {
 				String errString = "";
 
 				System.out.println(consolePrefix + "Received invalid packet:");
-				printPacketDetails(receive, consolePrefix, Verbosity.ALL, false);
+				printPacketDetails(receive, consolePrefix, Verbosity.ALL, false, false);
 
 				if (validERRORPacket(receive))
 				{
@@ -446,20 +446,30 @@ public class TFTPCommon {
 	 *   @param	 Boolean to decide to print the packet data as a string or not
 	 *   @return none
 	 */
-	public static void printPacketDetails(DatagramPacket packet, String consolePrefix, Verbosity verbosity, Boolean printAsString) 
+	public static void printPacketDetails(DatagramPacket packet, String consolePrefix, Verbosity verbosity, Boolean sending, Boolean printAsString) 
 	{
 		int j;
+		String prefix;
+
+		if ( sending )
+		{
+			prefix = "To ";
+		}
+		else
+		{
+			prefix = "From ";
+		}
 
 		if ( verbosity != TFTPCommon.Verbosity.NONE ) 
 		{
-			System.out.println("Host: " + packet.getAddress());
-			System.out.println("Host port: " + packet.getPort());
-			System.out.println("Length: " + packet.getLength());
-			System.out.println("Packet type: " + opcodeToString(packet.getData()));
+			System.out.println(consolePrefix + prefix + "Host: " + packet.getAddress());
+			System.out.println(consolePrefix + prefix + "Host port: " + packet.getPort());
+			System.out.println(consolePrefix + "Length: " + packet.getLength());
+			System.out.println(consolePrefix + "Packet type: " + opcodeToString(packet.getData()));
 
 			if ( verbosity == TFTPCommon.Verbosity.ALL )
 			{
-				System.out.println("Containing: ");
+				System.out.println(consolePrefix + "Containing: ");
 				for (j = 0; j < packet.getLength(); j++) 
 				{
 					System.out.print((packet.getData()[j] & 0xFF) + " ");
@@ -470,11 +480,11 @@ public class TFTPCommon {
 
 		if (printAsString)
 		{
-			String sending = new String(packet.getData(), 0, packet.getLength());
+			String packetString = new String(packet.getData(), 0, packet.getLength());
 
 			if (verbosity == TFTPCommon.Verbosity.ALL)
 			{ 
-				System.out.println(consolePrefix + "request packet contains " + sending);
+				System.out.println(consolePrefix + "request packet contains " + packetString);
 			}
 		}		
 	}

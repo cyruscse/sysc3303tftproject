@@ -272,7 +272,7 @@ class ErrorSimulator extends Thread
         }
 
 		System.out.println(consolePrefix + "Sending " + TFTPCommon.packetTypeAndNumber(sendPacket.getData()) + " with no error simulation.");
-        TFTPCommon.printPacketDetails(sendPacket, consolePrefix, verbosity, false);
+        TFTPCommon.printPacketDetails(sendPacket, consolePrefix, verbosity, true, false);
 
 		try {
 	        sendReceiveSocket.send(sendPacket);
@@ -291,7 +291,7 @@ class ErrorSimulator extends Thread
     private void losePacket (SimulatePacketInfo check)
     {
         System.out.println(consolePrefix + "Lose " + TFTPCommon.packetTypeAndNumber(sendPacket.getData()));
-        TFTPCommon.printPacketDetails(sendPacket, consolePrefix, verbosity, false);
+        TFTPCommon.printPacketDetails(sendPacket, consolePrefix, verbosity, true, false);
     }
 
     /**
@@ -396,7 +396,7 @@ class ErrorSimulator extends Thread
 
         sendPacket.setData(data, 0, len);
 
-        TFTPCommon.printPacketDetails(sendPacket, consolePrefix, verbosity, false);
+        TFTPCommon.printPacketDetails(sendPacket, consolePrefix, verbosity, true, false);
 
         try {
             sendReceiveSocket.send(sendPacket);
@@ -422,7 +422,7 @@ class ErrorSimulator extends Thread
         {
             sendPacket = new DatagramPacket(data, len, address, port);
             len = sendPacket.getLength();
-            TFTPCommon.printPacketDetails(receivePacket, consolePrefix, verbosity, false);
+            TFTPCommon.printPacketDetails(receivePacket, consolePrefix, verbosity, false, false);
 
             errorSimulateSend();
 
@@ -514,7 +514,7 @@ class DelayDuplicatePacket extends Thread
     {
         System.out.println(consolePrefix + "Duplicate " + TFTPCommon.packetTypeAndNumber(send.getData()) + ", sending first instance");
         
-        TFTPCommon.printPacketDetails(send, consolePrefix, verbosity, false);
+        TFTPCommon.printPacketDetails(send, consolePrefix, verbosity, true, false);
         
         try {
             socket.send(send);
@@ -551,7 +551,7 @@ class DelayDuplicatePacket extends Thread
     {
         System.out.println(consolePrefix + "Delay " + TFTPCommon.packetTypeAndNumber(send.getData()) + " by " + delayAmount + "ms");
         
-        TFTPCommon.printPacketDetails(send, consolePrefix, verbosity, false);
+        TFTPCommon.printPacketDetails(send, consolePrefix, verbosity, true, false);
 
         System.out.println(consolePrefix + "Waiting " + delayAmount + " ms");
 
@@ -582,7 +582,7 @@ class DelayDuplicatePacket extends Thread
     {
         System.out.println(consolePrefix + "Sending " + TFTPCommon.packetTypeAndNumber(send.getData()) + " with invalid TID");
 
-        TFTPCommon.printPacketDetails(send, consolePrefix, verbosity, false);
+        TFTPCommon.printPacketDetails(send, consolePrefix, verbosity, true, false);
 
         try {
             socket.send(send);
@@ -602,7 +602,7 @@ class DelayDuplicatePacket extends Thread
 
         System.out.println(consolePrefix + "Received " + TFTPCommon.packetTypeAndNumber(receive.getData()));
 
-        TFTPCommon.printPacketDetails(receive, consolePrefix, verbosity, false);
+        TFTPCommon.printPacketDetails(receive, consolePrefix, verbosity, false, false);
     }
 
     public void run()
