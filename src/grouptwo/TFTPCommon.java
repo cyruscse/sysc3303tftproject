@@ -194,7 +194,8 @@ public class TFTPCommon {
 					try {
 						len = constructDataPacket(dataMsg, blockNum, fileOp);
 					} catch (FileOperation.FileOperationException e) {
-						sendErrorPacket(receive, sendReceiveSocket, "Access violation while trying to read file", e.error, consolePrefix, verbose);
+						sendErrorPacket(receive, sendReceiveSocket, e.toString(), e.error, consolePrefix, verbose);
+						return false;
 					}
 				}
 

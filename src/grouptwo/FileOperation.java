@@ -18,6 +18,7 @@ public class FileOperation
     private File file;
     private FileInputStream inStream;
     private FileOutputStream outStream;
+    private FileLock inLock;
     private int numBytes;
 
     /**
@@ -144,6 +145,7 @@ public class FileOperation
     */
     public void closeFileRead() throws IOException
     {
+        inLock.release();
         inStream.close();
     }
 
@@ -192,8 +194,7 @@ public class FileOperation
             {
                 throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE, "File: \"" + file.getName() + "\" exists and is not writable");
             }
-
-            else if (file.getParentFile() != null && file.getParentFile().exists() && !Files.isWritable(FileSystems.getDefault().getPath(file.getAbsolutePath())))
+            else if (file.getParentFile() != null && file.getParentFile().exists() && !Files.isWritable(FileSystems.getDefault().getPath(file.getParent())))
             {
                 throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE, "File: \"" + file.getName() + "\"'s parent folder is not writable");
             }
