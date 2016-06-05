@@ -190,11 +190,11 @@ public class FileOperation
         {
             if (file.exists() && !Files.isWritable(FileSystems.getDefault().getPath(file.getAbsolutePath())))
             {
-                throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE, "File: \"" + file.getName() + "\" exists and is not writable");
+                throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE, "File: \"" + file.getName() + "\" exists and is not writable. Access violation");
             }
             else if (file.getParentFile() != null && file.getParentFile().exists() && !Files.isWritable(FileSystems.getDefault().getPath(file.getParent())))
             {
-                throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE, "File: \"" + file.getName() + "\"'s parent folder is not writable");
+                throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE, "File: \"" + file.getName() + "\"'s parent folder is not writable. Access violation");
             }
 
             if (overwrite)
