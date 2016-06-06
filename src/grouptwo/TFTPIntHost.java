@@ -533,6 +533,8 @@ class DelayDuplicatePacket extends Thread
 
         System.out.println(consolePrefix + "Duplicate " + TFTPCommon.packetTypeAndNumber(send.getData()) + ", sending second instance");
         
+        TFTPCommon.printPacketDetails(send, consolePrefix, verbosity, true, false);
+
         try {
             socket.send(send);
         } catch (IOException e) {
