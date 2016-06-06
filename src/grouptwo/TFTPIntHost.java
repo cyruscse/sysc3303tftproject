@@ -19,8 +19,9 @@ public class TFTPIntHost
     private TFTPCommon.Verbosity verbosity;
     private TFTPIntHostCommandLine cliThread;
     private byte [] data;
-    private List<SimulatePacketInfo> toModify;
     private Integer runningErrorSimCount;
+    private List<SimulatePacketInfo> toModify;
+    private List<Thread> runningThreads;
     private InetAddress serverAddress;
 
     public TFTPIntHost()
@@ -34,9 +35,22 @@ public class TFTPIntHost
 
         verbosity = TFTPCommon.Verbosity.NONE;
         serverAddress = InetAddress.getLoopbackAddress();
-        toModify = new ArrayList<SimulatePacketInfo>();
         runningErrorSimCount = 0;
+        toModify = new ArrayList<SimulatePacketInfo>();
+        runningThreads = new ArrayList<Thread>();
         cliThread = new TFTPIntHostCommandLine(this);
+    }
+
+    /**
+     *   Called by returning ErrorSimulator, indicates to TFTPIntHost that the transfer is complete
+     *
+     *   @param  Thread ErrorSimulator that finished
+     *   @return none
+     */
+    public void threadDone(Thread t)
+    {
+        runningThreads.remove(t);
+        runningErrorSimCount = runningThreads.size();
     }
 
     /**
@@ -153,7 +167,8 @@ public class TFTPIntHost
             }
 
             runningErrorSimCount++;
-            Thread client = new Thread(new ErrorSimulator(receivePacket, serverAddress, verbosity, toModify, runningErrorSimCount, this));
+            Thread client = new Thread(new ErrorSimulator(receivePacket, serverAddress, verbosity, toModify, runningThreads.size() + 1, this));
+            runningThreads.add(client);
             client.start();
             toModify = new ArrayList<SimulatePacketInfo>();
         }
@@ -180,7 +195,7 @@ class ErrorSimulator extends Thread
     private DatagramPacket sendPacket, receivePacket;
     private TFTPCommon.Verbosity verbosity;
     private InetAddress clientAddress, serverAddress;
-    private int clientPort, serverPort, len;
+    private int clientPort, serverPort, len, hardTimeout;
     private byte [] data;
     private SimulatePacketInfo simCompare;
     private List<SimulatePacketInfo> simulateList;
@@ -193,6 +208,7 @@ class ErrorSimulator extends Thread
         clientPort = firstPacket.getPort();
         this.serverAddress = serverAddress;
         serverPort = 0;
+        hardTimeout = 300000;
         len = firstPacket.getLength();
         data = firstPacket.getData();
         receivePacket = firstPacket;
@@ -230,8 +246,6 @@ class ErrorSimulator extends Thread
     				losePacket(check);
                     simulateList.remove(check);
                     
-                    //TODO - need to test losing request packets (as well as multiple clients)
-
                     //If we lose a request, the client will send another request which will spawn a new error sim thread
                     //The new thread won't have the list of modifications, so pass those now
                     if (check.getPacketType() == TFTPCommon.PacketType.REQUEST)
@@ -431,7 +445,12 @@ class ErrorSimulator extends Thread
             receivePacket = new DatagramPacket(data, data.length);
 
             try {
+                sendReceiveSocket.setSoTimeout(hardTimeout);
                 sendReceiveSocket.receive(receivePacket);
+            } catch (SocketTimeoutException e) {
+                System.out.println(consolePrefix + "Haven't received any packets in past " + hardTimeout + "ms. Thread returning");
+                parent.threadDone(Thread.currentThread());
+                return;
             } catch (IOException e) {
                 e.printStackTrace();
                 return;
