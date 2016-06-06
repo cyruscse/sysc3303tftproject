@@ -192,7 +192,7 @@ public class FileOperation
             }
             else if (file.getParentFile() != null && file.getParentFile().exists() && !Files.isWritable(FileSystems.getDefault().getPath(file.getParent())))
             {
-                throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE, "Destination folder is not writable. Access violation");
+                throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE, "Parent folder \"" + file.getParentFile() + "\"is not writable. Access violation");
             }
 
             if (overwrite)
@@ -213,6 +213,10 @@ public class FileOperation
             if (file.exists() && !Files.isReadable(FileSystems.getDefault().getPath(file.getAbsolutePath())))
             {
                 throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE, "File: \"" + file.getName() + "\" is not readable. Access violation.");
+            }
+            else if (file.getParentFile() != null && file.getParentFile().exists() && !Files.isReadable(FileSystems.getDefault().getPath(file.getParent())))
+            {
+                throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE, "Parent folder \"" + file.getParentFile() + "\" is not readable");
             }
 
             inStream = new FileInputStream(file);
