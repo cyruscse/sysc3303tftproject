@@ -244,6 +244,7 @@ class ErrorSimulator extends Thread
     			} 
                 else if (check.getModType() == TFTPCommon.ModificationType.DUPLICATE || check.getModType() == TFTPCommon.ModificationType.DELAY) 
                 {
+                    System.out.println("precreation " + sendReceiveSocket.getLocalPort());
                     Thread delayDuplicateThread = new Thread(new DelayDuplicatePacket(sendPacket, sendReceiveSocket, check.getModType(), check.getDelayDuplicateGap()));
     				delayDuplicateThread.start();
                     simulateList.remove(check);
@@ -554,6 +555,7 @@ class DelayDuplicatePacket extends Thread
         TFTPCommon.printPacketDetails(send, consolePrefix, verbosity, true, false);
 
         System.out.println(consolePrefix + "Waiting " + delayAmount + " ms");
+        System.out.println(socket.getLocalPort() + " before");
 
         try {
             Thread.sleep(delayAmount);
@@ -563,7 +565,8 @@ class DelayDuplicatePacket extends Thread
         }
 
         System.out.println(consolePrefix + "Delayed " + TFTPCommon.packetTypeAndNumber(send.getData()) + ", sending now");
-         
+        TFTPCommon.printPacketDetails(send, consolePrefix, verbosity, true, false);
+        System.out.println(socket.getLocalPort() + " after");
         try {
             socket.send(send);
         } catch (IOException e) {
@@ -687,7 +690,7 @@ class TFTPIntHostCommandLine extends Thread
 
     private void setServerAddress (Scanner sc)
     {
-        System.out.print("Enter IP address: ");
+        System.out.print("Enter IP address (enter nothing for localhost): ");
         scIn = sc.nextLine();
 
         try

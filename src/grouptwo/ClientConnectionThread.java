@@ -124,7 +124,7 @@ public class ClientConnectionThread implements Runnable {
 				requestType = TFTPCommon.Request.ERROR; // filename is 0 bytes long
 			}
 
-			localName = new String(data,2,j-2);
+			localName = new String(data, 2, j - 2);
 		}
 
 		if (requestType != TFTPCommon.Request.ERROR) // check for mode
@@ -146,7 +146,7 @@ public class ClientConnectionThread implements Runnable {
 				requestType = TFTPCommon.Request.ERROR; // mode is 0 bytes long
 			}
 
-			mode = new String(data,j+1,k-j-1);
+			mode = new String(data, j + 1, k - j - 1);
 
 			if ( !mode.equalsIgnoreCase("octet") && !mode.equalsIgnoreCase("netascii") && requestType != TFTPCommon.Request.ERROR ) 
 			{
@@ -155,7 +155,7 @@ public class ClientConnectionThread implements Runnable {
 			}
 		}
 
-		if (k != len-1)
+		if (k != len - 1)
 		{
 			requestType = TFTPCommon.Request.ERROR; // other stuff at end of packet
 		}
@@ -246,7 +246,7 @@ public class ClientConnectionThread implements Runnable {
 			{
 				errorString = "Request packet has invalid file mode: " + mode;
 			}
-			else if (requestError == TFTPCommon.ContentSubmod.INVALID)
+			else if (requestError == TFTPCommon.ContentSubmod.INVALID && (k == (len - 1) ) )
 			{
 				errorString = "Request packet missing file name or file mode";
 			}
