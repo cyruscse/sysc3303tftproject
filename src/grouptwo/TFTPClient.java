@@ -59,6 +59,23 @@ public class TFTPClient
 		clientReady = transferring;
 	}
 
+	private Boolean isMyAddress()
+	{
+		if (serverAddress.isAnyLocalAddress() || serverAddress.isLoopbackAddress())
+		{
+			return true;
+		}
+
+		try
+		{
+			return NetworkInterface.getByInetAddress(serverAddress) != null;
+		}
+		catch (SocketException e)
+		{
+			return false;
+		}
+	}
+
 	/**
 	 *   CLI for TFTP client, loops and blocks on next Scanner line in order to choose
 	 *   a menu item. Invalid arguments are ignored and the client transfer thread is not allowed
@@ -142,9 +159,9 @@ public class TFTPClient
 					}
 				}
 
-				if (localFile.equalsIgnoreCase(remoteFile))
+				if (localFile.equalsIgnoreCase(remoteFile) && isMyAddress())
 				{
-					System.out.println("Can't use same file for read and write");
+					System.out.println("Can't use same file for read and write on same computer");
 					requestType = TFTPCommon.Request.ERROR;
 				}
 
