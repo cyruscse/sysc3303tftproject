@@ -19,6 +19,7 @@ public class FileOperation
     private FileInputStream inStream;
     private FileOutputStream outStream;
     private int numBytes;
+    private Boolean createdFolders;
 
     /**
      *   Exception used for indicating file errors, always constructed with a TFTPCommon ErrorCode
@@ -183,9 +184,19 @@ public class FileOperation
     {
         numBytes = bytesRW;
         file = new File(absolutePath);
+        createdFolders = false;
         
         if ( localRead == false ) 
         {
+            if (file.getParentFile() != null && !file.getParentFile().exists())
+            {
+                createdFolders = file.getParentFile().mkdirs();
+
+                if (!createdFolders)
+                {
+                    throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE, "Failed to create parent directory for " + file.getName());
+                }
+            }
             if (file.exists() && !Files.isWritable(FileSystems.getDefault().getPath(file.getAbsolutePath())))
             {
                 throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE, "File: \"" + file.getName() + "\" exists and is not writable. Access violation");
