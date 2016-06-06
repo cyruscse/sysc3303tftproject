@@ -571,6 +571,18 @@ class TFTPClientTransfer extends Thread
 					System.out.println(consolePrefix + "Failed to delete incomplete file \"" + localName + "\"");
 				}
 			}
+			else
+			{
+				try
+				{
+					fileOp.closeFileRead();
+				}
+				catch (IOException e)
+				{
+					System.out.println(consolePrefix + "Couldn't close read file.");
+				}
+			}
+			return;
 		}
 		
 		// We're finished, so close the socket.
