@@ -59,6 +59,12 @@ public class TFTPClient
 		clientReady = transferring;
 	}
 
+	/**
+     *   Check if current server address is one of this computer's addresses
+     *
+     *   @param  none
+     *   @return Boolean true if address is on this computer
+     */
 	private Boolean isMyAddress()
 	{
 		if (serverAddress.isAnyLocalAddress() || serverAddress.isLoopbackAddress())
@@ -320,11 +326,15 @@ class TFTPClientTransfer extends Thread
 	 *   that will be used for sending and receiving packets.
 	 *
 	 *   @param  String thread name that is sent to superclass (Thread)
+	 *   @param  InetAddress of TFTP server
 	 *   @param  String name of file on server
 	 *   @param  String name of file on local machine
-	 *   @param  Request request type (read or write)
-	 *   @param  Mode run mode (normal (direct to server) or test (through error sim))
-	 *   @param  Verbosity verbosity of info (ranging from none to full packet details)
+	 *   @param  TFTPClient parent caller
+	 *   @param  TFTPCommon.Request request type (read or write)
+	 *   @param  TFTPCommon.Mode run mode (normal (direct to server) or test (through error sim))
+	 *   @param  TFTPCommon.Verbosity verbosity of info (ranging from none to full packet details)
+	 *   @param  int timeout before resending packet
+	 *   @param  Boolean allow overwriting
 	 *   @return TFTPClientTransfer
 	 */
 	public TFTPClientTransfer(String threadName, InetAddress serverAddress, String remoteFile, String localFile, TFTPClient cliThread, TFTPCommon.Request transferType, TFTPCommon.Mode runMode, TFTPCommon.Verbosity verMode, int reTimeout, Boolean overwrite)

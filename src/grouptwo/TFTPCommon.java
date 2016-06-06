@@ -91,7 +91,7 @@ public class TFTPCommon {
 	 *
 	 *   @param  DatagramPacket instance to receive
 	 *   @param  DatagramSocket to receive from
-	 *   @param timeout time before timeout in milliseconds
+	 *   @param  timeout time before timeout in milliseconds
 	 *   @throws SocketTimeoutException
 	 *   @return none
 	 * 
@@ -115,6 +115,7 @@ public class TFTPCommon {
 	 *   Send an ACK packet with the specified block number
 	 *
 	 *   @param  int block number to send ACK for
+	 *   @param  int number of times blocknum has rolled over (> 65535)
 	 *   @param  DatagramPacket to send
 	 *   @param  DatagramPacket to get destination details
 	 *   @param  DatagramSocket to send ACK with
@@ -443,7 +444,9 @@ public class TFTPCommon {
 	 *   Prints basic packet details based on the verbosity of the caller
 	 *
 	 *   @param  DatagramPacket to print details of
+	 *   @param  String console prefix of caller
 	 *   @param	 Verbosity level of the caller
+	 *   @param  Boolean whether or not we're sending packet, to prefix packet info
 	 *   @param	 Boolean to decide to print the packet data as a string or not
 	 *   @return none
 	 */
@@ -752,6 +755,8 @@ public class TFTPCommon {
 	 *   @param  int opcode of packet
 	 *   @param  String filename for read or write
 	 *   @param  String filemode for read or write
+	 *   @param  Boolean remove file name (including leading and trailing 0)
+	 *   @param  Boolean remove file mode (including leading and trailing 0)
 	 *   @return int length of packet
 	 */
     public static int constructReqPacket(byte[] msg, int opcode, String fileName, String fileMode, Boolean rmName, Boolean rmMode)
@@ -883,9 +888,8 @@ public class TFTPCommon {
 	/**
 	 *   Parses a received ERROR packet by printing its type and error message
 	 *
-	 *   @param  byte[] data contents of received error packet
+	 *   @param  DatagramPacket of received packet
 	 *   @param  String name of thread that received packet
-	 *   @param  Boolean determines whether or not to print error message in packet
 	 *   @return void
 	 * 
 	 */
@@ -963,6 +967,7 @@ public class TFTPCommon {
 	 *   @param  byte[] data sent from server to client
 	 *   @param  int length of data
 	 *   @param  FileOperation current file we are writing to
+	 *   @param  Verbosity of caller
 	 *   @return Boolean indicating if this was the final DATA packet
 	 */
 	public static Boolean writeDataPacket(byte[] msg, int len, FileOperation file, Verbosity verbose) throws FileOperation.FileOperationException
@@ -996,9 +1001,8 @@ public class TFTPCommon {
 	/**
 	 *   Check validity of received DATA packet
 	 *
-	 *   @param  byte[] packet data
-	 *   @param  int length of data
-	 *   @return Boolean indicating if DATA is valid or not
+	 *   @param  DatagramPacket received packet
+	 *   @param  int expected block number
 	 */
 	public static Boolean validDATAPacket(DatagramPacket packet, int blockNum)
 	{
@@ -1008,15 +1012,20 @@ public class TFTPCommon {
 	/**
 	 *   Check validity of received ACK packet
 	 *
-	 *   @param  byte[] packet data
-	 *   @param  int length of data
-	 *   @return Boolean indicating if ACK is valid or not
+	 *   @param  DatagramPacket received packet
+	 *   @param  int expected block number
 	 */
 	public static Boolean validACKPacket(DatagramPacket packet, int blockNum)
 	{
 		return ( getPacketType(packet.getData()) == PacketType.ACK && blockNumToPacket(packet.getData()) == blockNum && packet.getLength() == 4 );
 	}
 
+	/**
+     *   Check validity of received ERROR packet
+     *
+     *   @param  DatagramPacket received packet
+     *   @return Boolean if packet is valid ERROR packet
+     */
 	public static Boolean validERRORPacket(DatagramPacket packet)
 	{
 		return ( packet.getLength() > 4 && getPacketType(packet.getData()) == PacketType.ERROR && packet.getData()[packet.getLength() - 1] == 0 && blockNumToPacket(packet.getData()) < 7 && blockNumToPacket(packet.getData()) > 0);

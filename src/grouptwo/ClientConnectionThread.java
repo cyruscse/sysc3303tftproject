@@ -45,6 +45,17 @@ public class ClientConnectionThread implements Runnable {
 	private Boolean overwrite;
 	private final String consolePrefix;
 
+	/**
+     *   Constructor for ClientConnectionThread - called by TFTPServer for each incoming client connection (called with information required for new transfer)
+     *
+     *   @param  DatagramPacket first packet received from client
+     *   @param  TFTPServer client listening server
+     *   @param  TFTPCommon.Verbosity thread verbosity
+     *   @param  int thread number
+     *   @param  int timeout value before resending packet
+     *   @param  Boolean allow overwriting
+     *   @return ClientConnectionThread
+     */
 	public ClientConnectionThread(DatagramPacket receivePckt, TFTPServer parent, TFTPCommon.Verbosity verbosity, int threadNumber, int reTimeout, Boolean overwrite) 
 	{
 		this.threadNumber = threadNumber;
@@ -83,9 +94,6 @@ public class ClientConnectionThread implements Runnable {
 		data = receivePacket.getData();
 		len = receivePacket.getLength();
 
-		// If it's a read, send back DATA (03) block 1
-		// If it's a write, send back ACK (04) block 0
-		// Otherwise, send back an ERROR packet
 		if (data[0] != 0)
 		{
 			requestType = TFTPCommon.Request.ERROR;
@@ -160,9 +168,6 @@ public class ClientConnectionThread implements Runnable {
 			requestType = TFTPCommon.Request.ERROR; // other stuff at end of packet
 		}
 
-		// If the request from the CLIENT is a read request, then we have to read blocks from 
-		// the local file on the server, create DATA packets, send them to the client, and
-		// then make sure we receive an ACK packet for the block we just sent.
 		if (requestType == TFTPCommon.Request.READ)
 		{
 			TFTPCommon.printPacketDetails(receivePacket, consolePrefix, verbose, false, true);
@@ -271,11 +276,14 @@ public class ClientConnectionThread implements Runnable {
 		{
 			System.out.println(consolePrefix + "Error occurred, transfer incomplete");
 
-			if ( requestType == TFTPCommon.Request.WRITE  )
-			{	if (fileOp.delete()){
+			if ( requestType == TFTPCommon.Request.WRITE )
+			{	
+				if (fileOp.delete())
+				{
 					System.out.println(consolePrefix + "Incomplete file \"" + localName + "\" deleted");
 				}
-				else{
+				else
+				{
 					System.out.println(consolePrefix + "Failed to delete incomplete file \"" + localName + "\"");
 				}
 			}

@@ -192,7 +192,7 @@ public class FileOperation
             }
             else if (file.getParentFile() != null && file.getParentFile().exists() && !Files.isWritable(FileSystems.getDefault().getPath(file.getParent())))
             {
-                throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE, "Parent folder \"" + file.getParentFile() + "\"is not writable. Access violation");
+                throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE, "Parent folder \"" + file.getParentFile() + "\" is not writable. Access violation");
             }
 
             if (overwrite)

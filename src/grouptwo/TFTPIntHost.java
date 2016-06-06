@@ -24,6 +24,13 @@ public class TFTPIntHost
     private List<Thread> runningThreads;
     private InetAddress serverAddress;
 
+    /**
+     *   Constructor for TFTPIntHost - creates receiveSocket for receiving new clients and initializes data
+     *   needed for new clients
+     *
+     *   @param  none
+     *   @return TFTPIntHost
+     */
     public TFTPIntHost()
     {
         try {
@@ -202,6 +209,18 @@ class ErrorSimulator extends Thread
     private String consolePrefix;
     private TFTPIntHost parent;
 
+    /**
+     *   Constructor for ErrorSimulator - every new client connection gets an error simulator thread, with required
+     *   information to transfer packets between client and server
+     *
+     *   @param  DatagramPacket first packet received from client
+     *   @param  InetAddress server's address (can be localhost or separate computer)
+     *   @param  TFTPCommon.Verbosity verbosity of this thread
+     *   @param  List<SimulatePacketInfo> list of pending modifications to apply to transfer
+     *   @param  Integer thread number
+     *   @param  TFTPIntHost thread creator
+     *   @return ErrorSimulator
+     */
     public ErrorSimulator(DatagramPacket firstPacket, InetAddress serverAddress, TFTPCommon.Verbosity verbose, List<SimulatePacketInfo> simulateList, Integer errorSimNum, TFTPIntHost intHost)
     {
         clientAddress = firstPacket.getAddress();
@@ -665,6 +684,13 @@ class TFTPIntHostCommandLine extends Thread
     private Boolean cliRunning;
     private String scIn;
 
+    /**
+     *   Constructor for TFTPIntHostCommandLine - gets reference to TFTPIntHost and sets options
+     *   for new client connections (including packet modifications)
+     *
+     *   @param  TFTPIntHost caller
+     *   @return TFTPIntHostCommandLine
+     */
     public TFTPIntHostCommandLine(TFTPIntHost parent)
     {
         parentSimulator = parent;
@@ -713,6 +739,12 @@ class TFTPIntHostCommandLine extends Thread
         }
     }
 
+    /**
+     *   Set IP address of server with given scanner
+     *
+     *   @param  Scanner scanner being used by CLI thread
+     *   @return void
+     */
     private void setServerAddress (Scanner sc)
     {
         System.out.print("Enter IP address (enter nothing for localhost): ");
@@ -729,6 +761,12 @@ class TFTPIntHostCommandLine extends Thread
         }
     }
 
+    /**
+     *   Cancel a pending modification (if any exist)
+     *
+     *   @param  Scanner scanner being used by CLI thread
+     *   @return void
+     */
     private void deletePendingMod (Scanner sc)
     {
         int modToDelete;
@@ -1199,6 +1237,14 @@ class SimulatePacketInfo
     private List<ModifyByte> modByte;
     private List<TFTPCommon.ContentSubmod> subMod;
 
+    /**
+     *   Constructor for SimulatePacketInfo - initially sets packet number and type to modify
+     *   Modification details are set by specific CLI methods
+     *
+     *   @param  int packet number to modify
+     *   @param  TFTPCommon.PacketType packet type to modify
+     *   @return SimulatePacketInfo
+     */
     public SimulatePacketInfo (int pNum, TFTPCommon.PacketType pType)
     {
         this.pNum = pNum;
@@ -1332,6 +1378,12 @@ class SimulatePacketInfo
         this.length = length;
     }
 
+    /**
+     *   Modification toString - contains all details (including packet #, type, modification type, and modification details)
+     *
+     *   @param  none
+     *   @return String modification toString
+     */
     public String toString () 
     {
         String returnString = new String ("Packet: " + TFTPCommon.packetTypeToString(pType) + " " + pNum + " Error Type: " + TFTPCommon.errorSimulateToString(modType));
@@ -1402,6 +1454,13 @@ class ModifyByte
     private Integer position;
     private byte value;
 
+    /**
+     *   Constructor for ModifyByte - sets byte # to modify and what to modify it to
+     *
+     *   @param  Integer which byte to modify
+     *   @param  byte new value for byte
+     *   @return ModifyByte
+     */
     public ModifyByte (Integer position, byte value)
     {
         this.position = position;
