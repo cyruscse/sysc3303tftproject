@@ -448,7 +448,7 @@ class ErrorSimulator extends Thread
                 sendReceiveSocket.setSoTimeout(hardTimeout);
                 sendReceiveSocket.receive(receivePacket);
             } catch (SocketTimeoutException e) {
-                System.out.println(consolePrefix + "Haven't received any packets in past " + hardTimeout + "ms. Thread returning");
+                System.out.println(consolePrefix + "Haven't received any packets in past " + hardTimeout + " ms. Thread returning");
                 parent.threadDone(Thread.currentThread());
                 return;
             } catch (IOException e) {
@@ -988,6 +988,12 @@ class TFTPIntHostCommandLine extends Thread
     private void delayPacket(Scanner sc)
     {
         SimulatePacketInfo delayPacket = selectPacket(sc);
+
+        if (delayPacket.getPacketType() == TFTPCommon.PacketType.INVALID)
+        {
+            return;
+        }
+        
         int delayAmount = getIntMenu(sc, 0, 100000, -1, "Enter amount to delay packet (ms): ");
         
         delayPacket.setModType(TFTPCommon.ModificationType.DELAY);
@@ -1008,6 +1014,12 @@ class TFTPIntHostCommandLine extends Thread
     private void duplicatePacket(Scanner sc)
     {
         SimulatePacketInfo duplicatePacket = selectPacket(sc);
+
+        if (duplicatePacket.getPacketType() == TFTPCommon.PacketType.INVALID)
+        {
+            return;
+        }
+
         int duplicateGap = getIntMenu(sc, 0, 100000, -1, "Enter gap between duplicated packets (ms): ");
         
         duplicatePacket.setModType(TFTPCommon.ModificationType.DUPLICATE);
@@ -1029,6 +1041,11 @@ class TFTPIntHostCommandLine extends Thread
     {
         SimulatePacketInfo losePacket = selectPacket(sc);
         
+        if (losePacket.getPacketType() == TFTPCommon.PacketType.INVALID)
+        {
+            return;
+        }
+
         losePacket.setModType(TFTPCommon.ModificationType.LOSE);
         
         if (!parentSimulator.appendMod(losePacket))
@@ -1046,6 +1063,11 @@ class TFTPIntHostCommandLine extends Thread
     private void invalidTID(Scanner sc)
     {
         SimulatePacketInfo invalidTID = selectPacket(sc);
+
+        if (invalidTID.getPacketType() == TFTPCommon.PacketType.INVALID)
+        {
+            return;
+        }
 
         if (invalidTID.getPacketType() == TFTPCommon.PacketType.REQUEST)
         {
