@@ -205,7 +205,14 @@ public class FileOperation
                 throw new FileOperationException(TFTPCommon.ErrorCode.FILEEXISTS, "File: \"" + file.getName() + "\" already exists");
             }
 
-            outStream = new FileOutputStream(absolutePath, true);
+            try
+            {
+                outStream = new FileOutputStream(absolutePath, true);
+            }
+            catch (IOException e)
+            {
+                throw new FileOperationException(TFTPCommon.ErrorCode.ACCESSVIOLATE, "Unable to write to file or parent directory. Access Violation");
+            }
         }
        
         else
